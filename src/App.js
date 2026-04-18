@@ -1,0 +1,28 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Courses from './pages/Courses';
+import AdminPanel from './pages/AdminPanel';
+import MyCourses from './pages/MyCourses';
+import CourseDetail from './pages/CourseDetail';
+import Navbar from './components/Navbar';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/courses" element={<Courses />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/my-courses" element={<MyCourses />} />
+        <Route path="/course/:id" element={<CourseDetail />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
