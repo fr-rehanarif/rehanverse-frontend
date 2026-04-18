@@ -1,8 +1,8 @@
-import API from '../api';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
+import API from '../api';
 
 function AdminPanel() {
   const { colors } = useTheme();
@@ -12,7 +12,7 @@ function AdminPanel() {
 
   const [courses, setCourses] = useState([]);
   const [msg, setMsg] = useState('');
-  const [editingId, setEditingId] = useState(null); // null = create mode, id = edit mode
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     title: '', description: '', price: 0,
     isFree: false, thumbnail: '',
@@ -28,11 +28,10 @@ function AdminPanel() {
   }, []);
 
   const fetchCourses = async () => {
-    const res = await axios.get('${API}/api/courses');
+    const res = await axios.get(`${API}/api/courses`);
     setCourses(res.data);
   };
 
-  // Edit button click hone pe form mein data bharo
   const startEdit = (course) => {
     setEditingId(course._id);
     setForm({
@@ -49,7 +48,6 @@ function AdminPanel() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Cancel edit
   const cancelEdit = () => {
     setEditingId(null);
     setForm({ title: '', description: '', price: 0, isFree: false, thumbnail: '', videoTitle: '', videoUrl: '', pdfTitle: '', pdfUrl: '' });
@@ -78,21 +76,18 @@ function AdminPanel() {
 
     try {
       if (editingId) {
-        // Update existing course
         await axios.put(`${API}/api/courses/${editingId}`,
           { ...form, videos, pdfs },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setMsg('✅ Course updated!');
       } else {
-        // Create new course
-        await axios.post('${API}/api/courses',
+        await axios.post(`${API}/api/courses`,
           { ...form, videos, pdfs },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setMsg('✅ Course created!');
       }
-
       cancelEdit();
       fetchCourses();
       setTimeout(() => setMsg(''), 3000);
@@ -121,14 +116,11 @@ function AdminPanel() {
     <div style={{ background: colors.bg, minHeight: '100vh', padding: '40px 20px' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
-        {/* Header */}
         <h2 style={{ color: colors.primary, marginBottom: '4px' }}>⚙️ Admin Panel</h2>
         <p style={{ color: colors.subtext, marginBottom: '32px' }}>Welcome, {user?.name}!</p>
 
-        {/* Form — Create ya Edit */}
         <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '32px', marginBottom: '40px' }}>
 
-          {/* Form Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h3 style={{ color: colors.text }}>
               {editingId ? '✏️ Course Edit Karo' : '➕ Naya Course Banao'}
@@ -141,7 +133,6 @@ function AdminPanel() {
             )}
           </div>
 
-          {/* Editing indicator */}
           {editingId && (
             <div style={{ padding: '10px 14px', background: '#fef3c7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400e' }}>
               ✏️ Tum <strong>"{form.title}"</strong> ko edit kar rahe ho
@@ -155,36 +146,9 @@ function AdminPanel() {
             placeholder="Course Description *"
             value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
 
-          <input type="file" 
-          accept="image/*"
-          style={inputStyle}
-          onChange={async (e) => {
-            const file = e.target.files[0];
-            if (!file) return ;
-            
-            const formData = new FormData();
-            formData.append('image',file);
+          <input style={inputStyle} placeholder="Thumbnail Image URL (optional)"
+            value={form.thumbnail} onChange={e => setForm({ ...form, thumbnail: e.target.value })} />
 
-            try {
-              const res = await axios.post(
-                '${API}/api/upload/image' ,
-                formData 
-                );
-
-                setForm({
-                  ...form,
-                  thumbnail: res.data.url
-                });
-
-              } catch (err) {
-                console.log(err);
-                alert('Upload Failed');
-              }
-            }}
-            />
-            
-
-          {/* Free / Paid */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
             <label style={{ color: colors.text }}>
               <input type="checkbox" checked={form.isFree}
@@ -199,7 +163,6 @@ function AdminPanel() {
             )}
           </div>
 
-          {/* Videos */}
           <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
             <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📹 Videos</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
@@ -222,7 +185,6 @@ function AdminPanel() {
             {videos.length === 0 && <p style={{ color: colors.subtext, fontSize: '12px' }}>Abhi koi video nahi</p>}
           </div>
 
-          {/* PDFs */}
           <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
             <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📄 PDFs / Notes</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
@@ -245,7 +207,6 @@ function AdminPanel() {
             {pdfs.length === 0 && <p style={{ color: colors.subtext, fontSize: '12px' }}>Abhi koi PDF nahi</p>}
           </div>
 
-          {/* Submit Button */}
           <button onClick={handleSubmit}
             style={{ width: '100%', padding: '14px', background: editingId ? '#10b981' : colors.primary, color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>
             {editingId ? '💾 Changes Save Karo' : '🚀 Course Publish Karo'}
@@ -258,14 +219,13 @@ function AdminPanel() {
           )}
         </div>
 
-        {/* Course List */}
         <h3 style={{ color: colors.text, marginBottom: '16px' }}>📚 Mere Courses ({courses.length})</h3>
         {courses.length === 0 ? (
           <p style={{ color: colors.subtext }}>Abhi koi course nahi — upar se banao!</p>
         ) : (
           courses.map(course => (
             <div key={course._id} style={{
-              background: editingId === course._id ? (colors.isDark ? '#1e3a2f' : '#f0fdf4') : colors.card,
+              background: editingId === course._id ? '#f0fdf4' : colors.card,
               border: `1px solid ${editingId === course._id ? '#10b981' : colors.border}`,
               borderRadius: '12px', padding: '20px', marginBottom: '12px',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'

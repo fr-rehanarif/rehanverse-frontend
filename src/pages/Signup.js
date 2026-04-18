@@ -1,8 +1,8 @@
-import API from '../api';
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import API from '../api';
 
 function Signup() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -12,7 +12,7 @@ function Signup() {
 
   const handleSubmit = async () => {
     try {
-      const res = await axios.post('${API}/api/auth/signup', form);
+      const res = await axios.post(`${API}/api/auth/signup`, form);
       setMsg(res.data.message);
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
