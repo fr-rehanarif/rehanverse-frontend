@@ -70,7 +70,10 @@ function Navbar() {
 
         {user && (
           <motion.div whileHover={{ y: -2 }}>
-            <Link to="/my-courses" style={{ ...styles.link, color: theme.text }}>
+            <Link
+              to="/my-courses"
+              style={{ ...styles.link, color: theme.text }}
+            >
               🎒 My Courses
             </Link>
           </motion.div>
@@ -79,8 +82,16 @@ function Navbar() {
         {user ? (
           <>
             <motion.div whileHover={{ y: -2 }}>
-              {user.photo ? (
-                <Link to="/profile">
+              <Link
+                to="/profile"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  textDecoration: 'none',
+                }}
+              >
+                {user.photo ? (
                   <img
                     src={user.photo}
                     alt="profile"
@@ -90,23 +101,38 @@ function Navbar() {
                       borderRadius: '50%',
                       objectFit: 'cover',
                       border: `2px solid ${theme.primary}`,
-                      cursor: 'pointer',
                       boxShadow: theme.shadow,
                     }}
                   />
-                </Link>
-              ) : (
-                <Link
-                  to="/profile"
+                ) : (
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: theme.primary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: theme.buttonText,
+                      fontWeight: '700',
+                      fontSize: '14px',
+                    }}
+                  >
+                    {user.name?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                <span
                   style={{
-                    ...styles.link,
                     color: theme.primary,
                     fontWeight: '600',
+                    fontSize: '14px',
                   }}
                 >
-                  👤 {user.name}
-                </Link>
-              )}
+                  {user.name}
+                </span>
+              </Link>
             </motion.div>
 
             <motion.button
