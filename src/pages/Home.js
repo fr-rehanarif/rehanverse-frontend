@@ -149,9 +149,12 @@ function Home() {
           >
             <h2 style={{ color: theme.primary, marginTop: 0 }}>Why REHANVERSE? ✨</h2>
             <p style={{ color: theme.textSecondary, lineHeight: '1.8' }}>
-              REHANVERSE ko banaya hi aise bande ne hai jo trusted Home
+              REHANVERSE ko banaya hi aise bande ne hai jo trusted Ho 
               sabkuch ek jagah mil jayega but 39₹ mein PER unit 
               free ka backend server nhi chal rha hai mera ...
+              Is backend SERVER ke 5$ har mahine jaa rhe 
+              Ao bas WEB-APP enjoy karo bas..
+              Good 2 Go
             </p>
           </div>
         </Reveal>
