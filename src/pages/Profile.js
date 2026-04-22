@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import API from '../api';
 
+const IMGBB_KEY = 'be84806d0aaa75b350df6e02185b1f8f';
+
 function Profile() {
   const { colors } = useTheme();
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ function Profile() {
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [msg, setMsg] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     name: '', phone: '', bio: '', photo: ''
   });
@@ -41,13 +44,38 @@ function Profile() {
     }
   };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    setMsg('⏳ Photo upload ho rahi hai...');
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setForm(prev => ({ ...prev, photo: data.data.url }));
+        setMsg('✅ Photo upload ho gayi!');
+      } else {
+        setMsg('❌ Photo upload failed!');
+      }
+    } catch (err) {
+      setMsg('❌ Upload error!');
+    }
+    setUploading(false);
+    setTimeout(() => setMsg(''), 3000);
+  };
+
   const handleUpdate = async () => {
     try {
       const res = await axios.put(`${API}/api/users/me`, form,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMsg('✅ Profile updated!');
-      // localStorage update karo
       const currentUser = JSON.parse(localStorage.getItem('user'));
       localStorage.setItem('user', JSON.stringify({ ...currentUser, ...res.data.user }));
       fetchProfile();
@@ -98,14 +126,12 @@ function Profile() {
 
         {/* Profile Header */}
         <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '20px', padding: '32px', marginBottom: '24px', textAlign: 'center' }}>
-          
-          {/* Photo */}
           <div style={{ marginBottom: '16px' }}>
             {profile.photo ? (
               <img src={profile.photo} alt="profile"
                 style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: `3px solid ${colors.primary}` }} />
             ) : (
-              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', fontSize: '40px' }}>
+              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', fontSize: '40px', color: 'white' }}>
                 {profile.name?.charAt(0).toUpperCase()}
               </div>
             )}
@@ -154,8 +180,8 @@ function Profile() {
 
         {msg && (
           <div style={{ padding: '12px 20px', borderRadius: '10px', marginBottom: '20px',
-            background: msg.includes('✅') ? '#d1fae5' : '#fee2e2',
-            color: msg.includes('✅') ? '#065f46' : '#991b1b' }}>
+            background: msg.includes('✅') ? '#d1fae5' : msg.includes('⏳') ? '#eff6ff' : '#fee2e2',
+            color: msg.includes('✅') ? '#065f46' : msg.includes('⏳') ? '#1d4ed8' : '#991b1b' }}>
             {msg}
           </div>
         )}
@@ -178,20 +204,30 @@ function Profile() {
               placeholder="Apne baare mein kuch likho..."
               value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} />
 
-            <label style={{ color: colors.subtext, fontSize: '13px' }}>Profile Photo URL</label>
-            <input style={inputStyle} placeholder="Photo URL (ImgBB ya koi bhi image link)"
-              value={form.photo} onChange={e => setForm({ ...form, photo: e.target.value })} />
-
-            {form.photo && (
-              <div style={{ marginBottom: '16px', textAlign: 'center' }}>
-                <img src={form.photo} alt="preview"
-                  style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colors.primary}` }} />
-                <p style={{ color: colors.subtext, fontSize: '12px', marginTop: '4px' }}>Preview</p>
+            {/* Photo Upload */}
+            <label style={{ color: colors.subtext, fontSize: '13px' }}>Profile Photo</label>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {form.photo ? (
+                  <img src={form.photo} alt="preview"
+                    style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colors.primary}` }} />
+                ) : (
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '24px' }}>
+                    {profile.name?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <label style={{ cursor: 'pointer', flex: 1 }}>
+                  <div style={{ padding: '10px 16px', background: colors.bg, border: `2px dashed ${colors.border}`, borderRadius: '8px', textAlign: 'center', color: colors.subtext, fontSize: '13px' }}>
+                    {uploading ? '⏳ Uploading...' : '📷 Device se photo choose karo'}
+                  </div>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload}
+                    style={{ display: 'none' }} disabled={uploading} />
+                </label>
               </div>
-            )}
+            </div>
 
-            <button onClick={handleUpdate}
-              style={{ width: '100%', padding: '14px', background: colors.primary, color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>
+            <button onClick={handleUpdate} disabled={uploading}
+              style={{ width: '100%', padding: '14px', background: colors.primary, color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', fontWeight: '600', opacity: uploading ? 0.7 : 1 }}>
               💾 Save Changes
             </button>
           </div>
