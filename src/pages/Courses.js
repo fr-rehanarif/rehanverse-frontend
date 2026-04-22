@@ -42,13 +42,11 @@ function Courses() {
       return;
     }
 
-    // 🔥 PAID COURSE → PAYMENT PAGE
     if (!course.isFree) {
       navigate(`/payment/${course._id}`);
       return;
     }
 
-    // 🆓 FREE COURSE → DIRECT ENROLL
     try {
       const res = await axios.post(
         `${API}/api/enroll/${course._id}`,
@@ -158,6 +156,9 @@ function Courses() {
                     boxShadow: theme.shadow,
                     cursor: 'pointer',
                     backdropFilter: theme.glass,
+                    minHeight: '500px',
+                    display: 'flex',
+                    flexDirection: 'column',
                   }}
                 >
                   {course.thumbnail ? (
@@ -166,15 +167,16 @@ function Courses() {
                       alt={course.title}
                       style={{
                         width: '100%',
-                        height: '180px',
+                        height: '220px',
                         objectFit: 'cover',
+                        display: 'block',
                       }}
                     />
                   ) : (
                     <div
                       style={{
                         width: '100%',
-                        height: '180px',
+                        height: '220px',
                         background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
                         display: 'flex',
                         alignItems: 'center',
@@ -185,7 +187,14 @@ function Courses() {
                     </div>
                   )}
 
-                  <div style={{ padding: '20px' }}>
+                  <div
+                    style={{
+                      padding: '20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      flexGrow: 1,
+                    }}
+                  >
                     <h3
                       style={{
                         color: theme.text,
@@ -203,6 +212,7 @@ function Courses() {
                         fontSize: '13px',
                         marginBottom: '12px',
                         lineHeight: '1.6',
+                        minHeight: '64px',
                       }}
                     >
                       {course.description?.slice(0, 80)}...
@@ -226,6 +236,7 @@ function Courses() {
 
                     <div
                       style={{
+                        marginTop: 'auto',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -258,6 +269,7 @@ function Courses() {
                           fontSize: '14px',
                           fontWeight: '600',
                           boxShadow: theme.shadow,
+                          minWidth: '140px',
                         }}
                       >
                         {isEnrolled(course._id) ? '✅ Enrolled' : 'Enroll Now'}
