@@ -26,6 +26,23 @@ function Reviews({ courseId }) {
     }
   };
 
+  const getRatingText = (value) => {
+    switch (Number(value)) {
+      case 1:
+        return 'Bahut Bura';
+      case 2:
+        return 'Bura';
+      case 3:
+        return 'Theek Hai';
+      case 4:
+        return 'Accha';
+      case 5:
+        return 'Excellent!';
+      default:
+        return 'Excellent!';
+    }
+  };
+
   const submitReview = async () => {
     if (!comment.trim()) {
       setMsg('❌ Comment zaroori hai!');
@@ -54,7 +71,7 @@ function Reviews({ courseId }) {
   const avgRating =
     reviews.length > 0
       ? (
-          reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+          reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviews.length
         ).toFixed(1)
       : 0;
 
@@ -111,7 +128,14 @@ function Reviews({ courseId }) {
             ✍️ Apni Review Do
           </p>
 
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: '6px',
+              marginBottom: '12px',
+              flexWrap: 'wrap',
+            }}
+          >
             {[1, 2, 3, 4, 5].map((star) => (
               <span
                 key={star}
@@ -135,17 +159,10 @@ function Reviews({ courseId }) {
                 fontSize: '13px',
                 alignSelf: 'center',
                 marginLeft: '8px',
+                fontWeight: '600',
               }}
             >
-              {rating === 1
-                ? 'Bahut Bura'
-                : rating === 2
-                ? 'Bura'
-                : rating === 3
-                ? 'Theek Hai'
-                : rating === 4
-                ? 'Accha'
-                : 'Excellent!'}
+              {getRatingText(hover || rating)}
             </span>
           </div>
 
@@ -288,7 +305,7 @@ function Reviews({ courseId }) {
                 <div style={{ display: 'flex', gap: '2px' }}>
                   {[1, 2, 3, 4, 5].map((s) => (
                     <span key={s} style={{ fontSize: '14px' }}>
-                      {review.rating >= s ? '⭐' : '☆'}
+                      {Number(review.rating) >= s ? '⭐' : '☆'}
                     </span>
                   ))}
                 </div>
@@ -298,11 +315,22 @@ function Reviews({ courseId }) {
                 style={{
                   color: theme.textSecondary,
                   fontSize: '14px',
-                  margin: 0,
+                  margin: '0 0 6px 0',
                   lineHeight: '1.6',
                 }}
               >
                 {review.comment}
+              </p>
+
+              <p
+                style={{
+                  color: theme.muted,
+                  fontSize: '12px',
+                  margin: 0,
+                  fontWeight: '600',
+                }}
+              >
+                {getRatingText(review.rating)}
               </p>
             </div>
           ))}
