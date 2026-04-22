@@ -10,6 +10,7 @@ function AdminPanel() {
   const user = JSON.parse(localStorage.getItem('user'));
   const token = localStorage.getItem('token');
 
+  const [payments, setPayments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('courses');
@@ -17,10 +18,11 @@ function AdminPanel() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [msg, setMsg] = useState('');
   const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     title: '',
     description: '',
-    price: 0,
+    price: 39,
     isFree: false,
     thumbnail: '',
     videoTitle: '',
@@ -28,6 +30,7 @@ function AdminPanel() {
     pdfTitle: '',
     pdfUrl: '',
   });
+
   const [videos, setVideos] = useState([]);
   const [pdfs, setPdfs] = useState([]);
 
@@ -36,13 +39,19 @@ function AdminPanel() {
       navigate('/');
       return;
     }
+
     fetchCourses();
     fetchUsers();
+    fetchPayments();
   }, []);
 
   const fetchCourses = async () => {
-    const res = await axios.get(`${API}/api/courses`);
-    setCourses(res.data);
+    try {
+      const res = await axios.get(`${API}/api/courses`);
+      setCourses(res.data);
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   const fetchUsers = async () => {
@@ -53,6 +62,56 @@ function AdminPanel() {
       setUsers(res.data);
     } catch (err) {
       console.log(err);
+    }
+  };
+
+  const fetchPayments = async () => {
+    try {
+      const res = await axios.get(`${API}/api/payment/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPayments(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const approvePayment = async (id) => {
+    try {
+      const res = await axios.put(
+        `${API}/api/payment/approve/${id}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setMsg('✅ ' + res.data.message);
+      fetchPayments();
+      fetchUsers();
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      setMsg('❌ ' + (err.response?.data?.message || 'Approve failed'));
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
+
+  const rejectPayment = async (id) => {
+    try {
+      const res = await axios.put(
+        `${API}/api/payment/reject/${id}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setMsg('⚠️ ' + res.data.message);
+      fetchPayments();
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      setMsg('❌ ' + (err.response?.data?.message || 'Reject failed'));
+      setTimeout(() => setMsg(''), 3000);
     }
   };
 
@@ -109,7 +168,7 @@ function AdminPanel() {
     setForm({
       title: '',
       description: '',
-      price: 0,
+      price: 39,
       isFree: false,
       thumbnail: '',
       videoTitle: '',
@@ -169,12 +228,17 @@ function AdminPanel() {
   const deleteCourse = async (id) => {
     if (!window.confirm('Delete this course?')) return;
 
-    await axios.delete(`${API}/api/courses/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      await axios.delete(`${API}/api/courses/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    if (editingId === id) cancelEdit();
-    fetchCourses();
+      if (editingId === id) cancelEdit();
+      fetchCourses();
+    } catch (err) {
+      setMsg('❌ ' + (err.response?.data?.message || 'Delete failed'));
+      setTimeout(() => setMsg(''), 3000);
+    }
   };
 
   const inputStyle = {
@@ -189,6 +253,17 @@ function AdminPanel() {
     border: `1px solid ${theme.border}`,
     boxSizing: 'border-box',
   };
+
+  const tabStyle = (tabName) => ({
+    padding: '10px 24px',
+    borderRadius: '12px',
+    border: `1px solid ${activeTab === tabName ? theme.primary : theme.border}`,
+    cursor: 'pointer',
+    fontWeight: '600',
+    background: activeTab === tabName ? theme.primary : theme.card,
+    color: activeTab === tabName ? theme.buttonText : theme.text,
+    boxShadow: activeTab === tabName ? theme.shadow : 'none',
+  });
 
   return (
     <div
@@ -205,37 +280,46 @@ function AdminPanel() {
           Welcome, {user?.name}!
         </p>
 
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '32px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => setActiveTab('courses')}
+        {msg && (
+          <div
             style={{
-              padding: '10px 24px',
+              padding: '12px 16px',
               borderRadius: '12px',
-              border: `1px solid ${activeTab === 'courses' ? theme.primary : theme.border}`,
-              cursor: 'pointer',
-              fontWeight: '600',
-              background: activeTab === 'courses' ? theme.primary : theme.card,
-              color: activeTab === 'courses' ? theme.buttonText : theme.text,
-              boxShadow: activeTab === 'courses' ? theme.shadow : 'none',
+              marginBottom: '20px',
+              background: msg.includes('✅')
+                ? theme.mode === 'dark'
+                  ? 'rgba(34, 197, 94, 0.12)'
+                  : '#d1fae5'
+                : msg.includes('⚠️')
+                ? theme.mode === 'dark'
+                  ? 'rgba(245, 158, 11, 0.12)'
+                  : '#fef3c7'
+                : theme.mode === 'dark'
+                ? 'rgba(239, 68, 68, 0.12)'
+                : '#fee2e2',
+              color: msg.includes('✅')
+                ? theme.success
+                : msg.includes('⚠️')
+                ? theme.warning
+                : theme.danger,
+              border: `1px solid ${theme.border}`,
             }}
           >
+            {msg}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '32px', flexWrap: 'wrap' }}>
+          <button onClick={() => setActiveTab('courses')} style={tabStyle('courses')}>
             📚 Courses ({courses.length})
           </button>
 
-          <button
-            onClick={() => setActiveTab('users')}
-            style={{
-              padding: '10px 24px',
-              borderRadius: '12px',
-              border: `1px solid ${activeTab === 'users' ? theme.primary : theme.border}`,
-              cursor: 'pointer',
-              fontWeight: '600',
-              background: activeTab === 'users' ? theme.primary : theme.card,
-              color: activeTab === 'users' ? theme.buttonText : theme.text,
-              boxShadow: activeTab === 'users' ? theme.shadow : 'none',
-            }}
-          >
+          <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>
             👥 Users ({users.length})
+          </button>
+
+          <button onClick={() => setActiveTab('payments')} style={tabStyle('payments')}>
+            💸 Payments ({payments.filter((p) => p.status === 'pending').length})
           </button>
         </div>
 
@@ -525,18 +609,6 @@ function AdminPanel() {
               >
                 {editingId ? '💾 Changes Save Karo' : '🚀 Course Publish Karo'}
               </button>
-
-              {msg && (
-                <p
-                  style={{
-                    textAlign: 'center',
-                    marginTop: '12px',
-                    color: msg.includes('✅') ? theme.success : theme.danger,
-                  }}
-                >
-                  {msg}
-                </p>
-              )}
             </div>
 
             <h3 style={{ color: theme.text, marginBottom: '16px' }}>
@@ -910,6 +982,162 @@ function AdminPanel() {
                       >
                         🗑️ Delete User
                       </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'payments' && (
+          <div>
+            <h3 style={{ color: theme.text, marginBottom: '20px' }}>
+              💸 Payment Requests ({payments.length})
+            </h3>
+
+            {payments.length === 0 ? (
+              <p style={{ color: theme.muted }}>Abhi koi payment request nahi aayi!</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {payments.map((payment) => (
+                  <div
+                    key={payment._id}
+                    style={{
+                      background: theme.card,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: theme.radius,
+                      padding: '20px',
+                      boxShadow: theme.shadow,
+                      backdropFilter: theme.glass,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '20px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: '240px' }}>
+                        <h4 style={{ color: theme.text, marginTop: 0, marginBottom: '12px' }}>
+                          {payment.course?.title || 'Course deleted'}
+                        </h4>
+
+                        <p style={{ color: theme.muted, margin: '6px 0' }}>
+                          <strong style={{ color: theme.text }}>User:</strong>{' '}
+                          {payment.user?.name || 'Unknown'}
+                        </p>
+
+                        <p style={{ color: theme.muted, margin: '6px 0' }}>
+                          <strong style={{ color: theme.text }}>Email:</strong>{' '}
+                          {payment.user?.email || 'No email'}
+                        </p>
+
+                        <p style={{ color: theme.muted, margin: '6px 0' }}>
+                          <strong style={{ color: theme.text }}>Amount:</strong> ₹{payment.amount || 39}
+                        </p>
+
+                        <p style={{ color: theme.muted, margin: '6px 0' }}>
+                          <strong style={{ color: theme.text }}>Status:</strong>{' '}
+                          <span
+                            style={{
+                              color:
+                                payment.status === 'approved'
+                                  ? theme.success
+                                  : payment.status === 'rejected'
+                                  ? theme.danger
+                                  : theme.warning,
+                              fontWeight: '700',
+                            }}
+                          >
+                            {payment.status}
+                          </span>
+                        </p>
+
+                        <p style={{ color: theme.muted, margin: '6px 0' }}>
+                          <strong style={{ color: theme.text }}>Date:</strong>{' '}
+                          {new Date(payment.createdAt).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+
+                      <div style={{ minWidth: '240px', maxWidth: '280px' }}>
+                        <p
+                          style={{
+                            color: theme.text,
+                            fontWeight: '600',
+                            marginTop: 0,
+                            marginBottom: '10px',
+                          }}
+                        >
+                          Screenshot Proof
+                        </p>
+
+                        {payment.screenshot ? (
+                          <a
+                            href={`${API}/${payment.screenshot}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ textDecoration: 'none' }}
+                          >
+                            <img
+                              src={`${API}/${payment.screenshot}`}
+                              alt="payment proof"
+                              style={{
+                                width: '100%',
+                                height: '180px',
+                                objectFit: 'cover',
+                                borderRadius: '12px',
+                                border: `1px solid ${theme.border}`,
+                              }}
+                            />
+                          </a>
+                        ) : (
+                          <p style={{ color: theme.muted }}>No screenshot</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {payment.status === 'pending' && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '10px',
+                          marginTop: '16px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <button
+                          onClick={() => approvePayment(payment._id)}
+                          style={{
+                            padding: '10px 18px',
+                            background: theme.success,
+                            color: theme.buttonText,
+                            border: 'none',
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                          }}
+                        >
+                          ✅ Approve
+                        </button>
+
+                        <button
+                          onClick={() => rejectPayment(payment._id)}
+                          style={{
+                            padding: '10px 18px',
+                            background: theme.danger,
+                            color: theme.buttonText,
+                            border: 'none',
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                          }}
+                        >
+                          ❌ Reject
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}

@@ -42,6 +42,13 @@ function Courses() {
       return;
     }
 
+    // 🔥 PAID COURSE → PAYMENT PAGE
+    if (!course.isFree) {
+      navigate(`/payment/${course._id}`);
+      return;
+    }
+
+    // 🆓 FREE COURSE → DIRECT ENROLL
     try {
       const res = await axios.post(
         `${API}/api/enroll/${course._id}`,
@@ -53,12 +60,8 @@ function Courses() {
       setEnrolledIds([...enrolledIds, course._id]);
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
-      if (err.response?.data?.message === 'PAYMENT_REQUIRED') {
-        navigate(`/payment/${course._id}`);
-      } else {
-        setMsg('⚠️ ' + (err.response?.data?.message || 'Something went wrong'));
-        setTimeout(() => setMsg(''), 3000);
-      }
+      setMsg('⚠️ ' + (err.response?.data?.message || 'Something went wrong'));
+      setTimeout(() => setMsg(''), 3000);
     }
   };
 
