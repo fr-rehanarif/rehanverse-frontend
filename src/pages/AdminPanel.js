@@ -148,7 +148,7 @@ function AdminPanel() {
 
   return (
     <div style={{ background: colors.bg, minHeight: '100vh', padding: '40px 20px' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
 
         <h2 style={{ color: colors.primary, marginBottom: '4px' }}>⚙️ Admin Panel</h2>
         <p style={{ color: colors.subtext, marginBottom: '24px' }}>Welcome, {user?.name}!</p>
@@ -264,7 +264,7 @@ function AdminPanel() {
 
             <h3 style={{ color: colors.text, marginBottom: '16px' }}>📚 Mere Courses ({courses.length})</h3>
             {courses.length === 0 ? (
-              <p style={{ color: colors.subtext }}>Abhi koi course nahi — upar se banao!</p>
+              <p style={{ color: colors.subtext }}>Abhi koi course nahi!</p>
             ) : (
               courses.map(course => (
                 <div key={course._id} style={{ marginBottom: '12px' }}>
@@ -324,64 +324,90 @@ function AdminPanel() {
         {/* =================== USERS TAB =================== */}
         {activeTab === 'users' && (
           <div>
-            <h3 style={{ color: colors.text, marginBottom: '16px' }}>👥 Registered Users ({users.length})</h3>
+            <h3 style={{ color: colors.text, marginBottom: '20px' }}>👥 Registered Users ({users.length})</h3>
             {users.length === 0 ? (
               <p style={{ color: colors.subtext }}>Abhi koi user nahi!</p>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: colors.primary }}>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>#</th>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Name</th>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Email</th>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Role</th>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Enrolled</th>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Joined</th>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u, i) => (
-                      <tr key={u._id} style={{ background: i % 2 === 0 ? colors.card : colors.bg, borderBottom: `1px solid ${colors.border}` }}>
-                        <td style={{ padding: '12px', color: colors.subtext, fontSize: '13px' }}>{i + 1}</td>
-                        <td style={{ padding: '12px', color: colors.text, fontSize: '13px', fontWeight: '500' }}>{u.name}</td>
-                        <td style={{ padding: '12px', color: colors.subtext, fontSize: '13px' }}>{u.email}</td>
-                        <td style={{ padding: '12px', fontSize: '13px' }}>
-                          <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-                            background: u.role === 'admin' ? '#fef3c7' : '#d1fae5',
-                            color: u.role === 'admin' ? '#92400e' : '#065f46' }}>
-                            {u.role === 'admin' ? '👑 Admin' : '🎓 Student'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '13px' }}>
-                          {u.enrolledCourses?.length > 0 ? (
-                            <div>
-                              {u.enrolledCourses.map((c, idx) => (
-                                <span key={idx} style={{ display: 'inline-block', padding: '2px 8px', background: colors.primary + '22', color: colors.primary, borderRadius: '4px', fontSize: '11px', marginRight: '4px', marginBottom: '2px' }}>
-                                  {c.title}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span style={{ color: colors.subtext, fontSize: '12px' }}>None</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px', color: colors.subtext, fontSize: '13px' }}>
-                          {new Date(u.createdAt).toLocaleDateString('en-IN')}
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          {u.role !== 'admin' && (
-                            <button onClick={() => deleteUser(u._id, u.name)}
-                              style={{ padding: '6px 14px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                              🗑️ Delete
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                {users.map((u, i) => (
+                  <div key={u._id} style={{
+                    background: colors.card,
+                    border: `1px solid ${u.role === 'admin' ? colors.primary : colors.border}`,
+                    borderRadius: '16px', padding: '20px',
+                    position: 'relative'
+                  }}>
+                    {/* Role Badge */}
+                    <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
+                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
+                        background: u.role === 'admin' ? '#fef3c7' : '#d1fae5',
+                        color: u.role === 'admin' ? '#92400e' : '#065f46' }}>
+                        {u.role === 'admin' ? '👑 Admin' : '🎓 Student'}
+                      </span>
+                    </div>
+
+                    {/* Photo + Name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                      {u.photo ? (
+                        <img src={u.photo} alt={u.name}
+                          style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colors.primary}` }} />
+                      ) : (
+                        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '700', fontSize: '20px', flexShrink: 0 }}>
+                          {u.name?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h4 style={{ color: colors.text, margin: 0, fontSize: '15px', fontWeight: '700' }}>{u.name}</h4>
+                        <p style={{ color: colors.subtext, margin: 0, fontSize: '12px' }}>#{i + 1}</p>
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px' }}>📧</span>
+                        <span style={{ color: colors.subtext, fontSize: '12px' }}>{u.email}</span>
+                      </div>
+                      {u.phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '12px' }}>📱</span>
+                          <span style={{ color: colors.subtext, fontSize: '12px' }}>{u.phone}</span>
+                        </div>
+                      )}
+                      {u.bio && (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          <span style={{ fontSize: '12px' }}>💬</span>
+                          <span style={{ color: colors.subtext, fontSize: '12px', fontStyle: 'italic' }}>"{u.bio}"</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px' }}>📅</span>
+                        <span style={{ color: colors.subtext, fontSize: '12px' }}>Joined: {new Date(u.createdAt).toLocaleDateString('en-IN')}</span>
+                      </div>
+                    </div>
+
+                    {/* Enrolled Courses */}
+                    {u.enrolledCourses?.length > 0 && (
+                      <div style={{ marginBottom: '14px' }}>
+                        <p style={{ color: colors.text, fontSize: '12px', fontWeight: '600', marginBottom: '6px' }}>📚 Enrolled:</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {u.enrolledCourses.map((c, idx) => (
+                            <span key={idx} style={{ padding: '2px 8px', background: colors.primary + '22', color: colors.primary, borderRadius: '4px', fontSize: '11px' }}>
+                              {c.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delete Button */}
+                    {u.role !== 'admin' && (
+                      <button onClick={() => deleteUser(u._id, u.name)}
+                        style={{ width: '100%', padding: '8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                        🗑️ Delete User
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
