@@ -1,2 +1,2 @@
-const API = 'https://rehanverse-backend-production.up.railway.app';
+const API = 'https://rehanverse.onrender.com';
 export default API;
