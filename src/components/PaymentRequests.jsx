@@ -8,7 +8,7 @@ function PaymentRequests() {
     try {
       setLoading(true);
 
-      const res = await fetch("https://rehanverse.onrender.com/api/payments/all", {
+      const res = await fetch("https://rehanverse.onrender.com/api/payment/all", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -35,7 +35,7 @@ function PaymentRequests() {
 
   const updateStatus = async (id, action) => {
     try {
-      const res = await fetch(`https://rehanverse.onrender.com/api/payments/${action}/${id}`, {
+      const res = await fetch(`https://rehanverse.onrender.com/api/payment/${action}/${id}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
