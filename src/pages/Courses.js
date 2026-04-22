@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
+import Reveal from '../components/Reveal';
+import Footer from '../components/Footer';
 import API from '../api';
 
 function Courses() {
@@ -67,64 +69,71 @@ function Courses() {
       style={{
         background: theme.bg,
         minHeight: '100vh',
-        padding: '40px 20px',
         transition: 'all 0.3s ease',
       }}
     >
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <h2 style={{ color: theme.primary, marginBottom: '8px' }}>📚 All Courses</h2>
-        <p style={{ color: theme.muted, marginBottom: '30px' }}>
-          Apni skills badao — aaj hi shuru karo!
-        </p>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+        <Reveal>
+          <div>
+            <h2 style={{ color: theme.primary, marginBottom: '8px' }}>📚 All Courses</h2>
+            <p style={{ color: theme.muted, marginBottom: '30px' }}>
+              Apni skills badao — aaj hi shuru karo!
+            </p>
+          </div>
+        </Reveal>
 
         {msg && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              padding: '12px 20px',
-              borderRadius: '12px',
-              marginBottom: '20px',
-              background: msg.includes('✅')
-                ? theme.mode === 'dark'
-                  ? 'rgba(34, 197, 94, 0.15)'
-                  : '#d1fae5'
-                : theme.mode === 'dark'
-                ? 'rgba(239, 68, 68, 0.15)'
-                : '#fee2e2',
-              color: msg.includes('✅')
-                ? theme.mode === 'dark'
-                  ? '#86efac'
-                  : '#065f46'
-                : theme.mode === 'dark'
-                ? '#fca5a5'
-                : '#991b1b',
-              border: `1px solid ${
-                msg.includes('✅')
+          <Reveal>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                padding: '12px 20px',
+                borderRadius: '12px',
+                marginBottom: '20px',
+                background: msg.includes('✅')
                   ? theme.mode === 'dark'
-                    ? 'rgba(34, 197, 94, 0.28)'
-                    : '#a7f3d0'
+                    ? 'rgba(34, 197, 94, 0.15)'
+                    : '#d1fae5'
                   : theme.mode === 'dark'
-                  ? 'rgba(239, 68, 68, 0.28)'
-                  : '#fecaca'
-              }`,
-            }}
-          >
-            {msg}
-          </motion.div>
+                  ? 'rgba(239, 68, 68, 0.15)'
+                  : '#fee2e2',
+                color: msg.includes('✅')
+                  ? theme.mode === 'dark'
+                    ? '#86efac'
+                    : '#065f46'
+                  : theme.mode === 'dark'
+                  ? '#fca5a5'
+                  : '#991b1b',
+                border: `1px solid ${
+                  msg.includes('✅')
+                    ? theme.mode === 'dark'
+                      ? 'rgba(34, 197, 94, 0.28)'
+                      : '#a7f3d0'
+                    : theme.mode === 'dark'
+                    ? 'rgba(239, 68, 68, 0.28)'
+                    : '#fecaca'
+                }`,
+              }}
+            >
+              {msg}
+            </motion.div>
+          </Reveal>
         )}
 
         {courses.length === 0 ? (
-          <p
-            style={{
-              color: theme.muted,
-              textAlign: 'center',
-              marginTop: '60px',
-              fontSize: '18px',
-            }}
-          >
-            Abhi koi course nahi hai — jald aayenge! 🚀
-          </p>
+          <Reveal>
+            <p
+              style={{
+                color: theme.muted,
+                textAlign: 'center',
+                marginTop: '60px',
+                fontSize: '18px',
+              }}
+            >
+              Abhi koi course nahi hai — jald aayenge! 🚀
+            </p>
+          </Reveal>
         ) : (
           <div
             style={{
@@ -133,130 +142,133 @@ function Courses() {
               gap: '24px',
             }}
           >
-            {courses.map((course) => (
-              <motion.div
-                key={course._id}
-                whileHover={{ y: -8, scale: 1.02 }}
-                transition={{ type: 'spring', stiffness: 200 }}
-                style={{
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: '20px',
-                  overflow: 'hidden',
-                  boxShadow: theme.shadow,
-                  cursor: 'pointer',
-                  backdropFilter: theme.glass,
-                }}
-              >
-                {course.thumbnail ? (
-                  <img
-                    src={course.thumbnail}
-                    alt={course.title}
-                    style={{
-                      width: '100%',
-                      height: '180px',
-                      objectFit: 'cover',
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '180px',
-                      background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <span style={{ fontSize: '48px' }}>🎓</span>
-                  </div>
-                )}
-
-                <div style={{ padding: '20px' }}>
-                  <h3
-                    style={{
-                      color: theme.text,
-                      marginBottom: '8px',
-                      fontSize: '17px',
-                      marginTop: 0,
-                    }}
-                  >
-                    {course.title}
-                  </h3>
-
-                  <p
-                    style={{
-                      color: theme.muted,
-                      fontSize: '13px',
-                      marginBottom: '12px',
-                      lineHeight: '1.6',
-                    }}
-                  >
-                    {course.description?.slice(0, 80)}...
-                  </p>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '12px',
-                      marginBottom: '16px',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <span style={{ fontSize: '12px', color: theme.muted }}>
-                      📹 {course.videos?.length || 0} videos
-                    </span>
-                    <span style={{ fontSize: '12px', color: theme.muted }}>
-                      📄 {course.pdfs?.length || 0} PDFs
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                    }}
-                  >
-                    <span
+            {courses.map((course, index) => (
+              <Reveal key={course._id} delay={index * 0.05}>
+                <motion.div
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 200 }}
+                  style={{
+                    background: theme.card,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '20px',
+                    overflow: 'hidden',
+                    boxShadow: theme.shadow,
+                    cursor: 'pointer',
+                    backdropFilter: theme.glass,
+                  }}
+                >
+                  {course.thumbnail ? (
+                    <img
+                      src={course.thumbnail}
+                      alt={course.title}
                       style={{
-                        fontWeight: '700',
-                        fontSize: '18px',
-                        color: theme.primary,
+                        width: '100%',
+                        height: '180px',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '180px',
+                        background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      {course.isFree ? '🆓 Free' : `₹${course.price}`}
-                    </span>
+                      <span style={{ fontSize: '48px' }}>🎓</span>
+                    </div>
+                  )}
 
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleEnroll(course)}
+                  <div style={{ padding: '20px' }}>
+                    <h3
                       style={{
-                        padding: '10px 20px',
-                        background: isEnrolled(course._id)
-                          ? theme.success
-                          : theme.primary,
-                        color: theme.buttonText,
-                        border: 'none',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        boxShadow: theme.shadow,
+                        color: theme.text,
+                        marginBottom: '8px',
+                        fontSize: '17px',
+                        marginTop: 0,
                       }}
                     >
-                      {isEnrolled(course._id) ? '✅ Enrolled' : 'Enroll Now'}
-                    </motion.button>
+                      {course.title}
+                    </h3>
+
+                    <p
+                      style={{
+                        color: theme.muted,
+                        fontSize: '13px',
+                        marginBottom: '12px',
+                        lineHeight: '1.6',
+                      }}
+                    >
+                      {course.description?.slice(0, 80)}...
+                    </p>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '12px',
+                        marginBottom: '16px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span style={{ fontSize: '12px', color: theme.muted }}>
+                        📹 {course.videos?.length || 0} videos
+                      </span>
+                      <span style={{ fontSize: '12px', color: theme.muted }}>
+                        📄 {course.pdfs?.length || 0} PDFs
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: '700',
+                          fontSize: '18px',
+                          color: theme.primary,
+                        }}
+                      >
+                        {course.isFree ? '🆓 Free' : `₹${course.price}`}
+                      </span>
+
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleEnroll(course)}
+                        style={{
+                          padding: '10px 20px',
+                          background: isEnrolled(course._id)
+                            ? theme.success
+                            : theme.primary,
+                          color: theme.buttonText,
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          boxShadow: theme.shadow,
+                        }}
+                      >
+                        {isEnrolled(course._id) ? '✅ Enrolled' : 'Enroll Now'}
+                      </motion.button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              </Reveal>
             ))}
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
+import Reveal from '../components/Reveal';
+import Footer from '../components/Footer';
 
 function Home() {
   const theme = useTheme();
@@ -8,130 +10,201 @@ function Home() {
   return (
     <div
       style={{
-        ...styles.container,
         background: theme.bg,
         color: theme.text,
         minHeight: '100vh',
       }}
     >
-      <div
-        style={{
-          ...styles.heroCard,
-          background: theme.card,
-          border: `1px solid ${theme.border}`,
-          boxShadow: theme.shadowHover,
-          backdropFilter: theme.glass,
-          borderRadius: theme.radius,
-        }}
-      >
-        <motion.h1
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          style={{ ...styles.title, color: theme.primary }}
-        >
-          🎓 REHANVERSE
-        </motion.h1>
+      {/* HERO */}
+      <section style={styles.section}>
+        <Reveal>
+          <div
+            style={{
+              ...styles.heroCard,
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              boxShadow: theme.shadowHover,
+              backdropFilter: theme.glass,
+              borderRadius: theme.radius,
+            }}
+          >
+            <motion.h1
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+              style={{ ...styles.title, color: theme.primary }}
+            >
+              🎓 REHANVERSE
+            </motion.h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.05 }}
-          style={{ ...styles.subtitle, color: theme.muted }}
-        >
-          Learn anything, anytime — by Rehan
-        </motion.p>
+            <p style={{ ...styles.subtitle, color: theme.muted }}>
+              Learn anything, anytime — by Rehan
+            </p>
 
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          style={{ ...styles.description, color: theme.textSecondary }}
-        >
-          Courses, notes, videos, and a clean learning experience — all in one place.
-        </motion.p>
+            <p style={{ ...styles.description, color: theme.textSecondary }}>
+              Courses, notes, videos, and a clean learning experience — all in one place.
+            </p>
 
-        <div style={styles.buttons}>
-          <Link to="/courses" style={{ textDecoration: 'none' }}>
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
+            <div style={styles.buttons}>
+              <Link to="/courses" style={{ textDecoration: 'none' }}>
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  style={{
+                    ...styles.btnPrimary,
+                    background: theme.primary,
+                    color: theme.buttonText,
+                    boxShadow: theme.shadow,
+                  }}
+                >
+                  Browse Courses
+                </motion.button>
+              </Link>
+
+              <Link to="/signup" style={{ textDecoration: 'none' }}>
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  style={{
+                    ...styles.btnSecondary,
+                    color: theme.primary,
+                    border: `1.5px solid ${theme.primary}`,
+                    background: theme.cardSolid,
+                  }}
+                >
+                  Join Free
+                </motion.button>
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* FEATURES */}
+      <section style={styles.section}>
+        <div style={styles.grid3}>
+          <Reveal delay={0.05}>
+            <div
               style={{
-                ...styles.btnPrimary,
-                background: theme.primary,
-                color: theme.buttonText,
+                ...styles.infoCard,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
                 boxShadow: theme.shadow,
               }}
             >
-              Browse Courses
-            </motion.button>
-          </Link>
+              <div style={styles.icon}>📚</div>
+              <h3 style={{ color: theme.text }}>Smart Courses</h3>
+              <p style={{ color: theme.muted }}>
+                Structured learning paths for students and self-learners.
+              </p>
+            </div>
+          </Reveal>
 
-          <Link to="/signup" style={{ textDecoration: 'none' }}>
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
+          <Reveal delay={0.1}>
+            <div
               style={{
-                ...styles.btnSecondary,
-                color: theme.primary,
-                border: `1.5px solid ${theme.primary}`,
-                background: theme.cardSolid,
+                ...styles.infoCard,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                boxShadow: theme.shadow,
               }}
             >
-              Join Free
-            </motion.button>
-          </Link>
+              <div style={styles.icon}>🎥</div>
+              <h3 style={{ color: theme.text }}>Video Learning</h3>
+              <p style={{ color: theme.muted }}>
+                Easy video-based understanding with a clean study interface.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.15}>
+            <div
+              style={{
+                ...styles.infoCard,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                boxShadow: theme.shadow,
+              }}
+            >
+              <div style={styles.icon}>📝</div>
+              <h3 style={{ color: theme.text }}>Notes & PDFs</h3>
+              <p style={{ color: theme.muted }}>
+                All your notes and course material in one organized place.
+              </p>
+            </div>
+          </Reveal>
         </div>
+      </section>
 
-        <div style={styles.stats}>
+      {/* WHY REHANVERSE */}
+      <section style={styles.section}>
+        <Reveal>
           <div
             style={{
-              ...styles.statCard,
-              background: theme.bgSecondary,
+              ...styles.bigCard,
+              background: theme.card,
               border: `1px solid ${theme.border}`,
+              boxShadow: theme.shadowHover,
             }}
           >
-            <p style={{ ...styles.statNumber, color: theme.primary }}>📚</p>
-            <p style={{ ...styles.statLabel, color: theme.muted }}>Smart Courses</p>
+            <h2 style={{ color: theme.primary, marginTop: 0 }}>Why REHANVERSE? ✨</h2>
+            <p style={{ color: theme.textSecondary, lineHeight: '1.8' }}>
+              REHANVERSE is built to make learning clean, focused, and modern.
+              No clutter. No confusion. Just videos, notes, courses, and progress —
+              all in one smooth platform.
+            </p>
           </div>
+        </Reveal>
+      </section>
 
+      {/* CTA */}
+      <section style={styles.section}>
+        <Reveal>
           <div
             style={{
-              ...styles.statCard,
-              background: theme.bgSecondary,
+              ...styles.bigCard,
+              background: theme.card,
               border: `1px solid ${theme.border}`,
+              boxShadow: theme.shadowHover,
+              textAlign: 'center',
             }}
           >
-            <p style={{ ...styles.statNumber, color: theme.primary }}>🎥</p>
-            <p style={{ ...styles.statLabel, color: theme.muted }}>Video Learning</p>
-          </div>
+            <h2 style={{ color: theme.text, marginTop: 0 }}>Ready to start learning? 🚀</h2>
+            <p style={{ color: theme.muted, marginBottom: '24px' }}>
+              Join now and access your courses, notes, and study content in one place.
+            </p>
 
-          <div
-            style={{
-              ...styles.statCard,
-              background: theme.bgSecondary,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
-            <p style={{ ...styles.statNumber, color: theme.primary }}>📝</p>
-            <p style={{ ...styles.statLabel, color: theme.muted }}>Notes & PDFs</p>
+            <Link to="/signup" style={{ textDecoration: 'none' }}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.96 }}
+                style={{
+                  ...styles.btnPrimary,
+                  background: theme.primary,
+                  color: theme.buttonText,
+                  boxShadow: theme.shadow,
+                }}
+              >
+                Create Your Account
+              </motion.button>
+            </Link>
           </div>
-        </div>
-      </div>
+        </Reveal>
+      </section>
+
+      <Footer />
     </div>
   );
 }
 
 const styles = {
-  container: {
-    padding: '80px 20px 40px',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+  section: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '40px 20px',
   },
   heroCard: {
     width: '100%',
-    maxWidth: '980px',
     textAlign: 'center',
     padding: '56px 28px',
   },
@@ -159,7 +232,6 @@ const styles = {
     gap: '18px',
     justifyContent: 'center',
     flexWrap: 'wrap',
-    marginBottom: '34px',
   },
   btnPrimary: {
     padding: '14px 32px',
@@ -176,24 +248,23 @@ const styles = {
     cursor: 'pointer',
     fontWeight: '600',
   },
-  stats: {
+  grid3: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: '14px',
-    marginTop: '10px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: '20px',
   },
-  statCard: {
-    padding: '18px 14px',
-    borderRadius: '16px',
+  infoCard: {
+    padding: '28px 22px',
+    borderRadius: '18px',
+    textAlign: 'center',
   },
-  statNumber: {
-    fontSize: '26px',
-    margin: '0 0 6px',
+  icon: {
+    fontSize: '34px',
+    marginBottom: '12px',
   },
-  statLabel: {
-    fontSize: '14px',
-    margin: 0,
-    fontWeight: '600',
+  bigCard: {
+    padding: '34px 28px',
+    borderRadius: '20px',
   },
 };
 
