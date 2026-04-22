@@ -13,9 +13,23 @@ function Login() {
 
   const handleSubmit = async () => {
     try {
+      setMsg('');
+
       const res = await axios.post(`${API}/api/auth/login`, form);
+
+      // token save karo
       localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+
+      // full fresh user profile lao
+      const meRes = await axios.get(`${API}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${res.data.token}`,
+        },
+      });
+
+      // full user save karo (photo, bio, phone sab)
+      localStorage.setItem('user', JSON.stringify(meRes.data));
+
       navigate('/courses');
     } catch (err) {
       setMsg(err.response?.data?.message || 'Error!');
