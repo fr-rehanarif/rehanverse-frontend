@@ -62,12 +62,22 @@ function Navbar() {
             </Link>
           </motion.div>
         )}
-        
+
         {user ? (
           <>
-            <span style={{ ...styles.name, color: colors.primary }}>
-              👤 {user.name}
-            </span>
+            {/* Profile Link */}
+            <motion.div whileHover={{ y: -2 }}>
+              {user.photo ? (
+                <Link to="/profile">
+                  <img src={user.photo} alt="profile"
+                    style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colors.primary}`, cursor: 'pointer' }} />
+                </Link>
+              ) : (
+                <Link to="/profile" style={{ ...styles.link, color: colors.primary, fontWeight: '600' }}>
+                  👤 {user.name}
+                </Link>
+              )}
+            </motion.div>
 
             <motion.button 
               whileHover={{ scale: 1.05 }}
@@ -108,45 +118,39 @@ const styles = {
     justifyContent: 'space-between', 
     alignItems: 'center', 
     padding: '16px 40px', 
-    boxShadow: '0 8px 30px rgba(0,0,0,0.2)', // upgraded shadow
+    boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
     position: 'sticky', 
     top: 0, 
     zIndex: 100,
-    backdropFilter: 'blur(10px)', // 🔥 premium glass effect
+    backdropFilter: 'blur(10px)',
   },
-
   logo: { 
     fontSize: '22px', 
     fontWeight: 'bold', 
     textDecoration: 'none',
-    letterSpacing: '1px' // premium spacing
+    letterSpacing: '1px'
   },
-
   links: { 
     display: 'flex', 
     alignItems: 'center', 
     gap: '20px' 
   },
-
   link: { 
     textDecoration: 'none', 
     fontSize: '15px',
     fontWeight: '500'
   },
-
   name: { 
     fontWeight: '500' 
   },
-
   btn: { 
     padding: '8px 20px', 
     color: 'white', 
     border: 'none', 
-    borderRadius: '10px', // smoother
+    borderRadius: '10px',
     cursor: 'pointer', 
     fontSize: '14px',
   },
-
   toggle: { 
     padding: '8px 16px', 
     borderRadius: '20px', 
