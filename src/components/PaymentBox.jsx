@@ -17,7 +17,7 @@ function PaymentBox({ courseId }) {
       formData.append("courseId", courseId);
       formData.append("screenshot", screenshot);
 
-      const res = await fetch("https://rehanverse.onrender.com/api/payments/request", {
+      const res = await fetch("https://rehanverse.onrender.com/api/payment/request", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
