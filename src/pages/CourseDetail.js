@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
+import Reviews from '../components/Reviews';
 import { motion } from 'framer-motion';
 
 function CourseDetail() {
@@ -171,6 +172,10 @@ function CourseDetail() {
               }}>
               📄 PDFs
             </button>
+          </div>
+          {/* Reviews Section */}
+          <div style={{ maxWidth: '1300px', margin: '0 auto', padding: '0 24px 40px' }}>
+            <Reviews courseId={id} />
           </div>
 
           {/* Video List */}
