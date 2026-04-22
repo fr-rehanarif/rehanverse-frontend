@@ -149,9 +149,9 @@ function Home() {
           >
             <h2 style={{ color: theme.primary, marginTop: 0 }}>Why REHANVERSE? ✨</h2>
             <p style={{ color: theme.textSecondary, lineHeight: '1.8' }}>
-              REHANVERSE is built to make learning clean, focused, and modern.
-              No clutter. No confusion. Just videos, notes, courses, and progress —
-              all in one smooth platform.
+              REHANVERSE ko banaya hi aise bande ne hai jo trusted Home
+              sabkuch ek jagah mil jayega but 39₹ mein PER unit 
+              free ka backend server nhi chal rha hai mera ...
             </p>
           </div>
         </Reveal>
