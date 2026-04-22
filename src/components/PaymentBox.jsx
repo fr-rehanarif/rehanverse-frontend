@@ -5,41 +5,43 @@ function PaymentBox({ courseId }) {
   const [loading, setLoading] = useState(false);
 
   const handleSubmitProof = async () => {
-    if (!screenshot) {
-      alert("Screenshot upload kar");
+  if (!screenshot) {
+    alert("Screenshot upload kar");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append("courseId", courseId);
+    formData.append("screenshot", screenshot);
+
+    const res = await fetch("https://rehanverse.onrender.com/api/payment/request", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: formData,
+    });
+
+    const data = await res.json();
+    console.log("UPLOAD RESPONSE:", data);
+
+    if (!res.ok) {
+      alert(data.message || "Request failed");
       return;
     }
 
-    try {
-      setLoading(true);
-
-      const formData = new FormData();
-      formData.append("courseId", courseId);
-      formData.append("screenshot", screenshot);
-
-      const res = await fetch("https://rehanverse.onrender.com/api/payment/request", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "Request failed");
-        return;
-      }
-
-      alert(data.message || "Payment proof submitted successfully");
-      setScreenshot(null);
-    } catch (error) {
-      alert("Server error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    alert(data.message || "Payment proof submitted successfully");
+    setScreenshot(null);
+  } catch (error) {
+    console.error("UPLOAD ERROR:", error);
+    alert("Server error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div
