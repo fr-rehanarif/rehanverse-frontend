@@ -46,11 +46,20 @@ function AdminPanel() {
     } catch (err) { console.log(err); }
   };
 
-  const fetchEnrolledUsers = async (courseId) => {
-    if (expandedCourse === courseId) {
-      setExpandedCourse(null);
-      return;
+  const deleteUser = async (id, name) => {
+    if (!window.confirm(`${name} ko delete karo?`)) return;
+    try {
+      await axios.delete(`${API}/api/users/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchUsers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error!');
     }
+  };
+
+  const fetchEnrolledUsers = async (courseId) => {
+    if (expandedCourse === courseId) { setExpandedCourse(null); return; }
     try {
       const res = await axios.get(`${API}/api/courses/${courseId}/enrolled-users`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -63,13 +72,10 @@ function AdminPanel() {
   const startEdit = (course) => {
     setEditingId(course._id);
     setForm({
-      title: course.title,
-      description: course.description,
-      price: course.price,
-      isFree: course.isFree,
+      title: course.title, description: course.description,
+      price: course.price, isFree: course.isFree,
       thumbnail: course.thumbnail || '',
-      videoTitle: '', videoUrl: '',
-      pdfTitle: '', pdfUrl: ''
+      videoTitle: '', videoUrl: '', pdfTitle: '', pdfUrl: ''
     });
     setVideos(course.videos || []);
     setPdfs(course.pdfs || []);
@@ -166,7 +172,6 @@ function AdminPanel() {
         {/* =================== COURSES TAB =================== */}
         {activeTab === 'courses' && (
           <div>
-            {/* Form */}
             <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '32px', marginBottom: '40px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ color: colors.text }}>
@@ -188,11 +193,9 @@ function AdminPanel() {
 
               <input style={inputStyle} placeholder="Course Title *"
                 value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-
               <textarea style={{ ...inputStyle, height: '90px', resize: 'vertical' }}
                 placeholder="Course Description *"
                 value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-
               <input style={inputStyle} placeholder="Thumbnail Image URL (optional)"
                 value={form.thumbnail} onChange={e => setForm({ ...form, thumbnail: e.target.value })} />
 
@@ -210,7 +213,6 @@ function AdminPanel() {
                 )}
               </div>
 
-              {/* Videos */}
               <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
                 <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📹 Videos</p>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
@@ -219,9 +221,7 @@ function AdminPanel() {
                   <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="YouTube / Drive URL"
                     value={form.videoUrl} onChange={e => setForm({ ...form, videoUrl: e.target.value })} />
                   <button onClick={addVideo}
-                    style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    + Add
-                  </button>
+                    style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Add</button>
                 </div>
                 {videos.map((v, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: colors.card, borderRadius: '6px', marginBottom: '4px' }}>
@@ -233,7 +233,6 @@ function AdminPanel() {
                 {videos.length === 0 && <p style={{ color: colors.subtext, fontSize: '12px' }}>Abhi koi video nahi</p>}
               </div>
 
-              {/* PDFs */}
               <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
                 <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📄 PDFs / Notes</p>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
@@ -242,9 +241,7 @@ function AdminPanel() {
                   <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="Google Drive URL"
                     value={form.pdfUrl} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} />
                   <button onClick={addPdf}
-                    style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    + Add
-                  </button>
+                    style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Add</button>
                 </div>
                 {pdfs.map((p, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: colors.card, borderRadius: '6px', marginBottom: '4px' }}>
@@ -260,15 +257,11 @@ function AdminPanel() {
                 style={{ width: '100%', padding: '14px', background: editingId ? '#10b981' : colors.primary, color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>
                 {editingId ? '💾 Changes Save Karo' : '🚀 Course Publish Karo'}
               </button>
-
               {msg && (
-                <p style={{ textAlign: 'center', marginTop: '12px', color: msg.includes('✅') ? 'green' : 'red' }}>
-                  {msg}
-                </p>
+                <p style={{ textAlign: 'center', marginTop: '12px', color: msg.includes('✅') ? 'green' : 'red' }}>{msg}</p>
               )}
             </div>
 
-            {/* Course List */}
             <h3 style={{ color: colors.text, marginBottom: '16px' }}>📚 Mere Courses ({courses.length})</h3>
             {courses.length === 0 ? (
               <p style={{ color: colors.subtext }}>Abhi koi course nahi — upar se banao!</p>
@@ -305,7 +298,6 @@ function AdminPanel() {
                     </div>
                   </div>
 
-                  {/* Enrolled Users Dropdown */}
                   {expandedCourse === course._id && (
                     <div style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: '0 0 12px 12px', padding: '16px', marginTop: '-4px' }}>
                       <p style={{ color: colors.text, fontWeight: '600', marginBottom: '12px', fontSize: '14px' }}>
@@ -344,8 +336,9 @@ function AdminPanel() {
                       <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Name</th>
                       <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Email</th>
                       <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Role</th>
-                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Enrolled Courses</th>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Enrolled</th>
                       <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Joined</th>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -376,6 +369,14 @@ function AdminPanel() {
                         </td>
                         <td style={{ padding: '12px', color: colors.subtext, fontSize: '13px' }}>
                           {new Date(u.createdAt).toLocaleDateString('en-IN')}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {u.role !== 'admin' && (
+                            <button onClick={() => deleteUser(u._id, u.name)}
+                              style={{ padding: '6px 14px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                              🗑️ Delete
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
