@@ -51,19 +51,22 @@ function Navbar() {
           </motion.div>
         )}
 
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={theme.toggleTheme}
+        <select
+          value={theme.themeName}
+          onChange={(e) => theme.setTheme(e.target.value)}
           style={{
-            ...styles.toggle,
+            ...styles.select,
+            background: theme.card,
             color: theme.text,
             border: `1px solid ${theme.border}`,
-            background: theme.card,
             boxShadow: theme.glow,
           }}
         >
-          {theme.isDark ? '☀️ Light' : '🌙 Dark'}
-        </motion.button>
+          <option value="cosmicDark">🌌 Cosmic Dark</option>
+          <option value="midnightMinimal">🌑 Midnight Minimal</option>
+          <option value="cleanGlass">💎 Clean Glass</option>
+          <option value="softPremium">☀️ Soft Premium</option>
+        </select>
 
         {user && (
           <motion.div whileHover={{ y: -2 }}>
@@ -184,12 +187,13 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
   },
-  toggle: {
-    padding: '8px 16px',
-    borderRadius: '20px',
+  select: {
+    padding: '10px 14px',
+    borderRadius: '14px',
     cursor: 'pointer',
     fontSize: '13px',
-    fontWeight: '500',
+    fontWeight: '600',
+    outline: 'none',
   },
 };
 
