@@ -8,22 +8,34 @@ import AdminPanel from './pages/AdminPanel';
 import MyCourses from './pages/MyCourses';
 import CourseDetail from './pages/CourseDetail';
 import Navbar from './components/Navbar';
+import { useTheme } from './context/ThemeContext';
 
 function App() {
+  const theme = useTheme();
+
   return (
-    <BrowserRouter>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/courses" element={<Courses />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/my-courses" element={<MyCourses />} />
-        <Route path="/course/:id" element={<CourseDetail />} />
-      </Routes>
-    </BrowserRouter>
+    <div
+      style={{
+        background: theme.bg,
+        color: theme.text,
+        minHeight: '100vh',
+        transition: 'all 0.3s ease'
+      }}
+    >
+      <BrowserRouter>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/my-courses" element={<MyCourses />} />
+          <Route path="/course/:id" element={<CourseDetail />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
   );
 }
 

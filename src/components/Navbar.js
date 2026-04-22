@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 function Navbar() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
-  const { isDark, toggleTheme, colors } = useTheme();
+  const theme = useTheme();
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -14,50 +14,60 @@ function Navbar() {
   };
 
   return (
-    <nav style={{ 
-      ...styles.nav, 
-      background: colors.nav, 
-      borderBottom: `1px solid ${colors.border}`,
-    }}>
-      
-      {/* LOGO */}
+    <nav
+      style={{
+        ...styles.nav,
+        background: theme.navbar,
+        borderBottom: `1px solid ${theme.border}`,
+        boxShadow: theme.shadow,
+        backdropFilter: theme.glass,
+      }}
+    >
       <motion.div whileHover={{ scale: 1.05 }}>
-        <Link to="/" style={{ ...styles.logo, color: colors.primary }}>
+        <Link to="/" style={{ ...styles.logo, color: theme.primary }}>
           🎓 REHANVERSE
         </Link>
       </motion.div>
 
       <div style={styles.links}>
-        
-        {/* Courses */}
         <motion.div whileHover={{ y: -2 }}>
-          <Link to="/courses" style={{ ...styles.link, color: colors.text }}>
+          <Link to="/courses" style={{ ...styles.link, color: theme.text }}>
             Courses
           </Link>
         </motion.div>
 
-        {/* Admin */}
         {user && user.role === 'admin' && (
           <motion.div whileHover={{ y: -2 }}>
-            <Link to="/admin" style={{ ...styles.link, color: colors.primary, fontWeight: '600' }}>
+            <Link
+              to="/admin"
+              style={{
+                ...styles.link,
+                color: theme.primary,
+                fontWeight: '600',
+              }}
+            >
               ⚙️ Admin
             </Link>
           </motion.div>
         )}
 
-        {/* Theme Toggle */}
-        <motion.button 
-          whileTap={{ scale: 0.9 }}
-          onClick={toggleTheme} 
-          style={{ ...styles.toggle, color: colors.text, borderColor: colors.border }}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={theme.toggleTheme}
+          style={{
+            ...styles.toggle,
+            color: theme.text,
+            border: `1px solid ${theme.border}`,
+            background: theme.card,
+            boxShadow: theme.glow,
+          }}
         >
-          {isDark ? '☀️ Light' : '🌙 Dark'}
-        </motion.button> 
+          {theme.isDark ? '☀️ Light' : '🌙 Dark'}
+        </motion.button>
 
-        {/* My Courses */}
         {user && (
           <motion.div whileHover={{ y: -2 }}>
-            <Link to="/my-courses" style={{ ...styles.link, color: colors.text }}>
+            <Link to="/my-courses" style={{ ...styles.link, color: theme.text }}>
               🎒 My Courses
             </Link>
           </motion.div>
@@ -65,25 +75,47 @@ function Navbar() {
 
         {user ? (
           <>
-            {/* Profile Link */}
             <motion.div whileHover={{ y: -2 }}>
               {user.photo ? (
                 <Link to="/profile">
-                  <img src={user.photo} alt="profile"
-                    style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colors.primary}`, cursor: 'pointer' }} />
+                  <img
+                    src={user.photo}
+                    alt="profile"
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: `2px solid ${theme.primary}`,
+                      cursor: 'pointer',
+                      boxShadow: theme.shadow,
+                    }}
+                  />
                 </Link>
               ) : (
-                <Link to="/profile" style={{ ...styles.link, color: colors.primary, fontWeight: '600' }}>
+                <Link
+                  to="/profile"
+                  style={{
+                    ...styles.link,
+                    color: theme.primary,
+                    fontWeight: '600',
+                  }}
+                >
                   👤 {user.name}
                 </Link>
               )}
             </motion.div>
 
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={logout} 
-              style={{ ...styles.btn, background: colors.primary }}
+              whileTap={{ scale: 0.95 }}
+              onClick={logout}
+              style={{
+                ...styles.btn,
+                background: theme.primary,
+                color: theme.buttonText,
+                boxShadow: theme.shadow,
+              }}
             >
               Logout
             </motion.button>
@@ -91,16 +123,21 @@ function Navbar() {
         ) : (
           <>
             <motion.div whileHover={{ y: -2 }}>
-              <Link to="/login" style={{ ...styles.link, color: colors.text }}>
+              <Link to="/login" style={{ ...styles.link, color: theme.text }}>
                 Login
               </Link>
             </motion.div>
 
             <Link to="/signup">
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.9 }}
-                style={{ ...styles.btn, background: colors.primary }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  ...styles.btn,
+                  background: theme.primary,
+                  color: theme.buttonText,
+                  boxShadow: theme.shadow,
+                }}
               >
                 Sign Up
               </motion.button>
@@ -113,53 +150,47 @@ function Navbar() {
 }
 
 const styles = {
-  nav: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: '16px 40px', 
-    boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
-    position: 'sticky', 
-    top: 0, 
+  nav: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '16px 40px',
+    position: 'sticky',
+    top: 0,
     zIndex: 100,
-    backdropFilter: 'blur(10px)',
   },
-  logo: { 
-    fontSize: '22px', 
-    fontWeight: 'bold', 
+  logo: {
+    fontSize: '22px',
+    fontWeight: 'bold',
     textDecoration: 'none',
-    letterSpacing: '1px'
+    letterSpacing: '1px',
   },
-  links: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    gap: '20px' 
+  links: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    flexWrap: 'wrap',
   },
-  link: { 
-    textDecoration: 'none', 
+  link: {
+    textDecoration: 'none',
     fontSize: '15px',
-    fontWeight: '500'
+    fontWeight: '500',
   },
-  name: { 
-    fontWeight: '500' 
-  },
-  btn: { 
-    padding: '8px 20px', 
-    color: 'white', 
-    border: 'none', 
-    borderRadius: '10px',
-    cursor: 'pointer', 
+  btn: {
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
     fontSize: '14px',
+    fontWeight: '600',
   },
-  toggle: { 
-    padding: '8px 16px', 
-    borderRadius: '20px', 
-    border: '1px solid', 
-    background: 'transparent', 
-    cursor: 'pointer', 
-    fontSize: '13px', 
-    fontWeight: '500' 
-  }
+  toggle: {
+    padding: '8px 16px',
+    borderRadius: '20px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+  },
 };
 
 export default Navbar;

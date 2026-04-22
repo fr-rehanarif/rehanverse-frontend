@@ -1,34 +1,48 @@
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useContext, useEffect } from 'react';
+import { themes, defaultTheme } from '../theme/themes';
 
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(false);
 
-  const toggleTheme = () => setIsDark(!isDark);
+  // 🔥 CURRENT THEME (LOCAL STORAGE SE LOAD)
+  const [themeName, setThemeName] = useState(
+    localStorage.getItem("theme") || defaultTheme
+  );
 
-  const theme = {
-    isDark,
-    toggleTheme,
-    colors: isDark ? {
-      bg: '#0f172a',
-      card: '#1e293b',
-      nav: '#1e293b',
-      text: '#f1f5f9',
-      subtext: '#94a3b8',
-      border: '#334155',
-      primary: '#818cf8',
-      btnText: 'white',
-    } : {
-      bg: '#f8fafc',
-      card: '#ffffff',
-      nav: '#ffffff',
-      text: '#1e293b',
-      subtext: '#64748b',
-      border: '#e2e8f0',
-      primary: '#4f46e5',
-      btnText: 'white',
+  // 🔄 UPDATE LOCAL STORAGE
+  useEffect(() => {
+    localStorage.setItem("theme", themeName);
+  }, [themeName]);
+
+  // 🎯 CURRENT THEME OBJECT
+  const currentTheme = themes[themeName];
+
+  // 🔁 SWITCH THEME (DIRECT SELECT)
+  const setTheme = (name) => {
+    if (themes[name]) {
+      setThemeName(name);
     }
+  };
+
+  // ⚡ QUICK TOGGLE (OPTIONAL - DARK/LIGHT SWITCH)
+  const toggleTheme = () => {
+    const isDark = currentTheme.mode === "dark";
+
+    if (isDark) {
+      setTheme("cleanGlass"); // default light
+    } else {
+      setTheme("cosmicDark"); // default dark
+    }
+  };
+
+  // 🎨 FINAL THEME OBJECT (GLOBAL USE)
+  const theme = {
+    ...currentTheme,
+    themeName,
+    setTheme,
+    toggleTheme,
+    isDark: currentTheme.mode === "dark",
   };
 
   return (
@@ -38,6 +52,7 @@ export function ThemeProvider({ children }) {
   );
 }
 
+// 🔥 CUSTOM HOOK
 export function useTheme() {
   return useContext(ThemeContext);
 }
