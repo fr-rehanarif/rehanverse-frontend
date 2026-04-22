@@ -11,7 +11,8 @@ const UPI_ID = 'dost@upi'; // ← apna ya dost ka UPI ID daalo
 function Payment() {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const { colors } = useTheme();
+  const themeData = useTheme();
+  const colors = themeData.colors || themeData;
   const token = localStorage.getItem('token');
 
   const [course, setCourse] = useState(null);
