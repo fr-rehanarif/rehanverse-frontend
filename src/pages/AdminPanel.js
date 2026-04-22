@@ -11,6 +11,10 @@ function AdminPanel() {
   const token = localStorage.getItem('token');
 
   const [courses, setCourses] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [activeTab, setActiveTab] = useState('courses');
+  const [enrolledUsers, setEnrolledUsers] = useState({});
+  const [expandedCourse, setExpandedCourse] = useState(null);
   const [msg, setMsg] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
@@ -25,11 +29,35 @@ function AdminPanel() {
   useEffect(() => {
     if (!user || user.role !== 'admin') { navigate('/'); return; }
     fetchCourses();
+    fetchUsers();
   }, []);
 
   const fetchCourses = async () => {
     const res = await axios.get(`${API}/api/courses`);
     setCourses(res.data);
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get(`${API}/api/users`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setUsers(res.data);
+    } catch (err) { console.log(err); }
+  };
+
+  const fetchEnrolledUsers = async (courseId) => {
+    if (expandedCourse === courseId) {
+      setExpandedCourse(null);
+      return;
+    }
+    try {
+      const res = await axios.get(`${API}/api/courses/${courseId}/enrolled-users`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setEnrolledUsers({ ...enrolledUsers, [courseId]: res.data });
+      setExpandedCourse(courseId);
+    } catch (err) { console.log(err); }
   };
 
   const startEdit = (course) => {
@@ -45,6 +73,7 @@ function AdminPanel() {
     });
     setVideos(course.videos || []);
     setPdfs(course.pdfs || []);
+    setActiveTab('courses');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -73,7 +102,6 @@ function AdminPanel() {
       setTimeout(() => setMsg(''), 3000);
       return;
     }
-
     try {
       if (editingId) {
         await axios.put(`${API}/api/courses/${editingId}`,
@@ -117,140 +145,247 @@ function AdminPanel() {
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
         <h2 style={{ color: colors.primary, marginBottom: '4px' }}>⚙️ Admin Panel</h2>
-        <p style={{ color: colors.subtext, marginBottom: '32px' }}>Welcome, {user?.name}!</p>
+        <p style={{ color: colors.subtext, marginBottom: '24px' }}>Welcome, {user?.name}!</p>
 
-        <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '32px', marginBottom: '40px' }}>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ color: colors.text }}>
-              {editingId ? '✏️ Course Edit Karo' : '➕ Naya Course Banao'}
-            </h3>
-            {editingId && (
-              <button onClick={cancelEdit}
-                style={{ padding: '7px 16px', background: 'transparent', color: colors.subtext, border: `1px solid ${colors.border}`, borderRadius: '8px', cursor: 'pointer' }}>
-                ✕ Cancel
-              </button>
-            )}
-          </div>
-
-          {editingId && (
-            <div style={{ padding: '10px 14px', background: '#fef3c7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400e' }}>
-              ✏️ Tum <strong>"{form.title}"</strong> ko edit kar rahe ho
-            </div>
-          )}
-
-          <input style={inputStyle} placeholder="Course Title *"
-            value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-
-          <textarea style={{ ...inputStyle, height: '90px', resize: 'vertical' }}
-            placeholder="Course Description *"
-            value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-
-          <input style={inputStyle} placeholder="Thumbnail Image URL (optional)"
-            value={form.thumbnail} onChange={e => setForm({ ...form, thumbnail: e.target.value })} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-            <label style={{ color: colors.text }}>
-              <input type="checkbox" checked={form.isFree}
-                onChange={e => setForm({ ...form, isFree: e.target.checked, price: 0 })}
-                style={{ marginRight: '6px' }} />
-              Free Course
-            </label>
-            {!form.isFree && (
-              <input style={{ ...inputStyle, width: '200px', marginBottom: 0 }}
-                type="number" placeholder="Price (₹)"
-                value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
-            )}
-          </div>
-
-          <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
-            <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📹 Videos</p>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-              <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="Video Title"
-                value={form.videoTitle} onChange={e => setForm({ ...form, videoTitle: e.target.value })} />
-              <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="YouTube / Drive URL"
-                value={form.videoUrl} onChange={e => setForm({ ...form, videoUrl: e.target.value })} />
-              <button onClick={addVideo}
-                style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                + Add
-              </button>
-            </div>
-            {videos.map((v, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: colors.card, borderRadius: '6px', marginBottom: '4px' }}>
-                <span style={{ color: colors.text, fontSize: '13px' }}>📹 {v.title}</span>
-                <button onClick={() => setVideos(videos.filter((_, idx) => idx !== i))}
-                  style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '16px' }}>✕</button>
-              </div>
-            ))}
-            {videos.length === 0 && <p style={{ color: colors.subtext, fontSize: '12px' }}>Abhi koi video nahi</p>}
-          </div>
-
-          <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
-            <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📄 PDFs / Notes</p>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-              <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="PDF Title"
-                value={form.pdfTitle} onChange={e => setForm({ ...form, pdfTitle: e.target.value })} />
-              <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="Google Drive URL"
-                value={form.pdfUrl} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} />
-              <button onClick={addPdf}
-                style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                + Add
-              </button>
-            </div>
-            {pdfs.map((p, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: colors.card, borderRadius: '6px', marginBottom: '4px' }}>
-                <span style={{ color: colors.text, fontSize: '13px' }}>📄 {p.title}</span>
-                <button onClick={() => setPdfs(pdfs.filter((_, idx) => idx !== i))}
-                  style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '16px' }}>✕</button>
-              </div>
-            ))}
-            {pdfs.length === 0 && <p style={{ color: colors.subtext, fontSize: '12px' }}>Abhi koi PDF nahi</p>}
-          </div>
-
-          <button onClick={handleSubmit}
-            style={{ width: '100%', padding: '14px', background: editingId ? '#10b981' : colors.primary, color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>
-            {editingId ? '💾 Changes Save Karo' : '🚀 Course Publish Karo'}
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px' }}>
+          <button onClick={() => setActiveTab('courses')}
+            style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600',
+              background: activeTab === 'courses' ? colors.primary : colors.card,
+              color: activeTab === 'courses' ? 'white' : colors.text }}>
+            📚 Courses ({courses.length})
           </button>
-
-          {msg && (
-            <p style={{ textAlign: 'center', marginTop: '12px', color: msg.includes('✅') ? 'green' : 'red' }}>
-              {msg}
-            </p>
-          )}
+          <button onClick={() => setActiveTab('users')}
+            style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600',
+              background: activeTab === 'users' ? colors.primary : colors.card,
+              color: activeTab === 'users' ? 'white' : colors.text }}>
+            👥 Users ({users.length})
+          </button>
         </div>
 
-        <h3 style={{ color: colors.text, marginBottom: '16px' }}>📚 Mere Courses ({courses.length})</h3>
-        {courses.length === 0 ? (
-          <p style={{ color: colors.subtext }}>Abhi koi course nahi — upar se banao!</p>
-        ) : (
-          courses.map(course => (
-            <div key={course._id} style={{
-              background: editingId === course._id ? '#f0fdf4' : colors.card,
-              border: `1px solid ${editingId === course._id ? '#10b981' : colors.border}`,
-              borderRadius: '12px', padding: '20px', marginBottom: '12px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-              <div>
-                <h4 style={{ color: colors.text, marginBottom: '4px' }}>{course.title}</h4>
-                <p style={{ color: colors.subtext, fontSize: '13px' }}>
-                  {course.isFree ? '🆓 Free' : `💰 ₹${course.price}`} &nbsp;|&nbsp;
-                  📹 {course.videos?.length || 0} videos &nbsp;|&nbsp;
-                  📄 {course.pdfs?.length || 0} PDFs
+        {/* =================== COURSES TAB =================== */}
+        {activeTab === 'courses' && (
+          <div>
+            {/* Form */}
+            <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '32px', marginBottom: '40px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ color: colors.text }}>
+                  {editingId ? '✏️ Course Edit Karo' : '➕ Naya Course Banao'}
+                </h3>
+                {editingId && (
+                  <button onClick={cancelEdit}
+                    style={{ padding: '7px 16px', background: 'transparent', color: colors.subtext, border: `1px solid ${colors.border}`, borderRadius: '8px', cursor: 'pointer' }}>
+                    ✕ Cancel
+                  </button>
+                )}
+              </div>
+
+              {editingId && (
+                <div style={{ padding: '10px 14px', background: '#fef3c7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400e' }}>
+                  ✏️ Tum <strong>"{form.title}"</strong> ko edit kar rahe ho
+                </div>
+              )}
+
+              <input style={inputStyle} placeholder="Course Title *"
+                value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+
+              <textarea style={{ ...inputStyle, height: '90px', resize: 'vertical' }}
+                placeholder="Course Description *"
+                value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+
+              <input style={inputStyle} placeholder="Thumbnail Image URL (optional)"
+                value={form.thumbnail} onChange={e => setForm({ ...form, thumbnail: e.target.value })} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                <label style={{ color: colors.text }}>
+                  <input type="checkbox" checked={form.isFree}
+                    onChange={e => setForm({ ...form, isFree: e.target.checked, price: 0 })}
+                    style={{ marginRight: '6px' }} />
+                  Free Course
+                </label>
+                {!form.isFree && (
+                  <input style={{ ...inputStyle, width: '200px', marginBottom: 0 }}
+                    type="number" placeholder="Price (₹)"
+                    value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
+                )}
+              </div>
+
+              {/* Videos */}
+              <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
+                <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📹 Videos</p>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="Video Title"
+                    value={form.videoTitle} onChange={e => setForm({ ...form, videoTitle: e.target.value })} />
+                  <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="YouTube / Drive URL"
+                    value={form.videoUrl} onChange={e => setForm({ ...form, videoUrl: e.target.value })} />
+                  <button onClick={addVideo}
+                    style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    + Add
+                  </button>
+                </div>
+                {videos.map((v, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: colors.card, borderRadius: '6px', marginBottom: '4px' }}>
+                    <span style={{ color: colors.text, fontSize: '13px' }}>📹 {v.title}</span>
+                    <button onClick={() => setVideos(videos.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+                  </div>
+                ))}
+                {videos.length === 0 && <p style={{ color: colors.subtext, fontSize: '12px' }}>Abhi koi video nahi</p>}
+              </div>
+
+              {/* PDFs */}
+              <div style={{ background: colors.bg, borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
+                <p style={{ color: colors.text, fontWeight: '600', marginBottom: '10px' }}>📄 PDFs / Notes</p>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="PDF Title"
+                    value={form.pdfTitle} onChange={e => setForm({ ...form, pdfTitle: e.target.value })} />
+                  <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="Google Drive URL"
+                    value={form.pdfUrl} onChange={e => setForm({ ...form, pdfUrl: e.target.value })} />
+                  <button onClick={addPdf}
+                    style={{ padding: '0 16px', background: colors.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    + Add
+                  </button>
+                </div>
+                {pdfs.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: colors.card, borderRadius: '6px', marginBottom: '4px' }}>
+                    <span style={{ color: colors.text, fontSize: '13px' }}>📄 {p.title}</span>
+                    <button onClick={() => setPdfs(pdfs.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+                  </div>
+                ))}
+                {pdfs.length === 0 && <p style={{ color: colors.subtext, fontSize: '12px' }}>Abhi koi PDF nahi</p>}
+              </div>
+
+              <button onClick={handleSubmit}
+                style={{ width: '100%', padding: '14px', background: editingId ? '#10b981' : colors.primary, color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>
+                {editingId ? '💾 Changes Save Karo' : '🚀 Course Publish Karo'}
+              </button>
+
+              {msg && (
+                <p style={{ textAlign: 'center', marginTop: '12px', color: msg.includes('✅') ? 'green' : 'red' }}>
+                  {msg}
                 </p>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => startEdit(course)}
-                  style={{ padding: '8px 16px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}>
-                  ✏️ Edit
-                </button>
-                <button onClick={() => deleteCourse(course._id)}
-                  style={{ padding: '8px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                  🗑️ Delete
-                </button>
-              </div>
+              )}
             </div>
-          ))
+
+            {/* Course List */}
+            <h3 style={{ color: colors.text, marginBottom: '16px' }}>📚 Mere Courses ({courses.length})</h3>
+            {courses.length === 0 ? (
+              <p style={{ color: colors.subtext }}>Abhi koi course nahi — upar se banao!</p>
+            ) : (
+              courses.map(course => (
+                <div key={course._id} style={{ marginBottom: '12px' }}>
+                  <div style={{
+                    background: editingId === course._id ? '#f0fdf4' : colors.card,
+                    border: `1px solid ${editingId === course._id ? '#10b981' : colors.border}`,
+                    borderRadius: '12px', padding: '20px',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                  }}>
+                    <div>
+                      <h4 style={{ color: colors.text, marginBottom: '4px' }}>{course.title}</h4>
+                      <p style={{ color: colors.subtext, fontSize: '13px' }}>
+                        {course.isFree ? '🆓 Free' : `💰 ₹${course.price}`} &nbsp;|&nbsp;
+                        📹 {course.videos?.length || 0} videos &nbsp;|&nbsp;
+                        📄 {course.pdfs?.length || 0} PDFs
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button onClick={() => fetchEnrolledUsers(course._id)}
+                        style={{ padding: '8px 16px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}>
+                        👥 {expandedCourse === course._id ? 'Hide' : 'Students'}
+                      </button>
+                      <button onClick={() => startEdit(course)}
+                        style={{ padding: '8px 16px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}>
+                        ✏️ Edit
+                      </button>
+                      <button onClick={() => deleteCourse(course._id)}
+                        style={{ padding: '8px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Enrolled Users Dropdown */}
+                  {expandedCourse === course._id && (
+                    <div style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: '0 0 12px 12px', padding: '16px', marginTop: '-4px' }}>
+                      <p style={{ color: colors.text, fontWeight: '600', marginBottom: '12px', fontSize: '14px' }}>
+                        👥 Enrolled Students ({enrolledUsers[course._id]?.length || 0})
+                      </p>
+                      {enrolledUsers[course._id]?.length === 0 ? (
+                        <p style={{ color: colors.subtext, fontSize: '13px' }}>Abhi koi student enroll nahi!</p>
+                      ) : (
+                        enrolledUsers[course._id]?.map((u, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: colors.card, borderRadius: '8px', marginBottom: '6px' }}>
+                            <span style={{ color: colors.text, fontSize: '13px' }}>👤 {u.name}</span>
+                            <span style={{ color: colors.subtext, fontSize: '13px' }}>{u.email}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         )}
+
+        {/* =================== USERS TAB =================== */}
+        {activeTab === 'users' && (
+          <div>
+            <h3 style={{ color: colors.text, marginBottom: '16px' }}>👥 Registered Users ({users.length})</h3>
+            {users.length === 0 ? (
+              <p style={{ color: colors.subtext }}>Abhi koi user nahi!</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: colors.primary }}>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>#</th>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Name</th>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Email</th>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Role</th>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Enrolled Courses</th>
+                      <th style={{ padding: '12px', color: 'white', textAlign: 'left', fontSize: '13px' }}>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u, i) => (
+                      <tr key={u._id} style={{ background: i % 2 === 0 ? colors.card : colors.bg, borderBottom: `1px solid ${colors.border}` }}>
+                        <td style={{ padding: '12px', color: colors.subtext, fontSize: '13px' }}>{i + 1}</td>
+                        <td style={{ padding: '12px', color: colors.text, fontSize: '13px', fontWeight: '500' }}>{u.name}</td>
+                        <td style={{ padding: '12px', color: colors.subtext, fontSize: '13px' }}>{u.email}</td>
+                        <td style={{ padding: '12px', fontSize: '13px' }}>
+                          <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                            background: u.role === 'admin' ? '#fef3c7' : '#d1fae5',
+                            color: u.role === 'admin' ? '#92400e' : '#065f46' }}>
+                            {u.role === 'admin' ? '👑 Admin' : '🎓 Student'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', fontSize: '13px' }}>
+                          {u.enrolledCourses?.length > 0 ? (
+                            <div>
+                              {u.enrolledCourses.map((c, idx) => (
+                                <span key={idx} style={{ display: 'inline-block', padding: '2px 8px', background: colors.primary + '22', color: colors.primary, borderRadius: '4px', fontSize: '11px', marginRight: '4px', marginBottom: '2px' }}>
+                                  {c.title}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: colors.subtext, fontSize: '12px' }}>None</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', color: colors.subtext, fontSize: '13px' }}>
+                          {new Date(u.createdAt).toLocaleDateString('en-IN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );
