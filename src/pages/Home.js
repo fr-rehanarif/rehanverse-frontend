@@ -192,6 +192,55 @@ function Home() {
               </motion.button>
             </Link>
           </div>
+        {/* 🚨 STRICT NOTICE */}
+<div
+  style={{
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '0 20px',
+  }}
+>
+  <div
+    style={{
+      background: theme.isDark
+        ? 'rgba(127, 29, 29, 0.25)'
+        : '#fef2f2',
+      border: `1px solid ${
+        theme.isDark ? 'rgba(239, 68, 68, 0.5)' : '#fca5a5'
+      }`,
+      color: theme.isDark ? '#fecaca' : '#991b1b',
+      padding: '18px 22px',
+      borderRadius: '16px',
+      boxShadow: theme.shadow,
+      marginBottom: '30px',
+    }}
+  >
+    <h3
+      style={{
+        margin: '0 0 8px 0',
+        fontSize: '1.1rem',
+        fontWeight: '800',
+        color: theme.isDark ? '#fda4af' : '#b91c1c',
+      }}
+    >
+      ⚠️ IMPORTANT NOTICE
+    </h3>
+
+    <p
+      style={{
+        margin: 0,
+        lineHeight: '1.7',
+        fontSize: '0.95rem',
+      }}
+    >
+      Any sharing, redistribution, screen recording, resale, or unauthorized
+      forwarding of course materials, PDFs, videos, notes, or any premium
+      content is strictly prohibited. If any user is found sharing course
+      material in any form, their account will be permanently banned without
+      warning and access to all courses will be removed immediately.
+    </p>
+  </div>
+</div>
         </Reveal>
       </section>
 
