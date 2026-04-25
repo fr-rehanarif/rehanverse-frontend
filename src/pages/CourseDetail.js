@@ -37,27 +37,8 @@ function SecurePDFViewer({ pdf, theme }) {
   const block = (e) => e.preventDefault();
 
   const getPdfFile = () => {
-    if (pdf.filename) {
-      return {
-        url: `${API}/api/pdf/${pdf.filename}`,
-        httpHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
-    }
-
-    if (pdf.url?.includes('/uploads/')) {
-      const filename = pdf.url.split('/').pop();
-      return {
-        url: `${API}/api/pdf/${filename}`,
-        httpHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
-    }
-
-    return pdf.url;
-  };
+  return pdf.url;
+};
 
   return (
     <div

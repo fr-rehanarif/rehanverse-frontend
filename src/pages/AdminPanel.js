@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import API from '../api';
@@ -193,45 +194,53 @@ function AdminPanel() {
   };
 
   const addPdf = async () => {
-    if (!form.pdfTitle || !pdfFile) {
-      setMsg('❌ PDF title aur PDF file dono zaroori hain!');
+  if (!form.pdfTitle || !pdfFile) {
+    setMsg('❌ PDF title aur PDF file dono zaroori hain!');
+    setTimeout(() => setMsg(''), 3000);
+    return;
+  }
+
+  try {
+    const cleanName = pdfFile.name.replace(/\s+/g, '-');
+    const fileName = `${Date.now()}-${cleanName}`;
+
+    const { error } = await supabase.storage
+      .from('course-pdfs')
+      .upload(fileName, pdfFile);
+
+    if (error) {
+      console.log('Supabase upload error:', error);
+      setMsg('❌ Supabase upload failed');
       setTimeout(() => setMsg(''), 3000);
       return;
     }
 
-    try {
-      const formData = new FormData();
-      formData.append('pdf', pdfFile);
+    const { data } = supabase.storage
+      .from('course-pdfs')
+      .getPublicUrl(fileName);
 
-      const res = await axios.post(`${API}/api/upload/pdf`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+    setPdfs([
+      ...pdfs,
+      {
+        title: form.pdfTitle,
+        url: data.publicUrl,
+      },
+    ]);
 
-      setPdfs([
-        ...pdfs,
-        {
-          title: form.pdfTitle,
-          filename: res.data.filename,
-        },
-      ]);
+    setForm({ ...form, pdfTitle: '', pdfUrl: '' });
+    setPdfFile(null);
 
-      setForm({ ...form, pdfTitle: '', pdfUrl: '' });
-      setPdfFile(null);
+    const fileInput = document.getElementById('pdfFileInput');
+    if (fileInput) fileInput.value = '';
 
-      const fileInput = document.getElementById('pdfFileInput');
-      if (fileInput) fileInput.value = '';
-
-      setMsg('✅ PDF uploaded and added!');
-      setTimeout(() => setMsg(''), 3000);
-    } catch (err) {
-      console.log(err);
-      setMsg('❌ PDF upload failed');
-      setTimeout(() => setMsg(''), 3000);
-    }
-  };
+    setMsg('✅ PDF uploaded to Supabase!');
+    setTimeout(() => setMsg(''), 3000);
+  } catch (err) {
+    console.log(err);
+    setMsg('❌ PDF upload failed');
+    setTimeout(() => setMsg(''), 3000);
+  }
+};
 
   const handleSubmit = async () => {
     if (!form.title || !form.description) {
