@@ -201,6 +201,8 @@ function AdminPanel() {
   }
 
   try {
+    setMsg('⏳ Uploading PDF...');
+
     const cleanName = pdfFile.name.replace(/\s+/g, '-');
     const fileName = `${Date.now()}-${cleanName}`;
 
@@ -209,9 +211,8 @@ function AdminPanel() {
       .upload(fileName, pdfFile);
 
     if (error) {
-      console.log('Supabase upload error:', error);
-      setMsg('❌ Supabase upload failed');
-      setTimeout(() => setMsg(''), 3000);
+      console.log('SUPABASE ERROR:', error);
+      setMsg('❌ Supabase upload failed: ' + error.message);
       return;
     }
 
@@ -236,7 +237,7 @@ function AdminPanel() {
     setMsg('✅ PDF uploaded to Supabase!');
     setTimeout(() => setMsg(''), 3000);
   } catch (err) {
-    console.log(err);
+    console.log('PDF UPLOAD ERROR:', err);
     setMsg('❌ PDF upload failed');
     setTimeout(() => setMsg(''), 3000);
   }
