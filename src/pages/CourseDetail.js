@@ -7,25 +7,15 @@ import Reviews from '../components/Reviews';
 import Footer from '../components/Footer';
 import PaymentBox from '../components/PaymentBox';
 import { motion } from 'framer-motion';
-import { Document, Page, pdfjs } from 'react-pdf';
 
-import 'react-pdf/dist/Page/TextLayer.css';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 function SecurePDFViewer({ pdf, theme }) {
-  const [numPages, setNumPages] = useState(null);
   const user = JSON.parse(localStorage.getItem('user'));
-  const token = localStorage.getItem('token');
 
   useEffect(() => {
     const blockKeys = (e) => {
       const key = e.key.toLowerCase();
 
-      if (
-        (e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) ||
-        key === 'f12'
-      ) {
+      if ((e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) || key === 'f12') {
         e.preventDefault();
       }
     };
@@ -36,10 +26,6 @@ function SecurePDFViewer({ pdf, theme }) {
 
   const block = (e) => e.preventDefault();
 
-  const getPdfFile = () => {
-  return pdf.url;
-};
-
   return (
     <div
       onContextMenu={block}
@@ -49,25 +35,24 @@ function SecurePDFViewer({ pdf, theme }) {
       style={{
         position: 'relative',
         height: '620px',
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        overflow: 'hidden',
         borderRadius: '16px',
         border: `1px solid ${theme.border || '#334155'}`,
         background: theme.bg,
-        padding: '16px',
         userSelect: 'none',
       }}
     >
       <div
         style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          right: '12px',
+          zIndex: 30,
           background: theme.card,
           color: theme.text,
           padding: '12px 14px',
           borderRadius: '12px',
-          marginBottom: '14px',
           border: `1px solid ${theme.border || '#334155'}`,
           display: 'flex',
           justifyContent: 'space-between',
@@ -85,7 +70,7 @@ function SecurePDFViewer({ pdf, theme }) {
         style={{
           position: 'absolute',
           inset: 0,
-          zIndex: 10,
+          zIndex: 20,
           pointerEvents: 'none',
           display: 'flex',
           alignItems: 'center',
@@ -101,38 +86,24 @@ function SecurePDFViewer({ pdf, theme }) {
         {user?.name || 'User'} • {user?.email || 'Protected'}
       </div>
 
-      <Document
-        file={getPdfFile()}
-        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-        loading={
-          <p style={{ color: theme.muted, textAlign: 'center' }}>
-            Loading PDF...
-          </p>
-        }
-        error={
-          <p style={{ color: '#fca5a5', textAlign: 'center' }}>
-            PDF load nahi ho paayi. Agar ye Google Drive link hai to direct secure backend se nahi chalegi.
-          </p>
-        }
-      >
-        {Array.from(new Array(numPages || 0), (_, index) => (
-          <div
-            key={index}
-            style={{
-              marginBottom: '18px',
-              display: 'flex',
-              justifyContent: 'center',
-            }}
-          >
-            <Page
-              pageNumber={index + 1}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              width={Math.min(window.innerWidth - 80, 780)}
-            />
-          </div>
-        ))}
-      </Document>
+      {pdf?.url ? (
+        <iframe
+          src={pdf.url}
+          width="100%"
+          height="100%"
+          title={pdf.title}
+          style={{
+            border: 'none',
+            background: '#fff',
+            paddingTop: '68px',
+            boxSizing: 'border-box',
+          }}
+        />
+      ) : (
+        <p style={{ color: '#fca5a5', textAlign: 'center', paddingTop: '100px' }}>
+          PDF URL missing hai.
+        </p>
+      )}
     </div>
   );
 }
@@ -169,9 +140,7 @@ function CourseDetail() {
         }
 
         const enrolledRes = await axios.get(`${API}/api/enroll/my/courses`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         const enrolled = enrolledRes.data.some(
