@@ -7,14 +7,20 @@ import Reviews from '../components/Reviews';
 import Footer from '../components/Footer';
 import PaymentBox from '../components/PaymentBox';
 import { motion } from 'framer-motion';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 function SecurePDFViewer({ pdf, theme }) {
+  const [numPages, setNumPages] = useState(null);
   const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
     const blockKeys = (e) => {
       const key = e.key.toLowerCase();
-
       if ((e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) || key === 'f12') {
         e.preventDefault();
       }
@@ -35,24 +41,25 @@ function SecurePDFViewer({ pdf, theme }) {
       style={{
         position: 'relative',
         height: '620px',
-        overflow: 'hidden',
+        overflowY: 'auto',
+        overflowX: 'hidden',
         borderRadius: '16px',
         border: `1px solid ${theme.border || '#334155'}`,
         background: theme.bg,
+        padding: '16px',
         userSelect: 'none',
       }}
     >
       <div
         style={{
-          position: 'absolute',
-          top: '12px',
-          left: '12px',
-          right: '12px',
+          position: 'sticky',
+          top: 0,
           zIndex: 30,
           background: theme.card,
           color: theme.text,
           padding: '12px 14px',
           borderRadius: '12px',
+          marginBottom: '14px',
           border: `1px solid ${theme.border || '#334155'}`,
           display: 'flex',
           justifyContent: 'space-between',
@@ -87,20 +94,42 @@ function SecurePDFViewer({ pdf, theme }) {
       </div>
 
       {pdf?.url ? (
-        <iframe
-          src={pdf.url}
-          width="100%"
-          height="100%"
-          title={pdf.title}
-          style={{
-            border: 'none',
-            background: '#fff',
-            paddingTop: '68px',
-            boxSizing: 'border-box',
-          }}
-        />
+        <Document
+          file={pdf.url}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          loading={
+            <p style={{ color: theme.muted, textAlign: 'center' }}>
+              Loading PDF...
+            </p>
+          }
+          error={
+            <p style={{ color: '#fca5a5', textAlign: 'center' }}>
+              PDF load nahi ho paayi. URL check karo.
+            </p>
+          }
+        >
+          {Array.from(new Array(numPages || 0), (_, index) => (
+            <div
+              key={index}
+              style={{
+                marginBottom: '18px',
+                display: 'flex',
+                justifyContent: 'center',
+                position: 'relative',
+                zIndex: 5,
+              }}
+            >
+              <Page
+                pageNumber={index + 1}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                width={Math.min(window.innerWidth - 100, 850)}
+              />
+            </div>
+          ))}
+        </Document>
       ) : (
-        <p style={{ color: '#fca5a5', textAlign: 'center', paddingTop: '100px' }}>
+        <p style={{ color: '#fca5a5', textAlign: 'center' }}>
           PDF URL missing hai.
         </p>
       )}
