@@ -33,6 +33,7 @@ function AdminPanel() {
 
   const [videos, setVideos] = useState([]);
   const [pdfs, setPdfs] = useState([]);
+  const [pdfFile, setPdfFile] = useState(null);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -159,6 +160,7 @@ function AdminPanel() {
     });
     setVideos(course.videos || []);
     setPdfs(course.pdfs || []);
+    setPdfFile(null);
     setActiveTab('courses');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -178,6 +180,7 @@ function AdminPanel() {
     });
     setVideos([]);
     setPdfs([]);
+    setPdfFile(null);
   };
 
   const addVideo = () => {
@@ -186,10 +189,45 @@ function AdminPanel() {
     setForm({ ...form, videoTitle: '', videoUrl: '' });
   };
 
-  const addPdf = () => {
-    if (!form.pdfTitle || !form.pdfUrl) return;
-    setPdfs([...pdfs, { title: form.pdfTitle, url: form.pdfUrl }]);
-    setForm({ ...form, pdfTitle: '', pdfUrl: '' });
+  const addPdf = async () => {
+    if (!form.pdfTitle || !pdfFile) {
+      setMsg('❌ PDF title aur PDF file dono zaroori hain!');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', pdfFile);
+
+      const res = await axios.post(`${API}/api/upload/pdf`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setPdfs([
+        ...pdfs,
+        {
+          title: form.pdfTitle,
+          filename: res.data.filename,
+        },
+      ]);
+
+      setForm({ ...form, pdfTitle: '', pdfUrl: '' });
+      setPdfFile(null);
+
+      const fileInput = document.getElementById('pdfFileInput');
+      if (fileInput) fileInput.value = '';
+
+      setMsg('✅ PDF uploaded and added!');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.log(err);
+      setMsg('❌ PDF upload failed');
+      setTimeout(() => setMsg(''), 3000);
+    }
   };
 
   const handleSubmit = async () => {
@@ -534,12 +572,15 @@ function AdminPanel() {
                     value={form.pdfTitle}
                     onChange={(e) => setForm({ ...form, pdfTitle: e.target.value })}
                   />
+
                   <input
+                    id="pdfFileInput"
                     style={{ ...inputStyle, marginBottom: 0, flex: 1, minWidth: '220px' }}
-                    placeholder="Google Drive URL"
-                    value={form.pdfUrl}
-                    onChange={(e) => setForm({ ...form, pdfUrl: e.target.value })}
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setPdfFile(e.target.files[0])}
                   />
+
                   <button
                     onClick={addPdf}
                     style={{
@@ -553,7 +594,7 @@ function AdminPanel() {
                       minHeight: '44px',
                     }}
                   >
-                    + Add
+                    Upload PDF
                   </button>
                 </div>
 
@@ -571,7 +612,9 @@ function AdminPanel() {
                       border: `1px solid ${theme.border}`,
                     }}
                   >
-                    <span style={{ color: theme.text, fontSize: '13px' }}>📄 {p.title}</span>
+                    <span style={{ color: theme.text, fontSize: '13px' }}>
+                      📄 {p.title} {p.filename ? '✅' : '⚠️ old link'}
+                    </span>
                     <button
                       onClick={() => setPdfs(pdfs.filter((_, idx) => idx !== i))}
                       style={{
@@ -882,88 +925,7 @@ function AdminPanel() {
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px',
-                        marginBottom: '14px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px' }}>📧</span>
-                        <span style={{ color: theme.muted, fontSize: '12px' }}>
-                          {u.email}
-                        </span>
-                      </div>
-
-                      {u.phone && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '12px' }}>📱</span>
-                          <span style={{ color: theme.muted, fontSize: '12px' }}>
-                            {u.phone}
-                          </span>
-                        </div>
-                      )}
-
-                      {u.bio && (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                          <span style={{ fontSize: '12px' }}>💬</span>
-                          <span
-                            style={{
-                              color: theme.muted,
-                              fontSize: '12px',
-                              fontStyle: 'italic',
-                            }}
-                          >
-                            "{u.bio}"
-                          </span>
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px' }}>📅</span>
-                        <span style={{ color: theme.muted, fontSize: '12px' }}>
-                          Joined: {new Date(u.createdAt).toLocaleDateString('en-IN')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {u.enrolledCourses?.length > 0 && (
-                      <div style={{ marginBottom: '14px' }}>
-                        <p
-                          style={{
-                            color: theme.text,
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            marginBottom: '6px',
-                          }}
-                        >
-                          📚 Enrolled:
-                        </p>
-
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {u.enrolledCourses.map((c, idx) => (
-                            <span
-                              key={idx}
-                              style={{
-                                padding: '3px 8px',
-                                background:
-                                  theme.mode === 'dark'
-                                    ? `${theme.primary}33`
-                                    : `${theme.primary}1A`,
-                                color: theme.primary,
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '500',
-                              }}
-                            >
-                              {c.title}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <p style={{ color: theme.muted, fontSize: '12px' }}>📧 {u.email}</p>
 
                     {u.role !== 'admin' && (
                       <button
@@ -1012,102 +974,27 @@ function AdminPanel() {
                       backdropFilter: theme.glass,
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: '20px',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: '240px' }}>
-                        <h4 style={{ color: theme.text, marginTop: 0, marginBottom: '12px' }}>
-                          {payment.course?.title || 'Course deleted'}
-                        </h4>
+                    <h4 style={{ color: theme.text, marginTop: 0 }}>
+                      {payment.course?.title || 'Course deleted'}
+                    </h4>
 
-                        <p style={{ color: theme.muted, margin: '6px 0' }}>
-                          <strong style={{ color: theme.text }}>User:</strong>{' '}
-                          {payment.user?.name || 'Unknown'}
-                        </p>
+                    <p style={{ color: theme.muted }}>
+                      <strong style={{ color: theme.text }}>User:</strong>{' '}
+                      {payment.user?.name || 'Unknown'}
+                    </p>
 
-                        <p style={{ color: theme.muted, margin: '6px 0' }}>
-                          <strong style={{ color: theme.text }}>Email:</strong>{' '}
-                          {payment.user?.email || 'No email'}
-                        </p>
+                    <p style={{ color: theme.muted }}>
+                      <strong style={{ color: theme.text }}>Email:</strong>{' '}
+                      {payment.user?.email || 'No email'}
+                    </p>
 
-                        <p style={{ color: theme.muted, margin: '6px 0' }}>
-                          <strong style={{ color: theme.text }}>Amount:</strong> ₹{payment.amount || 39}
-                        </p>
-
-                        <p style={{ color: theme.muted, margin: '6px 0' }}>
-                          <strong style={{ color: theme.text }}>Status:</strong>{' '}
-                          <span
-                            style={{
-                              color:
-                                payment.status === 'approved'
-                                  ? theme.success
-                                  : payment.status === 'rejected'
-                                  ? theme.danger
-                                  : theme.warning,
-                              fontWeight: '700',
-                            }}
-                          >
-                            {payment.status}
-                          </span>
-                        </p>
-
-                        <p style={{ color: theme.muted, margin: '6px 0' }}>
-                          <strong style={{ color: theme.text }}>Date:</strong>{' '}
-                          {new Date(payment.createdAt).toLocaleString('en-IN')}
-                        </p>
-                      </div>
-
-                      <div style={{ minWidth: '240px', maxWidth: '280px' }}>
-                        <p
-                          style={{
-                            color: theme.text,
-                            fontWeight: '600',
-                            marginTop: 0,
-                            marginBottom: '10px',
-                          }}
-                        >
-                          Screenshot Proof
-                        </p>
-
-                        {payment.screenshot ? (
-                          <a
-                            href={`${API}/${payment.screenshot}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ textDecoration: 'none' }}
-                          >
-                            <img
-                              src={`${API}/${payment.screenshot}`}
-                              alt="payment proof"
-                              style={{
-                                width: '100%',
-                                height: '180px',
-                                objectFit: 'cover',
-                                borderRadius: '12px',
-                                border: `1px solid ${theme.border}`,
-                              }}
-                            />
-                          </a>
-                        ) : (
-                          <p style={{ color: theme.muted }}>No screenshot</p>
-                        )}
-                      </div>
-                    </div>
+                    <p style={{ color: theme.muted }}>
+                      <strong style={{ color: theme.text }}>Status:</strong>{' '}
+                      {payment.status}
+                    </p>
 
                     {payment.status === 'pending' && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '10px',
-                          marginTop: '16px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                         <button
                           onClick={() => approvePayment(payment._id)}
                           style={{
