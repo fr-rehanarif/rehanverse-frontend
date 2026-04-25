@@ -82,9 +82,7 @@ function AdminPanel() {
       const res = await axios.put(
         `${API}/api/payment/approve/${id}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setMsg('✅ ' + res.data.message);
@@ -102,9 +100,7 @@ function AdminPanel() {
       const res = await axios.put(
         `${API}/api/payment/reject/${id}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setMsg('⚠️ ' + res.data.message);
@@ -118,6 +114,7 @@ function AdminPanel() {
 
   const deleteUser = async (id, name) => {
     if (!window.confirm(`${name} ko delete karo?`)) return;
+
     try {
       await axios.delete(`${API}/api/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -138,6 +135,7 @@ function AdminPanel() {
       const res = await axios.get(`${API}/api/courses/${courseId}/enrolled-users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setEnrolledUsers({ ...enrolledUsers, [courseId]: res.data });
       setExpandedCourse(courseId);
     } catch (err) {
@@ -147,6 +145,7 @@ function AdminPanel() {
 
   const startEdit = (course) => {
     setEditingId(course._id);
+
     setForm({
       title: course.title,
       description: course.description,
@@ -158,6 +157,7 @@ function AdminPanel() {
       pdfTitle: '',
       pdfUrl: '',
     });
+
     setVideos(course.videos || []);
     setPdfs(course.pdfs || []);
     setPdfFile(null);
@@ -167,6 +167,7 @@ function AdminPanel() {
 
   const cancelEdit = () => {
     setEditingId(null);
+
     setForm({
       title: '',
       description: '',
@@ -178,6 +179,7 @@ function AdminPanel() {
       pdfTitle: '',
       pdfUrl: '',
     });
+
     setVideos([]);
     setPdfs([]);
     setPdfFile(null);
@@ -185,6 +187,7 @@ function AdminPanel() {
 
   const addVideo = () => {
     if (!form.videoTitle || !form.videoUrl) return;
+
     setVideos([...videos, { title: form.videoTitle, url: form.videoUrl }]);
     setForm({ ...form, videoTitle: '', videoUrl: '' });
   };
@@ -314,9 +317,7 @@ function AdminPanel() {
     >
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
         <h2 style={{ color: theme.primary, marginBottom: '4px' }}>⚙️ Admin Panel</h2>
-        <p style={{ color: theme.muted, marginBottom: '24px' }}>
-          Welcome, {user?.name}!
-        </p>
+        <p style={{ color: theme.muted, marginBottom: '24px' }}>Welcome, {user?.name}!</p>
 
         {msg && (
           <div
@@ -410,7 +411,9 @@ function AdminPanel() {
                   style={{
                     padding: '12px 14px',
                     background: theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
-                    border: `1px solid ${theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.35)' : '#fcd34d'}`,
+                    border: `1px solid ${
+                      theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.35)' : '#fcd34d'
+                    }`,
                     borderRadius: '12px',
                     marginBottom: '16px',
                     fontSize: '13px',
@@ -494,12 +497,14 @@ function AdminPanel() {
                     value={form.videoTitle}
                     onChange={(e) => setForm({ ...form, videoTitle: e.target.value })}
                   />
+
                   <input
                     style={{ ...inputStyle, marginBottom: 0, flex: 1, minWidth: '220px' }}
                     placeholder="YouTube / Drive URL"
                     value={form.videoUrl}
                     onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
                   />
+
                   <button
                     onClick={addVideo}
                     style={{
@@ -820,7 +825,7 @@ function AdminPanel() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
                   gap: '16px',
                 }}
               >
@@ -829,9 +834,7 @@ function AdminPanel() {
                     key={u._id}
                     style={{
                       background: theme.card,
-                      border: `1px solid ${
-                        u.role === 'admin' ? theme.primary : theme.border
-                      }`,
+                      border: `1px solid ${u.role === 'admin' ? theme.primary : theme.border}`,
                       borderRadius: theme.radius,
                       padding: '20px',
                       position: 'relative',
@@ -874,6 +877,7 @@ function AdminPanel() {
                         alignItems: 'center',
                         gap: '12px',
                         marginBottom: '14px',
+                        paddingRight: '85px',
                       }}
                     >
                       {u.photo ? (
@@ -881,8 +885,8 @@ function AdminPanel() {
                           src={u.photo}
                           alt={u.name}
                           style={{
-                            width: '52px',
-                            height: '52px',
+                            width: '58px',
+                            height: '58px',
                             borderRadius: '50%',
                             objectFit: 'cover',
                             border: `2px solid ${theme.primary}`,
@@ -891,8 +895,8 @@ function AdminPanel() {
                       ) : (
                         <div
                           style={{
-                            width: '52px',
-                            height: '52px',
+                            width: '58px',
+                            height: '58px',
                             borderRadius: '50%',
                             background: theme.primary,
                             display: 'flex',
@@ -900,7 +904,7 @@ function AdminPanel() {
                             justifyContent: 'center',
                             color: theme.buttonText,
                             fontWeight: '700',
-                            fontSize: '20px',
+                            fontSize: '22px',
                             flexShrink: 0,
                           }}
                         >
@@ -909,14 +913,7 @@ function AdminPanel() {
                       )}
 
                       <div>
-                        <h4
-                          style={{
-                            color: theme.text,
-                            margin: 0,
-                            fontSize: '15px',
-                            fontWeight: '700',
-                          }}
-                        >
+                        <h4 style={{ color: theme.text, margin: 0, fontSize: '16px', fontWeight: '800' }}>
                           {u.name}
                         </h4>
                         <p style={{ color: theme.muted, margin: 0, fontSize: '12px' }}>
@@ -925,7 +922,64 @@ function AdminPanel() {
                       </div>
                     </div>
 
-                    <p style={{ color: theme.muted, fontSize: '12px' }}>📧 {u.email}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
+                        📧 {u.email}
+                      </p>
+
+                      {u.bio && (
+                        <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
+                          📝 {u.bio}
+                        </p>
+                      )}
+
+                      <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
+                        🗓️ Joined:{' '}
+                        {u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString('en-IN')
+                          : 'Not available'}
+                      </p>
+
+                      <div>
+                        <p
+                          style={{
+                            color: theme.text,
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            margin: '8px 0 8px 0',
+                          }}
+                        >
+                          📚 Enrolled:
+                        </p>
+
+                        {u.enrolledCourses?.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {u.enrolledCourses.map((c, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  padding: '5px 10px',
+                                  background:
+                                    theme.mode === 'dark'
+                                      ? `${theme.primary}33`
+                                      : `${theme.primary}1A`,
+                                  color: theme.primary,
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                }}
+                              >
+                                {c.title || c}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ color: theme.muted, fontSize: '12px', margin: 0 }}>
+                            No course enrolled
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
                     {u.role !== 'admin' && (
                       <button
@@ -939,7 +993,8 @@ function AdminPanel() {
                           borderRadius: '10px',
                           cursor: 'pointer',
                           fontSize: '13px',
-                          fontWeight: '500',
+                          fontWeight: '600',
+                          marginTop: '16px',
                         }}
                       >
                         🗑️ Delete User
