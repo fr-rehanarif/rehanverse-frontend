@@ -7,6 +7,131 @@ import Reviews from '../components/Reviews';
 import Footer from '../components/Footer';
 import PaymentBox from '../components/PaymentBox';
 import { motion } from 'framer-motion';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+
+function SecurePDFViewer({ pdf, theme }) {
+  const [numPages, setNumPages] = useState(null);
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  useEffect(() => {
+    const blockKeys = (e) => {
+      const key = e.key.toLowerCase();
+
+      if (
+        (e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) ||
+        key === 'f12'
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', blockKeys);
+    return () => window.removeEventListener('keydown', blockKeys);
+  }, []);
+
+  const block = (e) => e.preventDefault();
+
+  return (
+    <div
+      onContextMenu={block}
+      onCopy={block}
+      onCut={block}
+      onDragStart={block}
+      style={{
+        position: 'relative',
+        height: '620px',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        borderRadius: '16px',
+        border: `1px solid ${theme.border || '#334155'}`,
+        background: theme.bg,
+        padding: '16px',
+        userSelect: 'none',
+      }}
+    >
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          background: theme.card,
+          color: theme.text,
+          padding: '12px 14px',
+          borderRadius: '12px',
+          marginBottom: '14px',
+          border: `1px solid ${theme.border || '#334155'}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: '10px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <strong>📄 {pdf.title}</strong>
+        <span style={{ color: theme.muted, fontSize: '13px' }}>
+          View only • Download disabled
+        </span>
+      </div>
+
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 10,
+          pointerEvents: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: 'rotate(-25deg)',
+          fontSize: '28px',
+          fontWeight: 800,
+          color: 'rgba(239,68,68,0.18)',
+          textAlign: 'center',
+          padding: '20px',
+        }}
+      >
+        {user?.name || 'User'} • {user?.email || 'Protected'}
+      </div>
+
+      <Document
+        file={pdf.url}
+        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+        loading={
+          <p style={{ color: theme.muted, textAlign: 'center' }}>
+            Loading PDF...
+          </p>
+        }
+        error={
+          <p style={{ color: '#fca5a5', textAlign: 'center' }}>
+            PDF load nahi ho paayi. Link check karo.
+          </p>
+        }
+      >
+        {Array.from(new Array(numPages), (_, index) => (
+          <div
+            key={index}
+            style={{
+              marginBottom: '18px',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <Page
+              pageNumber={index + 1}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={Math.min(window.innerWidth - 80, 780)}
+            />
+          </div>
+        ))}
+      </Document>
+    </div>
+  );
+}
 
 function CourseDetail() {
   const { id } = useParams();
@@ -17,6 +142,7 @@ function CourseDetail() {
   const [course, setCourse] = useState(null);
   const [activeTab, setActiveTab] = useState('videos');
   const [activeVideo, setActiveVideo] = useState(null);
+  const [activePdf, setActivePdf] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
@@ -27,7 +153,6 @@ function CourseDetail() {
 
     const fetchData = async () => {
       try {
-        // 1) Course fetch karo
         const courseRes = await axios.get(`${API}/api/courses/${id}`);
         setCourse(courseRes.data);
 
@@ -35,7 +160,10 @@ function CourseDetail() {
           setActiveVideo(courseRes.data.videos[0]);
         }
 
-        // 2) User ke enrolled courses fetch karo
+        if (courseRes.data.pdfs?.length > 0) {
+          setActivePdf(courseRes.data.pdfs[0]);
+        }
+
         const enrolledRes = await axios.get(`${API}/api/enroll/my/courses`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -68,15 +196,6 @@ function CourseDetail() {
     return url;
   };
 
-  const getPdfEmbedUrl = (url) => {
-    if (!url) return null;
-
-    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-    if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
-
-    return url;
-  };
-
   if (!course) {
     return (
       <div
@@ -93,9 +212,10 @@ function CourseDetail() {
     );
   }
 
+  const locked = course.price > 0 && !isEnrolled;
+
   return (
     <div style={{ background: theme.bg, minHeight: '100vh', color: theme.text }}>
-      {/* HEADER */}
       <div
         style={{
           background: theme.navbar,
@@ -133,7 +253,6 @@ function CourseDetail() {
           flexWrap: 'wrap',
         }}
       >
-        {/* LEFT SIDE */}
         <div style={{ flex: 1, minWidth: '300px' }}>
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -147,58 +266,58 @@ function CourseDetail() {
               boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             }}
           >
-            {/* VIDEO */}
-            {activeTab === 'videos' && activeVideo && (
-              <div>
-                <iframe
-                  src={getEmbedUrl(activeVideo.url)}
-                  width="100%"
-                  height="400px"
-                  title={activeVideo.title}
-                  style={{
-                    border: 'none',
-                    borderRadius: '14px',
-                    background: '#000',
-                  }}
-                  allowFullScreen
-                />
-                <h3 style={{ marginTop: '14px' }}>{activeVideo.title}</h3>
+            {locked ? (
+              <div
+                style={{
+                  padding: '22px',
+                  borderRadius: '16px',
+                  background: theme.bg,
+                  border: `1px solid ${theme.border || '#334155'}`,
+                  textAlign: 'center',
+                }}
+              >
+                <h3>🔒 Course Locked</h3>
+                <p style={{ color: theme.muted }}>
+                  Payment approve hone ke baad videos aur PDFs unlock honge.
+                </p>
               </div>
-            )}
-
-            {/* PDF */}
-            {activeTab === 'pdfs' && (
-              <div>
-                {course.pdfs?.length > 0 ? (
-                  course.pdfs.map((pdf, i) => (
-                    <div key={i} style={{ marginBottom: '24px' }}>
-                      <h4>{pdf.title}</h4>
-                      <iframe
-                        src={getPdfEmbedUrl(pdf.url)}
-                        width="100%"
-                        height="500px"
-                        title={pdf.title}
-                        style={{
-                          border: 'none',
-                          borderRadius: '14px',
-                          background: '#fff',
-                        }}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <p style={{ color: theme.muted }}>No PDFs available.</p>
+            ) : (
+              <>
+                {activeTab === 'videos' && activeVideo && (
+                  <div>
+                    <iframe
+                      src={getEmbedUrl(activeVideo.url)}
+                      width="100%"
+                      height="400px"
+                      title={activeVideo.title}
+                      style={{
+                        border: 'none',
+                        borderRadius: '14px',
+                        background: '#000',
+                      }}
+                      allowFullScreen
+                    />
+                    <h3 style={{ marginTop: '14px' }}>{activeVideo.title}</h3>
+                  </div>
                 )}
-              </div>
+
+                {activeTab === 'pdfs' && (
+                  <div>
+                    {activePdf ? (
+                      <SecurePDFViewer pdf={activePdf} theme={theme} />
+                    ) : (
+                      <p style={{ color: theme.muted }}>No PDFs available.</p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </motion.div>
 
-          {/* REVIEWS */}
           <div style={{ marginTop: '30px' }}>
             <Reviews courseId={id} />
           </div>
 
-          {/* ENROLLED MESSAGE */}
           {course.price > 0 && isEnrolled && (
             <div
               style={{
@@ -215,7 +334,6 @@ function CourseDetail() {
             </div>
           )}
 
-          {/* PAYMENT BOX - SIRF TAB JAB ENROLLED NA HO */}
           {course.price > 0 && !isEnrolled && (
             <div style={{ marginTop: '30px' }}>
               <PaymentBox courseId={id} />
@@ -223,7 +341,6 @@ function CourseDetail() {
           )}
         </div>
 
-        {/* RIGHT SIDE */}
         <div
           style={{
             width: '300px',
@@ -290,7 +407,7 @@ function CourseDetail() {
                       fontWeight: '500',
                     }}
                   >
-                    {video.title}
+                    ▶️ {video.title}
                   </div>
                 ))
               ) : (
@@ -305,12 +422,15 @@ function CourseDetail() {
                 course.pdfs.map((pdf, i) => (
                   <div
                     key={i}
+                    onClick={() => setActivePdf(pdf)}
                     style={{
                       padding: '12px 14px',
                       borderRadius: '12px',
                       marginBottom: '10px',
-                      background: theme.bg,
-                      color: theme.text,
+                      cursor: 'pointer',
+                      background:
+                        activePdf?.title === pdf.title ? theme.primary : theme.bg,
+                      color: activePdf?.title === pdf.title ? '#fff' : theme.text,
                       border: `1px solid ${theme.border || '#334155'}`,
                       fontWeight: '500',
                     }}
