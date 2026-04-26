@@ -16,7 +16,50 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pd
 
 function SecurePDFViewer({ pdf, theme }) {
   const [numPages, setNumPages] = useState(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfError, setPdfError] = useState('');
   const user = JSON.parse(localStorage.getItem('user'));
+
+  useEffect(() => {
+    const loadPdf = async () => {
+      try {
+        setPdfError('');
+        setPdfBlobUrl(null);
+        setNumPages(null);
+
+        if (!pdf?.url) {
+          setPdfError('PDF URL missing');
+          return;
+        }
+
+        const res = await fetch(pdf.url, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+        });
+
+        if (!res.ok) {
+          throw new Error(`PDF fetch failed: ${res.status}`);
+        }
+
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setPdfBlobUrl(blobUrl);
+      } catch (err) {
+        console.log('PDF LOAD ERROR:', err);
+        setPdfError('PDF load failed. URL/policy check karo.');
+      }
+    };
+
+    loadPdf();
+
+    return () => {
+      setPdfBlobUrl((oldUrl) => {
+        if (oldUrl) URL.revokeObjectURL(oldUrl);
+        return null;
+      });
+    };
+  }, [pdf?.url]);
 
   useEffect(() => {
     const blockKeys = (e) => {
@@ -67,7 +110,7 @@ function SecurePDFViewer({ pdf, theme }) {
           flexWrap: 'wrap',
         }}
       >
-        <strong>📄 {pdf.title}</strong>
+        <strong>📄 {pdf?.title || 'PDF'}</strong>
         <span style={{ color: theme.muted, fontSize: '13px' }}>
           View only • Download disabled
         </span>
@@ -93,49 +136,41 @@ function SecurePDFViewer({ pdf, theme }) {
         {user?.name || 'User'} • {user?.email || 'Protected'}
       </div>
 
-      {pdf?.url ? (
-  <Document
-    file={{
-      url: pdf.url,
-      withCredentials: false,
-    }}
-    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-    loading={
-      <p style={{ color: theme.muted, textAlign: 'center' }}>
-        Loading PDF...
-      </p>
-    }
-    error={
-      <p style={{ color: '#fca5a5', textAlign: 'center' }}>
-        PDF load nahi ho paayi. URL check karo.
-      </p>
-    }
-  >
-    {Array.from(new Array(numPages || 0), (_, index) => (
-      <div
-        key={index}
-        style={{
-          marginBottom: '18px',
-          display: 'flex',
-          justifyContent: 'center',
-          position: 'relative',
-          zIndex: 5,
-        }}
-      >
-        <Page
-          pageNumber={index + 1}
-          renderTextLayer={false}
-          renderAnnotationLayer={false}
-          width={Math.min(window.innerWidth - 100, 850)}
-        />
-      </div>
-    ))}
-  </Document>
-) : (
-  <p style={{ color: '#fca5a5', textAlign: 'center' }}>
-    PDF URL missing hai.
-  </p>
-)}
+      {pdfError ? (
+        <p style={{ color: '#fca5a5', textAlign: 'center' }}>{pdfError}</p>
+      ) : !pdfBlobUrl ? (
+        <p style={{ color: theme.muted, textAlign: 'center' }}>Loading PDF...</p>
+      ) : (
+        <Document
+          file={pdfBlobUrl}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          error={
+            <p style={{ color: '#fca5a5', textAlign: 'center' }}>
+              PDF render failed.
+            </p>
+          }
+        >
+          {Array.from(new Array(numPages || 0), (_, index) => (
+            <div
+              key={index}
+              style={{
+                marginBottom: '18px',
+                display: 'flex',
+                justifyContent: 'center',
+                position: 'relative',
+                zIndex: 5,
+              }}
+            >
+              <Page
+                pageNumber={index + 1}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                width={Math.min(window.innerWidth - 100, 850)}
+              />
+            </div>
+          ))}
+        </Document>
+      )}
     </div>
   );
 }
