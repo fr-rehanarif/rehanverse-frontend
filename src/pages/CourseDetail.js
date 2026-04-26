@@ -94,45 +94,48 @@ function SecurePDFViewer({ pdf, theme }) {
       </div>
 
       {pdf?.url ? (
-        <Document
-          file={pdf.url}
-          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-          loading={
-            <p style={{ color: theme.muted, textAlign: 'center' }}>
-              Loading PDF...
-            </p>
-          }
-          error={
-            <p style={{ color: '#fca5a5', textAlign: 'center' }}>
-              PDF load nahi ho paayi. URL check karo.
-            </p>
-          }
-        >
-          {Array.from(new Array(numPages || 0), (_, index) => (
-            <div
-              key={index}
-              style={{
-                marginBottom: '18px',
-                display: 'flex',
-                justifyContent: 'center',
-                position: 'relative',
-                zIndex: 5,
-              }}
-            >
-              <Page
-                pageNumber={index + 1}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-                width={Math.min(window.innerWidth - 100, 850)}
-              />
-            </div>
-          ))}
-        </Document>
-      ) : (
-        <p style={{ color: '#fca5a5', textAlign: 'center' }}>
-          PDF URL missing hai.
-        </p>
-      )}
+  <Document
+    file={{
+      url: pdf.url,
+      withCredentials: false,
+    }}
+    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+    loading={
+      <p style={{ color: theme.muted, textAlign: 'center' }}>
+        Loading PDF...
+      </p>
+    }
+    error={
+      <p style={{ color: '#fca5a5', textAlign: 'center' }}>
+        PDF load nahi ho paayi. URL check karo.
+      </p>
+    }
+  >
+    {Array.from(new Array(numPages || 0), (_, index) => (
+      <div
+        key={index}
+        style={{
+          marginBottom: '18px',
+          display: 'flex',
+          justifyContent: 'center',
+          position: 'relative',
+          zIndex: 5,
+        }}
+      >
+        <Page
+          pageNumber={index + 1}
+          renderTextLayer={false}
+          renderAnnotationLayer={false}
+          width={Math.min(window.innerWidth - 100, 850)}
+        />
+      </div>
+    ))}
+  </Document>
+) : (
+  <p style={{ color: '#fca5a5', textAlign: 'center' }}>
+    PDF URL missing hai.
+  </p>
+)}
     </div>
   );
 }
