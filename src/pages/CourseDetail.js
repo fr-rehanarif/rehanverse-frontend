@@ -158,7 +158,7 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
           padding: '20px',
         }}
       >
-        {user?.name || 'User'} • {user?.email || 'Protected'} • REHANVERSE
+        REHANVERSE • Protected Content
       </div>
 
       {pdfError ? (
