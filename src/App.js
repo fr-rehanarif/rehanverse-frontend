@@ -10,6 +10,7 @@ import Payment from './pages/Payment';
 import CourseDetail from './pages/CourseDetail';
 import Navbar from './components/Navbar';
 import { useTheme } from './context/ThemeContext';
+import ActivityDashboard from './pages/ActivityDashboard';
 
 function App() {
   const theme = useTheme();
@@ -31,6 +32,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/courses" element={<Courses />} />
+          <Route path="/admin/activity" element={<ActivityDashboard />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/payment/:courseId" element={<Payment />} />
           <Route path="/my-courses" element={<MyCourses />} />

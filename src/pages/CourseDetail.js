@@ -8,16 +8,27 @@ import Footer from '../components/Footer';
 import PaymentBox from '../components/PaymentBox';
 import { motion } from 'framer-motion';
 import { Document, Page, pdfjs } from 'react-pdf';
+import logActivity from '../utils/logActivity';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
-function SecurePDFViewer({ pdf, theme }) {
+
+function SecurePDFViewer({ pdf, theme, courseTitle }) {
   const [numPages, setNumPages] = useState(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [pdfError, setPdfError] = useState('');
   const user = JSON.parse(localStorage.getItem('user'));
+
+  useEffect(() => {
+    if (pdf?.title) {
+      logActivity(
+        `Opened PDF: ${pdf.title} | Course: ${courseTitle || 'Unknown Course'}`,
+        'CourseDetail'
+      );
+    }
+  }, [pdf?.title, courseTitle]);
 
   useEffect(() => {
     const loadPdf = async () => {
@@ -65,14 +76,25 @@ function SecurePDFViewer({ pdf, theme }) {
       const key = e.key.toLowerCase();
       if ((e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) || key === 'f12') {
         e.preventDefault();
+
+        logActivity(
+          `Blocked shortcut attempt: CTRL + ${key.toUpperCase()} | PDF: ${pdf?.title || 'Unknown PDF'}`,
+          'SecurePDFViewer'
+        );
       }
     };
 
     window.addEventListener('keydown', blockKeys);
     return () => window.removeEventListener('keydown', blockKeys);
-  }, []);
+  }, [pdf?.title]);
 
-  const block = (e) => e.preventDefault();
+  const block = (e) => {
+    e.preventDefault();
+    logActivity(
+      `Blocked right-click/copy attempt | PDF: ${pdf?.title || 'Unknown PDF'}`,
+      'SecurePDFViewer'
+    );
+  };
 
   return (
     <div
@@ -111,7 +133,7 @@ function SecurePDFViewer({ pdf, theme }) {
       >
         <strong>📄 {pdf?.title || 'PDF'}</strong>
         <span style={{ color: theme.muted, fontSize: '13px' }}>
-          View only • Download disabled
+          View only • Download disabled • Watermarked
         </span>
       </div>
 
@@ -132,7 +154,7 @@ function SecurePDFViewer({ pdf, theme }) {
           padding: '20px',
         }}
       >
-        {user?.name || 'User'} • {user?.email || 'Protected'}
+        {user?.name || 'User'} • {user?.email || 'Protected'} • REHANVERSE
       </div>
 
       {pdfError ? (
@@ -197,8 +219,18 @@ function CourseDetail() {
         const courseRes = await axios.get(`${API}/api/courses/${id}`);
         setCourse(courseRes.data);
 
+        logActivity(
+          `Opened Course Detail Page | Course: ${courseRes.data.title}`,
+          'CourseDetail'
+        );
+
         if (courseRes.data.videos?.length > 0) {
           setActiveVideo(courseRes.data.videos[0]);
+
+          logActivity(
+            `Auto loaded first video: ${courseRes.data.videos[0].title} | Course: ${courseRes.data.title}`,
+            'CourseDetail'
+          );
         }
 
         if (courseRes.data.pdfs?.length > 0) {
@@ -214,8 +246,21 @@ function CourseDetail() {
         );
 
         setIsEnrolled(enrolled);
+
+        logActivity(
+          enrolled
+            ? `Enrollment check: User is enrolled | Course: ${courseRes.data.title}`
+            : `Enrollment check: User is not enrolled | Course: ${courseRes.data.title}`,
+          'CourseDetail'
+        );
       } catch (err) {
         console.log('Course detail error:', err);
+
+        logActivity(
+          `Course detail error or unauthorized access attempt | Course ID: ${id}`,
+          'CourseDetail'
+        );
+
         navigate('/my-courses');
       }
     };
@@ -233,6 +278,33 @@ function CourseDetail() {
     if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
 
     return url;
+  };
+
+  const handleVideoClick = (video) => {
+    setActiveVideo(video);
+
+    logActivity(
+      `Clicked video: ${video.title} | Course: ${course?.title || 'Unknown Course'}`,
+      'CourseDetail'
+    );
+  };
+
+  const handlePdfClick = (pdf) => {
+    setActivePdf(pdf);
+
+    logActivity(
+      `Clicked PDF: ${pdf.title} | Course: ${course?.title || 'Unknown Course'}`,
+      'CourseDetail'
+    );
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+
+    logActivity(
+      `Switched tab to: ${tab} | Course: ${course?.title || 'Unknown Course'}`,
+      'CourseDetail'
+    );
   };
 
   if (!course) {
@@ -266,7 +338,13 @@ function CourseDetail() {
         }}
       >
         <button
-          onClick={() => navigate('/my-courses')}
+          onClick={() => {
+            logActivity(
+              `Clicked back button from course: ${course.title}`,
+              'CourseDetail'
+            );
+            navigate('/my-courses');
+          }}
           style={{
             background: theme.primary,
             color: '#fff',
@@ -343,7 +421,11 @@ function CourseDetail() {
                 {activeTab === 'pdfs' && (
                   <div>
                     {activePdf ? (
-                      <SecurePDFViewer pdf={activePdf} theme={theme} />
+                      <SecurePDFViewer
+                        pdf={activePdf}
+                        theme={theme}
+                        courseTitle={course.title}
+                      />
                     ) : (
                       <p style={{ color: theme.muted }}>No PDFs available.</p>
                     )}
@@ -395,7 +477,7 @@ function CourseDetail() {
 
           <div style={{ display: 'flex', gap: '10px', marginBottom: '18px' }}>
             <button
-              onClick={() => setActiveTab('videos')}
+              onClick={() => handleTabChange('videos')}
               style={{
                 flex: 1,
                 background: activeTab === 'videos' ? theme.primary : theme.bg,
@@ -411,7 +493,7 @@ function CourseDetail() {
             </button>
 
             <button
-              onClick={() => setActiveTab('pdfs')}
+              onClick={() => handleTabChange('pdfs')}
               style={{
                 flex: 1,
                 background: activeTab === 'pdfs' ? theme.primary : theme.bg,
@@ -433,7 +515,7 @@ function CourseDetail() {
                 course.videos.map((video, i) => (
                   <div
                     key={i}
-                    onClick={() => setActiveVideo(video)}
+                    onClick={() => handleVideoClick(video)}
                     style={{
                       padding: '12px 14px',
                       borderRadius: '12px',
@@ -461,7 +543,7 @@ function CourseDetail() {
                 course.pdfs.map((pdf, i) => (
                   <div
                     key={i}
-                    onClick={() => setActivePdf(pdf)}
+                    onClick={() => handlePdfClick(pdf)}
                     style={{
                       padding: '12px 14px',
                       borderRadius: '12px',
