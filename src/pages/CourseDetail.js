@@ -42,11 +42,15 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
           return;
         }
 
-        const res = await fetch(pdf.url, {
-          method: 'GET',
-          mode: 'cors',
-          credentials: 'omit',
+        const res = await fetch(`${API}/api/pdf/view`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({ pdfUrl: pdf.url }),
         });
+
 
         if (!res.ok) {
           throw new Error(`PDF fetch failed: ${res.status}`);
