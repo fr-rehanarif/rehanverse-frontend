@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import API from '../api';
+import SecurityLogsPanel from '../components/SecurityLogsPanel';
 
 function AdminPanel() {
   const theme = useTheme();
@@ -369,6 +370,10 @@ function AdminPanel() {
 
           <button onClick={() => setActiveTab('payments')} style={tabStyle('payments')}>
             💸 Payments ({payments.filter((p) => p.status === 'pending').length})
+          </button>
+
+          <button onClick={() => setActiveTab('activity')} style={tabStyle('activity')}>
+            🕶️ Activity Logs
           </button>
         </div>
 
@@ -1096,6 +1101,9 @@ function AdminPanel() {
               </div>
             )}
           </div>
+        )}
+        {activeTab === 'activity' && (
+          <SecurityLogsPanel theme={theme} />
         )}
       </div>
     </div>
