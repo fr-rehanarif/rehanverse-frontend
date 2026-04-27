@@ -202,30 +202,24 @@ function AdminPanel() {
   }
 
   try {
-    setMsg('⏳ Uploading PDF...');
+    setMsg('⏳ Uploading + watermarking PDF...');
 
-    const cleanName = pdfFile.name.replace(/\s+/g, '-');
-    const fileName = `${Date.now()}-${cleanName}`;
+    const data = new FormData();
+    data.append('pdf', pdfFile);
 
-    const { error } = await supabase.storage
-      .from('course-pdfs')
-      .upload(fileName, pdfFile);
-
-    if (error) {
-      console.log('SUPABASE ERROR:', error);
-      setMsg('❌ Supabase upload failed: ' + error.message);
-      return;
-    }
-
-    const { data } = supabase.storage
-      .from('course-pdfs')
-      .getPublicUrl(fileName);
+    const res = await axios.post(`${API}/api/upload/pdf`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
     setPdfs([
       ...pdfs,
       {
         title: form.pdfTitle,
-        url: data.publicUrl,
+        url: res.data.url,
+        filename: res.data.filename,
       },
     ]);
 
@@ -235,15 +229,14 @@ function AdminPanel() {
     const fileInput = document.getElementById('pdfFileInput');
     if (fileInput) fileInput.value = '';
 
-    setMsg('✅ PDF uploaded to Supabase!');
+    setMsg('✅ PDF uploaded with watermark to Supabase!');
     setTimeout(() => setMsg(''), 3000);
   } catch (err) {
     console.log('PDF UPLOAD ERROR:', err);
-    setMsg('❌ PDF upload failed');
+    setMsg('❌ PDF upload failed: ' + (err.response?.data?.message || err.message));
     setTimeout(() => setMsg(''), 3000);
   }
 };
-
   const handleSubmit = async () => {
     if (!form.title || !form.description) {
       setMsg('❌ Title aur Description zaroori hai!');
