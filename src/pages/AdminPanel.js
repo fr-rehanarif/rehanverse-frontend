@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import API from '../api';
 import SecurityLogsPanel from '../components/SecurityLogsPanel';
 import AdminNotificationSender from '../components/AdminNotificationSender';
+import AdminDashboardStats from '../components/AdminDashboardStats';
 
 function AdminPanel() {
   const theme = useTheme();
@@ -469,6 +470,13 @@ function AdminPanel() {
             {msg}
           </div>
         )}
+
+        <AdminDashboardStats
+          theme={theme}
+          users={users}
+          courses={courses}
+          payments={payments}
+        />
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '32px', flexWrap: 'wrap' }}>
           <button onClick={() => setActiveTab('courses')} style={tabStyle('courses')}>
