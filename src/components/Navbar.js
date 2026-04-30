@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
+import NotificationBell from './NotificationBell';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -81,6 +82,9 @@ function Navbar() {
 
         {user ? (
           <>
+            {/* ✅ Notification Bell Added Here */}
+            <NotificationBell theme={theme} />
+
             <motion.div whileHover={{ y: -2 }}>
               <Link
                 to="/profile"
