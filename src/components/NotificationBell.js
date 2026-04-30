@@ -134,6 +134,23 @@ function NotificationBell({ theme }) {
     }
   };
 
+  const clearReadNotifications = async () => {
+    try {
+      if (!token) return;
+
+      await fetch(`${API}/api/notifications/clear-read`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setNotifications((prev) => prev.filter((n) => !n.isRead));
+    } catch (err) {
+      console.log('Clear read notifications failed:', err);
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
 
@@ -145,6 +162,7 @@ function NotificationBell({ theme }) {
   }, []);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const readCount = notifications.filter((n) => n.isRead).length;
 
   const getIcon = (type) => {
     switch (type) {
@@ -186,6 +204,17 @@ function NotificationBell({ theme }) {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const headerButtonStyle = {
+    border: 'none',
+    background: 'transparent',
+    color: theme?.primary || '#38bdf8',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '700',
+    padding: 0,
+    whiteSpace: 'nowrap',
   };
 
   return (
@@ -238,7 +267,7 @@ function NotificationBell({ theme }) {
               position: 'absolute',
               right: 0,
               top: '48px',
-              width: '360px',
+              width: '380px',
               maxHeight: '430px',
               overflowY: 'auto',
               background: theme?.card || '#111827',
@@ -254,24 +283,41 @@ function NotificationBell({ theme }) {
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '8px',
+                alignItems: 'flex-start',
+                gap: '10px',
                 marginBottom: '10px',
               }}
             >
-              <h3 style={{ margin: 0, fontSize: '16px' }}>Notifications</h3>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>
+                  Notifications
+                </h3>
+                <p
+                  style={{
+                    margin: '3px 0 0',
+                    fontSize: '11px',
+                    opacity: 0.6,
+                  }}
+                >
+                  {unreadCount} unread • {readCount} read
+                </p>
+              </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '9px',
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-end',
+                }}
+              >
                 <button
                   onClick={fetchNotifications}
                   disabled={loading}
                   style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: theme?.primary || '#38bdf8',
+                    ...headerButtonStyle,
                     cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '700',
                     opacity: loading ? 0.6 : 1,
                   }}
                 >
@@ -279,18 +325,20 @@ function NotificationBell({ theme }) {
                 </button>
 
                 {unreadCount > 0 && (
+                  <button onClick={markAllAsRead} style={headerButtonStyle}>
+                    Mark all read
+                  </button>
+                )}
+
+                {readCount > 0 && (
                   <button
-                    onClick={markAllAsRead}
+                    onClick={clearReadNotifications}
                     style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: theme?.primary || '#38bdf8',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '700',
+                      ...headerButtonStyle,
+                      color: theme?.danger || '#ef4444',
                     }}
                   >
-                    Mark all read
+                    Clear read
                   </button>
                 )}
               </div>
