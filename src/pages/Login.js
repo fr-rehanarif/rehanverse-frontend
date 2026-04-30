@@ -60,7 +60,7 @@ function Login() {
         <h2 style={{ ...styles.title, color: theme.primary }}>Welcome Back 👋</h2>
 
         <p style={{ ...styles.subtitle, color: theme.muted }}>
-          Login karke apne courses continue karo.
+          Login and GET BACK TO REHANVERSE
         </p>
 
         <input

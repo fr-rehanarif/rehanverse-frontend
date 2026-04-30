@@ -51,7 +51,7 @@ function Signup() {
         <h2 style={{ ...styles.title, color: theme.primary }}>Create Account 🚀</h2>
 
         <p style={{ ...styles.subtitle, color: theme.muted }}>
-          Sign up karke REHANVERSE ka part bano.
+          Sign up and become a part of RREHANVERSE....
         </p>
 
         <input

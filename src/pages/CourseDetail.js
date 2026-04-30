@@ -137,7 +137,7 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
       >
         <strong>📄 {pdf?.title || 'PDF'}</strong>
         <span style={{ color: theme.muted, fontSize: '13px' }}>
-          View only • Download disabled • Watermarked
+          View only • Download disabled • Watermarked By REHAN 
         </span>
       </div>
 
@@ -151,14 +151,14 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
           alignItems: 'center',
           justifyContent: 'center',
           transform: 'rotate(-25deg)',
-          fontSize: '28px',
+          fontSize: '22px',
           fontWeight: 800,
           color: 'rgba(239,68,68,0.18)',
           textAlign: 'center',
           padding: '20px',
         }}
       >
-        REHANVERSE • Protected Content
+        REHANVERSE • Protected Content 
       </div>
 
       {pdfError ? (

@@ -46,7 +46,7 @@ function MyCourses() {
                 fontWeight: '800',
               }}
             >
-              🎒 Meri Courses
+              🎒 Our Courses
             </h2>
             <p
               style={{
@@ -55,7 +55,7 @@ function MyCourses() {
                 fontSize: '1.05rem',
               }}
             >
-              Jin courses mein tumne enroll kiya hai
+              Courses you are enrolled in 
             </p>
           </div>
         </Reveal>
@@ -156,7 +156,7 @@ function MyCourses() {
                   marginTop: '16px',
                 }}
               >
-                Abhi koi course nahi!
+                No courses are Purchased !!
               </p>
 
               <motion.button
@@ -176,7 +176,7 @@ function MyCourses() {
                   boxShadow: theme.shadow,
                 }}
               >
-                Courses Dekho
+                See some Courses by us
               </motion.button>
             </div>
           </Reveal>
@@ -304,7 +304,7 @@ function MyCourses() {
                           boxShadow: theme.shadow,
                         }}
                       >
-                        ▶️ Continue Learning
+                        ▶️ Continue Learning With US
                       </motion.button>
                     </div>
                   </div>

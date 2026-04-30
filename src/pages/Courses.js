@@ -78,7 +78,7 @@ function Courses() {
           <div>
             <h2 style={{ color: theme.primary, marginBottom: '8px' }}>📚 All Courses</h2>
             <p style={{ color: theme.muted, marginBottom: '30px' }}>
-              Apni skills badao — aaj hi shuru karo!
+              Start Today !! .... Tomorrow never comes..
             </p>
           </div>
         </Reveal>
@@ -132,7 +132,7 @@ function Courses() {
                 fontSize: '18px',
               }}
             >
-              Abhi koi course nahi hai — jald aayenge! 🚀
+              No Courses available for now ..🚀
             </p>
           </Reveal>
         ) : (
