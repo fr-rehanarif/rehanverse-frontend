@@ -384,6 +384,24 @@ const getLiveStatus = (scheduledAt, durationMinutes) => {
   return 'Ended';
 };
 
+const getPaymentScreenshot = (payment) => {
+  const proof =
+    payment.screenshot ||
+    payment.screenshotUrl ||
+    payment.paymentScreenshot ||
+    payment.proof ||
+    payment.proofImage ||
+    payment.proofUrl ||
+    payment.image ||
+    payment.imageUrl;
+
+  if (!proof) return '';
+
+  if (proof.startsWith('http')) return proof;
+
+  return `${API}${proof.startsWith('/') ? proof : `/${proof}`}`;
+};
+
   const inputStyle = {
     width: '100%',
     padding: '11px',
@@ -1118,85 +1136,211 @@ const getLiveStatus = (scheduledAt, durationMinutes) => {
         )}
 
         {activeTab === 'payments' && (
-          <div>
-            <h3 style={{ color: theme.text, marginBottom: '20px' }}>
-              💸 Payment Requests ({payments.length})
-            </h3>
+  <div>
+    <h3 style={{ color: theme.text, marginBottom: '20px' }}>
+      💸 Payment Requests ({payments.length})
+    </h3>
 
-            {payments.length === 0 ? (
-              <p style={{ color: theme.muted }}>Abhi koi payment request nahi aayi!</p>
-            ) : (
-              <div style={{ display: 'grid', gap: '16px' }}>
-                {payments.map((payment) => (
-                  <div
-                    key={payment._id}
+    {payments.length === 0 ? (
+      <p style={{ color: theme.muted }}>Abhi koi payment request nahi aayi!</p>
+    ) : (
+      <div style={{ display: 'grid', gap: '16px' }}>
+        {payments.map((payment) => {
+          const screenshotUrl = getPaymentScreenshot(payment);
+
+          return (
+            <div
+              key={payment._id}
+              style={{
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                borderRadius: theme.radius,
+                padding: '20px',
+                boxShadow: theme.shadow,
+                backdropFilter: theme.glass,
+              }}
+            >
+              <h4 style={{ color: theme.text, marginTop: 0 }}>
+                {payment.course?.title || 'Course deleted'}
+              </h4>
+
+              <p style={{ color: theme.muted }}>
+                <strong style={{ color: theme.text }}>User:</strong>{' '}
+                {payment.user?.name || 'Unknown'}
+              </p>
+
+              <p style={{ color: theme.muted }}>
+                <strong style={{ color: theme.text }}>Email:</strong>{' '}
+                {payment.user?.email || 'No email'}
+              </p>
+
+              <p style={{ color: theme.muted }}>
+                <strong style={{ color: theme.text }}>Status:</strong>{' '}
+                <span
+                  style={{
+                    color:
+                      payment.status === 'approved'
+                        ? theme.success
+                        : payment.status === 'rejected'
+                        ? theme.danger
+                        : theme.warning,
+                    fontWeight: '800',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {payment.status}
+                </span>
+              </p>
+
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '14px',
+                  background: theme.bgSecondary,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '14px',
+                }}
+              >
+                <p
+                  style={{
+                    color: theme.text,
+                    fontWeight: '800',
+                    marginTop: 0,
+                    marginBottom: '10px',
+                  }}
+                >
+                  🧾 Payment Screenshot
+                </p>
+
+                {screenshotUrl ? (
+                  <div>
+                    <a href={screenshotUrl} target="_blank" rel="noreferrer">
+                      <img
+                        src={screenshotUrl}
+                        alt="Payment Screenshot"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const next = e.currentTarget.nextSibling;
+                          if (next) next.style.display = 'block';
+                        }}
+                        style={{
+                          width: '260px',
+                          maxWidth: '100%',
+                          maxHeight: '360px',
+                          objectFit: 'cover',
+                          borderRadius: '14px',
+                          border: `1px solid ${theme.primary}`,
+                          boxShadow: theme.shadow,
+                          cursor: 'pointer',
+                          display: 'block',
+                        }}
+                      />
+
+                      <p
+                        style={{
+                          display: 'none',
+                          color: theme.danger,
+                          fontSize: '13px',
+                          fontWeight: '700',
+                          marginTop: '8px',
+                        }}
+                      >
+                        ❌ Image load nahi hui. Backend static uploads ya URL issue hai.
+                      </p>
+                    </a>
+
+                    <button
+                      onClick={() => window.open(screenshotUrl, '_blank')}
+                      style={{
+                        marginTop: '12px',
+                        padding: '9px 14px',
+                        background: theme.primary,
+                        color: theme.buttonText,
+                        border: 'none',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontWeight: '700',
+                      }}
+                    >
+                      🔍 Open Screenshot
+                    </button>
+
+                    <p
+                      style={{
+                        color: theme.muted,
+                        fontSize: '12px',
+                        marginTop: '8px',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      URL: {screenshotUrl}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p
+                      style={{
+                        color: theme.danger,
+                        fontWeight: '800',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      ❌ Screenshot path backend se nahi aa raha
+                    </p>
+
+                    <p
+                      style={{
+                        color: theme.muted,
+                        fontSize: '13px',
+                        margin: 0,
+                      }}
+                    >
+                      Iska matlab paymentRoutes.js ya Payment model me screenshot ka path save nahi ho raha.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {payment.status === 'pending' && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => approvePayment(payment._id)}
                     style={{
-                      background: theme.card,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: theme.radius,
-                      padding: '20px',
-                      boxShadow: theme.shadow,
-                      backdropFilter: theme.glass,
+                      padding: '10px 18px',
+                      background: theme.success,
+                      color: theme.buttonText,
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
                     }}
                   >
-                    <h4 style={{ color: theme.text, marginTop: 0 }}>
-                      {payment.course?.title || 'Course deleted'}
-                    </h4>
+                    ✅ Approve
+                  </button>
 
-                    <p style={{ color: theme.muted }}>
-                      <strong style={{ color: theme.text }}>User:</strong>{' '}
-                      {payment.user?.name || 'Unknown'}
-                    </p>
-
-                    <p style={{ color: theme.muted }}>
-                      <strong style={{ color: theme.text }}>Email:</strong>{' '}
-                      {payment.user?.email || 'No email'}
-                    </p>
-
-                    <p style={{ color: theme.muted }}>
-                      <strong style={{ color: theme.text }}>Status:</strong>{' '}
-                      {payment.status}
-                    </p>
-
-                    {payment.status === 'pending' && (
-                      <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                        <button
-                          onClick={() => approvePayment(payment._id)}
-                          style={{
-                            padding: '10px 18px',
-                            background: theme.success,
-                            color: theme.buttonText,
-                            border: 'none',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                          }}
-                        >
-                          ✅ Approve
-                        </button>
-
-                        <button
-                          onClick={() => rejectPayment(payment._id)}
-                          style={{
-                            padding: '10px 18px',
-                            background: theme.danger,
-                            color: theme.buttonText,
-                            border: 'none',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                          }}
-                        >
-                          ❌ Reject
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  <button
+                    onClick={() => rejectPayment(payment._id)}
+                    style={{
+                      padding: '10px 18px',
+                      background: theme.danger,
+                      color: theme.buttonText,
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                    }}
+                  >
+                    ❌ Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
         {activeTab === 'live' && (
   <div>
     <div
