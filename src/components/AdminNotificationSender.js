@@ -260,6 +260,26 @@ function AdminNotificationSender({ theme }) {
     });
   };
 
+  const totalNotifications = notifications.length;
+
+  const courseUpdates = notifications.filter((n) =>
+    ['course', 'pdf', 'video'].includes(n.type)
+  ).length;
+
+  const liveAlerts = notifications.filter((n) => n.type === 'live').length;
+
+  const paymentAlerts = notifications.filter((n) => n.type === 'payment').length;
+
+  const offerAlerts = notifications.filter((n) => n.type === 'offer').length;
+
+  const globalNotifications = notifications.filter(
+    (n) => n.targetType === 'all'
+  ).length;
+
+  const courseTargetedNotifications = notifications.filter(
+    (n) => n.targetType === 'course'
+  ).length;
+
   return (
     <div>
       <div
@@ -544,6 +564,57 @@ function AdminNotificationSender({ theme }) {
           </button>
         </div>
 
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '12px',
+            marginBottom: '20px',
+          }}
+        >
+          <div style={statCardStyle(theme)}>
+            <span style={statIconStyle}>🔔</span>
+            <h3 style={statNumberStyle(theme)}>{totalNotifications}</h3>
+            <p style={statLabelStyle(theme)}>Total Sent</p>
+          </div>
+
+          <div style={statCardStyle(theme)}>
+            <span style={statIconStyle}>📚</span>
+            <h3 style={statNumberStyle(theme)}>{courseUpdates}</h3>
+            <p style={statLabelStyle(theme)}>Course Updates</p>
+          </div>
+
+          <div style={statCardStyle(theme)}>
+            <span style={statIconStyle}>🔴</span>
+            <h3 style={statNumberStyle(theme)}>{liveAlerts}</h3>
+            <p style={statLabelStyle(theme)}>Live Alerts</p>
+          </div>
+
+          <div style={statCardStyle(theme)}>
+            <span style={statIconStyle}>✅</span>
+            <h3 style={statNumberStyle(theme)}>{paymentAlerts}</h3>
+            <p style={statLabelStyle(theme)}>Payment Alerts</p>
+          </div>
+
+          <div style={statCardStyle(theme)}>
+            <span style={statIconStyle}>⚡</span>
+            <h3 style={statNumberStyle(theme)}>{offerAlerts}</h3>
+            <p style={statLabelStyle(theme)}>Offers</p>
+          </div>
+
+          <div style={statCardStyle(theme)}>
+            <span style={statIconStyle}>🌍</span>
+            <h3 style={statNumberStyle(theme)}>{globalNotifications}</h3>
+            <p style={statLabelStyle(theme)}>Global</p>
+          </div>
+
+          <div style={statCardStyle(theme)}>
+            <span style={statIconStyle}>🎒</span>
+            <h3 style={statNumberStyle(theme)}>{courseTargetedNotifications}</h3>
+            <p style={statLabelStyle(theme)}>Course Targeted</p>
+          </div>
+        </div>
+
         {historyLoading && notifications.length === 0 ? (
           <p style={{ color: theme?.muted || '#9ca3af' }}>Loading notification history...</p>
         ) : notifications.length === 0 ? (
@@ -652,6 +723,31 @@ const badgeStyle = (theme) => ({
   background: theme?.cardSolid || 'rgba(255,255,255,0.07)',
   color: theme?.muted || '#9ca3af',
   border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
+});
+
+const statCardStyle = (theme) => ({
+  padding: '16px',
+  borderRadius: '18px',
+  background: theme?.bgSecondary || 'rgba(255,255,255,0.04)',
+  border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
+  boxShadow: theme?.shadow || '0 10px 25px rgba(0,0,0,0.18)',
+});
+
+const statIconStyle = {
+  fontSize: '22px',
+};
+
+const statNumberStyle = (theme) => ({
+  margin: '8px 0 2px',
+  fontSize: '24px',
+  color: theme?.primary || '#8b5cf6',
+});
+
+const statLabelStyle = (theme) => ({
+  margin: 0,
+  fontSize: '12px',
+  color: theme?.muted || '#9ca3af',
+  fontWeight: '700',
 });
 
 const styles = {
