@@ -35,6 +35,16 @@ function NotificationBell({ theme }) {
     }
   };
 
+  const toggleOpen = () => {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+
+    // ✅ Bell open hote hi latest notifications fetch
+    if (nextOpen) {
+      fetchNotifications();
+    }
+  };
+
   const markAsRead = async (notificationId) => {
     try {
       if (!token) return;
@@ -83,7 +93,7 @@ function NotificationBell({ theme }) {
 
     const interval = setInterval(() => {
       fetchNotifications();
-    }, 30000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -123,7 +133,7 @@ function NotificationBell({ theme }) {
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={toggleOpen}
         style={{
           position: 'relative',
           border: 'none',
@@ -169,7 +179,7 @@ function NotificationBell({ theme }) {
             position: 'absolute',
             right: 0,
             top: '48px',
-            width: '340px',
+            width: '360px',
             maxHeight: '430px',
             overflowY: 'auto',
             background: theme?.card || '#111827',
@@ -186,26 +196,45 @@ function NotificationBell({ theme }) {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              gap: '8px',
               marginBottom: '10px',
             }}
           >
             <h3 style={{ margin: 0, fontSize: '16px' }}>Notifications</h3>
 
-            {unreadCount > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
-                onClick={markAllAsRead}
+                onClick={fetchNotifications}
+                disabled={loading}
                 style={{
                   border: 'none',
                   background: 'transparent',
                   color: theme?.primary || '#38bdf8',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   fontSize: '12px',
-                  fontWeight: '600',
+                  fontWeight: '700',
+                  opacity: loading ? 0.6 : 1,
                 }}
               >
-                Mark all read
+                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
-            )}
+
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: theme?.primary || '#38bdf8',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                  }}
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
 
           {loading && notifications.length === 0 && (
