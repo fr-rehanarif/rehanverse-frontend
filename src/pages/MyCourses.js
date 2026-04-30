@@ -9,6 +9,8 @@ import API from '../api';
 
 function MyCourses() {
   const [courses, setCourses] = useState([]);
+  const [liveCounts, setLiveCounts] = useState({});
+
   const theme = useTheme();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -19,13 +21,50 @@ function MyCourses() {
       return;
     }
 
-    axios
-      .get(`${API}/api/enroll/my/courses`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setCourses(res.data))
-      .catch((err) => console.log(err));
+    fetchMyCourses();
+    // eslint-disable-next-line
   }, [token, navigate]);
+
+  const fetchMyCourses = async () => {
+    try {
+      const res = await axios.get(`${API}/api/enroll/my/courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setCourses(res.data);
+      fetchLiveCounts(res.data);
+    } catch (err) {
+      console.log('MY COURSES FETCH ERROR:', err);
+    }
+  };
+
+  const fetchLiveCounts = async (courseList) => {
+    try {
+      const counts = {};
+
+      await Promise.all(
+        courseList.map(async (course) => {
+          try {
+            const res = await axios.get(
+              `${API}/api/live-classes/course/${course._id}`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+
+            counts[course._id] = res.data?.length || 0;
+          } catch (err) {
+            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err);
+            counts[course._id] = 0;
+          }
+        })
+      );
+
+      setLiveCounts(counts);
+    } catch (err) {
+      console.log('LIVE COUNTS ERROR:', err);
+    }
+  };
 
   return (
     <div
@@ -48,6 +87,7 @@ function MyCourses() {
             >
               🎒 Our Courses
             </h2>
+
             <p
               style={{
                 color: theme.muted,
@@ -55,7 +95,7 @@ function MyCourses() {
                 fontSize: '1.05rem',
               }}
             >
-              Courses you are enrolled in 
+              Courses you are enrolled in
             </p>
           </div>
         </Reveal>
@@ -94,6 +134,7 @@ function MyCourses() {
                 >
                   Total Courses
                 </p>
+
                 <h3
                   style={{
                     color: theme.text,
@@ -130,6 +171,7 @@ function MyCourses() {
                 >
                   Learning Status
                 </p>
+
                 <h3
                   style={{
                     color: theme.text,
@@ -149,6 +191,7 @@ function MyCourses() {
           <Reveal>
             <div style={{ textAlign: 'center', marginTop: '80px' }}>
               <p style={{ fontSize: '48px', marginBottom: '10px' }}>📭</p>
+
               <p
                 style={{
                   color: theme.muted,
@@ -275,6 +318,7 @@ function MyCourses() {
                       >
                         📹 {course.videos?.length || 0} videos
                       </span>
+
                       <span
                         style={{
                           fontSize: '13px',
@@ -283,6 +327,19 @@ function MyCourses() {
                         }}
                       >
                         📄 {course.pdfs?.length || 0} PDFs
+                      </span>
+
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          color:
+                            (liveCounts[course._id] || 0) > 0
+                              ? '#f87171'
+                              : theme.muted,
+                          fontWeight: (liveCounts[course._id] || 0) > 0 ? '800' : '500',
+                        }}
+                      >
+                        🔴 {liveCounts[course._id] || 0} Live Classes
                       </span>
                     </div>
 
