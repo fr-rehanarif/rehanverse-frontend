@@ -42,7 +42,7 @@ function Footer() {
             </p>
 
             <p style={{ color: theme.muted, margin: '8px 0' }}>
-              📱 9654988149
+              📱 Join WhatsApp Channel
             </p>
           </div>
 
@@ -60,12 +60,12 @@ function Footer() {
             </a>
 
             <a
-              href="https://discord.gg/YOUR_SERVER"
+              href="https://chat.whatsapp.com/HNuaMVaLxx062jr8QfdcJi"
               target="_blank"
               rel="noreferrer"
               style={styles.link(theme)}
             >
-              💬 Discord
+              💬 WhatsApp
             </a>
           </div>
 
@@ -78,7 +78,7 @@ function Footer() {
             </p>
 
             <p style={{ color: theme.muted, margin: '8px 0' }}>
-              Tested by <span style={{ color: theme.primary }}>Farhan Ansari</span>
+              Trusted by <span style={{ color: theme.primary }}>VERSE GANG</span>
             </p>
           </div>
         </div>
