@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import API from '../api';
 import SecurityLogsPanel from '../components/SecurityLogsPanel';
+import AdminNotificationSender from '../components/AdminNotificationSender';
 
 function AdminPanel() {
   const theme = useTheme();
@@ -37,14 +38,14 @@ function AdminPanel() {
   const [pdfFile, setPdfFile] = useState(null);
   const [liveClasses, setLiveClasses] = useState([]);
 
- const [liveForm, setLiveForm] = useState({
-   course: '',
-   title: '',
-   description: '',
-   liveUrl: '',
-   scheduledAt: '',
-   durationMinutes: 60,
- });
+  const [liveForm, setLiveForm] = useState({
+    course: '',
+    title: '',
+    description: '',
+    liveUrl: '',
+    scheduledAt: '',
+    durationMinutes: 60,
+  });
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -204,48 +205,49 @@ function AdminPanel() {
   };
 
   const addPdf = async () => {
-  if (!form.pdfTitle || !pdfFile) {
-    setMsg('❌ PDF title aur PDF file dono zaroori hain!');
-    setTimeout(() => setMsg(''), 3000);
-    return;
-  }
+    if (!form.pdfTitle || !pdfFile) {
+      setMsg('❌ PDF title aur PDF file dono zaroori hain!');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
 
-  try {
-    setMsg('⏳ Uploading + watermarking PDF...');
+    try {
+      setMsg('⏳ Uploading + watermarking PDF...');
 
-    const data = new FormData();
-    data.append('pdf', pdfFile);
+      const data = new FormData();
+      data.append('pdf', pdfFile);
 
-    const res = await axios.post(`${API}/api/upload/pdf`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+      const res = await axios.post(`${API}/api/upload/pdf`, data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
-    setPdfs([
-      ...pdfs,
-      {
-        title: form.pdfTitle,
-        url: res.data.url,
-        filename: res.data.filename,
-      },
-    ]);
+      setPdfs([
+        ...pdfs,
+        {
+          title: form.pdfTitle,
+          url: res.data.url,
+          filename: res.data.filename,
+        },
+      ]);
 
-    setForm({ ...form, pdfTitle: '', pdfUrl: '' });
-    setPdfFile(null);
+      setForm({ ...form, pdfTitle: '', pdfUrl: '' });
+      setPdfFile(null);
 
-    const fileInput = document.getElementById('pdfFileInput');
-    if (fileInput) fileInput.value = '';
+      const fileInput = document.getElementById('pdfFileInput');
+      if (fileInput) fileInput.value = '';
 
-    setMsg('✅ PDF uploaded with watermark to Supabase!');
-    setTimeout(() => setMsg(''), 3000);
-  } catch (err) {
-    console.log('PDF UPLOAD ERROR:', err);
-    setMsg('❌ PDF upload failed: ' + (err.response?.data?.message || err.message));
-    setTimeout(() => setMsg(''), 3000);
-  }
-};
+      setMsg('✅ PDF uploaded with watermark to Supabase!');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.log('PDF UPLOAD ERROR:', err);
+      setMsg('❌ PDF upload failed: ' + (err.response?.data?.message || err.message));
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!form.title || !form.description) {
       setMsg('❌ Title aur Description zaroori hai!');
@@ -296,111 +298,111 @@ function AdminPanel() {
   };
 
   const fetchLiveClasses = async (courseId) => {
-  if (!courseId) {
-    setLiveClasses([]);
-    return;
-  }
+    if (!courseId) {
+      setLiveClasses([]);
+      return;
+    }
 
-  try {
-    const res = await axios.get(`${API}/api/live-classes/course/${courseId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      const res = await axios.get(`${API}/api/live-classes/course/${courseId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    setLiveClasses(res.data);
-  } catch (err) {
-    console.log('LIVE CLASSES FETCH ERROR:', err);
-    setMsg('❌ Live classes load nahi hui');
-    setTimeout(() => setMsg(''), 3000);
-  }
-};
+      setLiveClasses(res.data);
+    } catch (err) {
+      console.log('LIVE CLASSES FETCH ERROR:', err);
+      setMsg('❌ Live classes load nahi hui');
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
 
-const createLiveClass = async () => {
-  if (!liveForm.course || !liveForm.title || !liveForm.liveUrl || !liveForm.scheduledAt) {
-    setMsg('❌ Course, title, live link aur date/time zaroori hai!');
-    setTimeout(() => setMsg(''), 3000);
-    return;
-  }
+  const createLiveClass = async () => {
+    if (!liveForm.course || !liveForm.title || !liveForm.liveUrl || !liveForm.scheduledAt) {
+      setMsg('❌ Course, title, live link aur date/time zaroori hai!');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
 
-  try {
-    const payload = {
-      course: liveForm.course,
-      title: liveForm.title,
-      description: liveForm.description,
-      liveUrl: liveForm.liveUrl,
-      scheduledAt: new Date(liveForm.scheduledAt).toISOString(),
-      durationMinutes: Number(liveForm.durationMinutes) || 60,
-    };
+    try {
+      const payload = {
+        course: liveForm.course,
+        title: liveForm.title,
+        description: liveForm.description,
+        liveUrl: liveForm.liveUrl,
+        scheduledAt: new Date(liveForm.scheduledAt).toISOString(),
+        durationMinutes: Number(liveForm.durationMinutes) || 60,
+      };
 
-    const res = await axios.post(`${API}/api/live-classes`, payload, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      const res = await axios.post(`${API}/api/live-classes`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    setMsg('✅ ' + (res.data.message || 'Live class created!'));
+      setMsg('✅ ' + (res.data.message || 'Live class created!'));
 
-    setLiveForm({
-      ...liveForm,
-      title: '',
-      description: '',
-      liveUrl: '',
-      scheduledAt: '',
-      durationMinutes: 60,
-    });
+      setLiveForm({
+        ...liveForm,
+        title: '',
+        description: '',
+        liveUrl: '',
+        scheduledAt: '',
+        durationMinutes: 60,
+      });
 
-    fetchLiveClasses(liveForm.course);
+      fetchLiveClasses(liveForm.course);
 
-    setTimeout(() => setMsg(''), 3000);
-  } catch (err) {
-    console.log('CREATE LIVE CLASS ERROR:', err);
-    setMsg('❌ ' + (err.response?.data?.message || 'Live class create failed'));
-    setTimeout(() => setMsg(''), 3000);
-  }
-};
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.log('CREATE LIVE CLASS ERROR:', err);
+      setMsg('❌ ' + (err.response?.data?.message || 'Live class create failed'));
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
 
-const deleteLiveClass = async (id) => {
-  if (!window.confirm('Ye live class delete karni hai?')) return;
+  const deleteLiveClass = async (id) => {
+    if (!window.confirm('Ye live class delete karni hai?')) return;
 
-  try {
-    await axios.delete(`${API}/api/live-classes/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      await axios.delete(`${API}/api/live-classes/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    setMsg('✅ Live class deleted!');
-    fetchLiveClasses(liveForm.course);
-    setTimeout(() => setMsg(''), 3000);
-  } catch (err) {
-    console.log('DELETE LIVE CLASS ERROR:', err);
-    setMsg('❌ ' + (err.response?.data?.message || 'Live class delete failed'));
-    setTimeout(() => setMsg(''), 3000);
-  }
-};
+      setMsg('✅ Live class deleted!');
+      fetchLiveClasses(liveForm.course);
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.log('DELETE LIVE CLASS ERROR:', err);
+      setMsg('❌ ' + (err.response?.data?.message || 'Live class delete failed'));
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
 
-const getLiveStatus = (scheduledAt, durationMinutes) => {
-  const now = new Date();
-  const start = new Date(scheduledAt);
-  const end = new Date(start.getTime() + (durationMinutes || 60) * 60000);
+  const getLiveStatus = (scheduledAt, durationMinutes) => {
+    const now = new Date();
+    const start = new Date(scheduledAt);
+    const end = new Date(start.getTime() + (durationMinutes || 60) * 60000);
 
-  if (now < start) return 'Upcoming';
-  if (now >= start && now <= end) return 'Live Now';
-  return 'Ended';
-};
+    if (now < start) return 'Upcoming';
+    if (now >= start && now <= end) return 'Live Now';
+    return 'Ended';
+  };
 
-const getPaymentScreenshot = (payment) => {
-  const proof =
-    payment.screenshot ||
-    payment.screenshotUrl ||
-    payment.paymentScreenshot ||
-    payment.proof ||
-    payment.proofImage ||
-    payment.proofUrl ||
-    payment.image ||
-    payment.imageUrl;
+  const getPaymentScreenshot = (payment) => {
+    const proof =
+      payment.screenshot ||
+      payment.screenshotUrl ||
+      payment.paymentScreenshot ||
+      payment.proof ||
+      payment.proofImage ||
+      payment.proofUrl ||
+      payment.image ||
+      payment.imageUrl;
 
-  if (!proof) return '';
+    if (!proof) return '';
 
-  if (proof.startsWith('http')) return proof;
+    if (proof.startsWith('http')) return proof;
 
-  return `${API}${proof.startsWith('/') ? proof : `/${proof}`}`;
-};
+    return `${API}${proof.startsWith('/') ? proof : `/${proof}`}`;
+  };
 
   const inputStyle = {
     width: '100%',
@@ -483,7 +485,11 @@ const getPaymentScreenshot = (payment) => {
 
           <button onClick={() => setActiveTab('live')} style={tabStyle('live')}>
             🔴 Live Classes
-           </button>
+          </button>
+
+          <button onClick={() => setActiveTab('notifications')} style={tabStyle('notifications')}>
+            🔔 Notifications
+          </button>
 
           <button onClick={() => setActiveTab('activity')} style={tabStyle('activity')}>
             🕶️ Activity Logs
@@ -1136,463 +1142,469 @@ const getPaymentScreenshot = (payment) => {
         )}
 
         {activeTab === 'payments' && (
-  <div>
-    <h3 style={{ color: theme.text, marginBottom: '20px' }}>
-      💸 Payment Requests ({payments.length})
-    </h3>
+          <div>
+            <h3 style={{ color: theme.text, marginBottom: '20px' }}>
+              💸 Payment Requests ({payments.length})
+            </h3>
 
-    {payments.length === 0 ? (
-      <p style={{ color: theme.muted }}>Abhi koi payment request nahi aayi!</p>
-    ) : (
-      <div style={{ display: 'grid', gap: '16px' }}>
-        {payments.map((payment) => {
-          const screenshotUrl = getPaymentScreenshot(payment);
+            {payments.length === 0 ? (
+              <p style={{ color: theme.muted }}>Abhi koi payment request nahi aayi!</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {payments.map((payment) => {
+                  const screenshotUrl = getPaymentScreenshot(payment);
 
-          return (
+                  return (
+                    <div
+                      key={payment._id}
+                      style={{
+                        background: theme.card,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: theme.radius,
+                        padding: '20px',
+                        boxShadow: theme.shadow,
+                        backdropFilter: theme.glass,
+                      }}
+                    >
+                      <h4 style={{ color: theme.text, marginTop: 0 }}>
+                        {payment.course?.title || 'Course deleted'}
+                      </h4>
+
+                      <p style={{ color: theme.muted }}>
+                        <strong style={{ color: theme.text }}>User:</strong>{' '}
+                        {payment.user?.name || 'Unknown'}
+                      </p>
+
+                      <p style={{ color: theme.muted }}>
+                        <strong style={{ color: theme.text }}>Email:</strong>{' '}
+                        {payment.user?.email || 'No email'}
+                      </p>
+
+                      <p style={{ color: theme.muted }}>
+                        <strong style={{ color: theme.text }}>Status:</strong>{' '}
+                        <span
+                          style={{
+                            color:
+                              payment.status === 'approved'
+                                ? theme.success
+                                : payment.status === 'rejected'
+                                ? theme.danger
+                                : theme.warning,
+                            fontWeight: '800',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {payment.status}
+                        </span>
+                      </p>
+
+                      <div
+                        style={{
+                          marginTop: '16px',
+                          padding: '14px',
+                          background: theme.bgSecondary,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '14px',
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: theme.text,
+                            fontWeight: '800',
+                            marginTop: 0,
+                            marginBottom: '10px',
+                          }}
+                        >
+                          🧾 Payment Screenshot
+                        </p>
+
+                        {screenshotUrl ? (
+                          <div>
+                            <a href={screenshotUrl} target="_blank" rel="noreferrer">
+                              <img
+                                src={screenshotUrl}
+                                alt="Payment Screenshot"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const next = e.currentTarget.nextSibling;
+                                  if (next) next.style.display = 'block';
+                                }}
+                                style={{
+                                  width: '260px',
+                                  maxWidth: '100%',
+                                  maxHeight: '360px',
+                                  objectFit: 'cover',
+                                  borderRadius: '14px',
+                                  border: `1px solid ${theme.primary}`,
+                                  boxShadow: theme.shadow,
+                                  cursor: 'pointer',
+                                  display: 'block',
+                                }}
+                              />
+
+                              <p
+                                style={{
+                                  display: 'none',
+                                  color: theme.danger,
+                                  fontSize: '13px',
+                                  fontWeight: '700',
+                                  marginTop: '8px',
+                                }}
+                              >
+                                ❌ Image load nahi hui. Backend static uploads ya URL issue hai.
+                              </p>
+                            </a>
+
+                            <button
+                              onClick={() => window.open(screenshotUrl, '_blank')}
+                              style={{
+                                marginTop: '12px',
+                                padding: '9px 14px',
+                                background: theme.primary,
+                                color: theme.buttonText,
+                                border: 'none',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontWeight: '700',
+                              }}
+                            >
+                              🔍 Open Screenshot
+                            </button>
+
+                            <p
+                              style={{
+                                color: theme.muted,
+                                fontSize: '12px',
+                                marginTop: '8px',
+                                wordBreak: 'break-all',
+                              }}
+                            >
+                              URL: {screenshotUrl}
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p
+                              style={{
+                                color: theme.danger,
+                                fontWeight: '800',
+                                marginBottom: '8px',
+                              }}
+                            >
+                              ❌ Screenshot path backend se nahi aa raha
+                            </p>
+
+                            <p
+                              style={{
+                                color: theme.muted,
+                                fontSize: '13px',
+                                margin: 0,
+                              }}
+                            >
+                              Iska matlab paymentRoutes.js ya Payment model me screenshot ka path save nahi ho raha.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {payment.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                          <button
+                            onClick={() => approvePayment(payment._id)}
+                            style={{
+                              padding: '10px 18px',
+                              background: theme.success,
+                              color: theme.buttonText,
+                              border: 'none',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                            }}
+                          >
+                            ✅ Approve
+                          </button>
+
+                          <button
+                            onClick={() => rejectPayment(payment._id)}
+                            style={{
+                              padding: '10px 18px',
+                              background: theme.danger,
+                              color: theme.buttonText,
+                              border: 'none',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                            }}
+                          >
+                            ❌ Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'live' && (
+          <div>
             <div
-              key={payment._id}
               style={{
                 background: theme.card,
                 border: `1px solid ${theme.border}`,
                 borderRadius: theme.radius,
-                padding: '20px',
+                padding: '32px',
+                marginBottom: '32px',
                 boxShadow: theme.shadow,
                 backdropFilter: theme.glass,
               }}
             >
-              <h4 style={{ color: theme.text, marginTop: 0 }}>
-                {payment.course?.title || 'Course deleted'}
-              </h4>
+              <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
+                🔴 Add Live Class
+              </h3>
 
-              <p style={{ color: theme.muted }}>
-                <strong style={{ color: theme.text }}>User:</strong>{' '}
-                {payment.user?.name || 'Unknown'}
+              <p style={{ color: theme.muted, marginTop: 0, marginBottom: '22px' }}>
+                Course select karo, Google Meet / Zoom / YouTube Live link add karo, aur students ko class dikh jayegi.
               </p>
 
-              <p style={{ color: theme.muted }}>
-                <strong style={{ color: theme.text }}>Email:</strong>{' '}
-                {payment.user?.email || 'No email'}
-              </p>
+              <select
+                style={inputStyle}
+                value={liveForm.course}
+                onChange={(e) => {
+                  setLiveForm({ ...liveForm, course: e.target.value });
+                  fetchLiveClasses(e.target.value);
+                }}
+              >
+                <option value="">Select Course *</option>
+                {courses.map((course) => (
+                  <option key={course._id} value={course._id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
 
-              <p style={{ color: theme.muted }}>
-                <strong style={{ color: theme.text }}>Status:</strong>{' '}
-                <span
-                  style={{
-                    color:
-                      payment.status === 'approved'
-                        ? theme.success
-                        : payment.status === 'rejected'
-                        ? theme.danger
-                        : theme.warning,
-                    fontWeight: '800',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {payment.status}
-                </span>
-              </p>
+              <input
+                style={inputStyle}
+                placeholder="Live Class Title *"
+                value={liveForm.title}
+                onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })}
+              />
+
+              <textarea
+                style={{ ...inputStyle, height: '85px', resize: 'vertical' }}
+                placeholder="Description optional"
+                value={liveForm.description}
+                onChange={(e) => setLiveForm({ ...liveForm, description: e.target.value })}
+              />
+
+              <input
+                style={inputStyle}
+                placeholder="Live Class Link *  Example: https://meet.google.com/..."
+                value={liveForm.liveUrl}
+                onChange={(e) => setLiveForm({ ...liveForm, liveUrl: e.target.value })}
+              />
 
               <div
                 style={{
-                  marginTop: '16px',
-                  padding: '14px',
-                  background: theme.bgSecondary,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: '14px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: '12px',
                 }}
               >
-                <p
-                  style={{
-                    color: theme.text,
-                    fontWeight: '800',
-                    marginTop: 0,
-                    marginBottom: '10px',
-                  }}
-                >
-                  🧾 Payment Screenshot
-                </p>
+                <input
+                  style={inputStyle}
+                  type="datetime-local"
+                  value={liveForm.scheduledAt}
+                  onChange={(e) => setLiveForm({ ...liveForm, scheduledAt: e.target.value })}
+                />
 
-                {screenshotUrl ? (
-                  <div>
-                    <a href={screenshotUrl} target="_blank" rel="noreferrer">
-                      <img
-                        src={screenshotUrl}
-                        alt="Payment Screenshot"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const next = e.currentTarget.nextSibling;
-                          if (next) next.style.display = 'block';
-                        }}
-                        style={{
-                          width: '260px',
-                          maxWidth: '100%',
-                          maxHeight: '360px',
-                          objectFit: 'cover',
-                          borderRadius: '14px',
-                          border: `1px solid ${theme.primary}`,
-                          boxShadow: theme.shadow,
-                          cursor: 'pointer',
-                          display: 'block',
-                        }}
-                      />
-
-                      <p
-                        style={{
-                          display: 'none',
-                          color: theme.danger,
-                          fontSize: '13px',
-                          fontWeight: '700',
-                          marginTop: '8px',
-                        }}
-                      >
-                        ❌ Image load nahi hui. Backend static uploads ya URL issue hai.
-                      </p>
-                    </a>
-
-                    <button
-                      onClick={() => window.open(screenshotUrl, '_blank')}
-                      style={{
-                        marginTop: '12px',
-                        padding: '9px 14px',
-                        background: theme.primary,
-                        color: theme.buttonText,
-                        border: 'none',
-                        borderRadius: '10px',
-                        cursor: 'pointer',
-                        fontWeight: '700',
-                      }}
-                    >
-                      🔍 Open Screenshot
-                    </button>
-
-                    <p
-                      style={{
-                        color: theme.muted,
-                        fontSize: '12px',
-                        marginTop: '8px',
-                        wordBreak: 'break-all',
-                      }}
-                    >
-                      URL: {screenshotUrl}
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <p
-                      style={{
-                        color: theme.danger,
-                        fontWeight: '800',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      ❌ Screenshot path backend se nahi aa raha
-                    </p>
-
-                    <p
-                      style={{
-                        color: theme.muted,
-                        fontSize: '13px',
-                        margin: 0,
-                      }}
-                    >
-                      Iska matlab paymentRoutes.js ya Payment model me screenshot ka path save nahi ho raha.
-                    </p>
-                  </div>
-                )}
+                <input
+                  style={inputStyle}
+                  type="number"
+                  placeholder="Duration in minutes"
+                  value={liveForm.durationMinutes}
+                  onChange={(e) => setLiveForm({ ...liveForm, durationMinutes: e.target.value })}
+                />
               </div>
 
-              {payment.status === 'pending' && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                  <button
-                    onClick={() => approvePayment(payment._id)}
-                    style={{
-                      padding: '10px 18px',
-                      background: theme.success,
-                      color: theme.buttonText,
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                    }}
-                  >
-                    ✅ Approve
-                  </button>
+              <button
+                onClick={createLiveClass}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: 'linear-gradient(135deg, #ef4444, #7f1d1d)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  fontWeight: '800',
+                  boxShadow: theme.shadow,
+                }}
+              >
+                🔴 Create Live Class
+              </button>
+            </div>
 
-                  <button
-                    onClick={() => rejectPayment(payment._id)}
-                    style={{
-                      padding: '10px 18px',
-                      background: theme.danger,
-                      color: theme.buttonText,
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                    }}
-                  >
-                    ❌ Reject
-                  </button>
+            <div>
+              <h3 style={{ color: theme.text, marginBottom: '16px' }}>
+                📡 Live Classes {liveForm.course ? `(${liveClasses.length})` : ''}
+              </h3>
+
+              {!liveForm.course ? (
+                <p style={{ color: theme.muted }}>Pehle course select karo live classes dekhne ke liye.</p>
+              ) : liveClasses.length === 0 ? (
+                <div
+                  style={{
+                    padding: '18px',
+                    background: theme.card,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '14px',
+                    color: theme.muted,
+                  }}
+                >
+                  Abhi is course mein koi live class nahi hai.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '14px' }}>
+                  {liveClasses.map((live) => {
+                    const status = getLiveStatus(live.scheduledAt, live.durationMinutes);
+
+                    return (
+                      <div
+                        key={live._id}
+                        style={{
+                          background: theme.card,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '16px',
+                          padding: '20px',
+                          boxShadow: theme.shadow,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: '16px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: '260px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              flexWrap: 'wrap',
+                              marginBottom: '8px',
+                            }}
+                          >
+                            <h4 style={{ color: theme.text, margin: 0 }}>{live.title}</h4>
+
+                            <span
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '999px',
+                                fontSize: '12px',
+                                fontWeight: '800',
+                                background:
+                                  status === 'Live Now'
+                                    ? 'rgba(239,68,68,0.15)'
+                                    : status === 'Upcoming'
+                                    ? 'rgba(59,130,246,0.15)'
+                                    : 'rgba(148,163,184,0.15)',
+                                color:
+                                  status === 'Live Now'
+                                    ? '#fca5a5'
+                                    : status === 'Upcoming'
+                                    ? '#93c5fd'
+                                    : theme.muted,
+                                border: `1px solid ${theme.border}`,
+                              }}
+                            >
+                              {status}
+                            </span>
+                          </div>
+
+                          {live.description && (
+                            <p style={{ color: theme.muted, fontSize: '13px', marginBottom: '8px' }}>
+                              {live.description}
+                            </p>
+                          )}
+
+                          <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                            📅{' '}
+                            {new Date(live.scheduledAt).toLocaleString('en-IN', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </p>
+
+                          <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                            ⏱ Duration: {live.durationMinutes || 60} minutes
+                          </p>
+
+                          <p
+                            style={{
+                              color: theme.muted,
+                              fontSize: '12px',
+                              margin: '8px 0 0',
+                              wordBreak: 'break-all',
+                            }}
+                          >
+                            🔗 {live.liveUrl}
+                          </p>
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: '8px',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <button
+                            onClick={() => window.open(live.liveUrl, '_blank')}
+                            style={{
+                              padding: '9px 14px',
+                              background: theme.primary,
+                              color: theme.buttonText,
+                              border: 'none',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              fontWeight: '700',
+                            }}
+                          >
+                            Open
+                          </button>
+
+                          <button
+                            onClick={() => deleteLiveClass(live._id)}
+                            style={{
+                              padding: '9px 14px',
+                              background: theme.danger,
+                              color: theme.buttonText,
+                              border: 'none',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              fontWeight: '700',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
-    )}
-  </div>
-)}
-        {activeTab === 'live' && (
-  <div>
-    <div
-      style={{
-        background: theme.card,
-        border: `1px solid ${theme.border}`,
-        borderRadius: theme.radius,
-        padding: '32px',
-        marginBottom: '32px',
-        boxShadow: theme.shadow,
-        backdropFilter: theme.glass,
-      }}
-    >
-      <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
-        🔴 Add Live Class
-      </h3>
+          </div>
+        )}
 
-      <p style={{ color: theme.muted, marginTop: 0, marginBottom: '22px' }}>
-        Course select karo, Google Meet / Zoom / YouTube Live link add karo, aur students ko class dikh jayegi.
-      </p>
+        {activeTab === 'notifications' && (
+          <AdminNotificationSender theme={theme} />
+        )}
 
-      <select
-        style={inputStyle}
-        value={liveForm.course}
-        onChange={(e) => {
-          setLiveForm({ ...liveForm, course: e.target.value });
-          fetchLiveClasses(e.target.value);
-        }}
-      >
-        <option value="">Select Course *</option>
-        {courses.map((course) => (
-          <option key={course._id} value={course._id}>
-            {course.title}
-          </option>
-        ))}
-      </select>
-
-      <input
-        style={inputStyle}
-        placeholder="Live Class Title *"
-        value={liveForm.title}
-        onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })}
-      />
-
-      <textarea
-        style={{ ...inputStyle, height: '85px', resize: 'vertical' }}
-        placeholder="Description optional"
-        value={liveForm.description}
-        onChange={(e) => setLiveForm({ ...liveForm, description: e.target.value })}
-      />
-
-      <input
-        style={inputStyle}
-        placeholder="Live Class Link *  Example: https://meet.google.com/..."
-        value={liveForm.liveUrl}
-        onChange={(e) => setLiveForm({ ...liveForm, liveUrl: e.target.value })}
-      />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '12px',
-        }}
-      >
-        <input
-          style={inputStyle}
-          type="datetime-local"
-          value={liveForm.scheduledAt}
-          onChange={(e) => setLiveForm({ ...liveForm, scheduledAt: e.target.value })}
-        />
-
-        <input
-          style={inputStyle}
-          type="number"
-          placeholder="Duration in minutes"
-          value={liveForm.durationMinutes}
-          onChange={(e) => setLiveForm({ ...liveForm, durationMinutes: e.target.value })}
-        />
-      </div>
-
-      <button
-        onClick={createLiveClass}
-        style={{
-          width: '100%',
-          padding: '14px',
-          background: 'linear-gradient(135deg, #ef4444, #7f1d1d)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '12px',
-          fontSize: '16px',
-          cursor: 'pointer',
-          fontWeight: '800',
-          boxShadow: theme.shadow,
-        }}
-      >
-        🔴 Create Live Class
-      </button>
-    </div>
-
-    <div>
-      <h3 style={{ color: theme.text, marginBottom: '16px' }}>
-        📡 Live Classes {liveForm.course ? `(${liveClasses.length})` : ''}
-      </h3>
-
-      {!liveForm.course ? (
-        <p style={{ color: theme.muted }}>Pehle course select karo live classes dekhne ke liye.</p>
-      ) : liveClasses.length === 0 ? (
-        <div
-          style={{
-            padding: '18px',
-            background: theme.card,
-            border: `1px solid ${theme.border}`,
-            borderRadius: '14px',
-            color: theme.muted,
-          }}
-        >
-          Abhi is course mein koi live class nahi hai.
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '14px' }}>
-          {liveClasses.map((live) => {
-            const status = getLiveStatus(live.scheduledAt, live.durationMinutes);
-
-            return (
-              <div
-                key={live._id}
-                style={{
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: '16px',
-                  padding: '20px',
-                  boxShadow: theme.shadow,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: '260px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      flexWrap: 'wrap',
-                      marginBottom: '8px',
-                    }}
-                  >
-                    <h4 style={{ color: theme.text, margin: 0 }}>{live.title}</h4>
-
-                    <span
-                      style={{
-                        padding: '5px 10px',
-                        borderRadius: '999px',
-                        fontSize: '12px',
-                        fontWeight: '800',
-                        background:
-                          status === 'Live Now'
-                            ? 'rgba(239,68,68,0.15)'
-                            : status === 'Upcoming'
-                            ? 'rgba(59,130,246,0.15)'
-                            : 'rgba(148,163,184,0.15)',
-                        color:
-                          status === 'Live Now'
-                            ? '#fca5a5'
-                            : status === 'Upcoming'
-                            ? '#93c5fd'
-                            : theme.muted,
-                        border: `1px solid ${theme.border}`,
-                      }}
-                    >
-                      {status}
-                    </span>
-                  </div>
-
-                  {live.description && (
-                    <p style={{ color: theme.muted, fontSize: '13px', marginBottom: '8px' }}>
-                      {live.description}
-                    </p>
-                  )}
-
-                  <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
-                    📅{' '}
-                    {new Date(live.scheduledAt).toLocaleString('en-IN', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
-                  </p>
-
-                  <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
-                    ⏱ Duration: {live.durationMinutes || 60} minutes
-                  </p>
-
-                  <p
-                    style={{
-                      color: theme.muted,
-                      fontSize: '12px',
-                      margin: '8px 0 0',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    🔗 {live.liveUrl}
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <button
-                    onClick={() => window.open(live.liveUrl, '_blank')}
-                    style={{
-                      padding: '9px 14px',
-                      background: theme.primary,
-                      color: theme.buttonText,
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      fontWeight: '700',
-                    }}
-                  >
-                    Open
-                  </button>
-
-                  <button
-                    onClick={() => deleteLiveClass(live._id)}
-                    style={{
-                      padding: '9px 14px',
-                      background: theme.danger,
-                      color: theme.buttonText,
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      fontWeight: '700',
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  </div>
-)}
         {activeTab === 'activity' && (
           <SecurityLogsPanel theme={theme} />
         )}
