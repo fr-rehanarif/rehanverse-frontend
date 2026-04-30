@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import API from '../api';
@@ -36,6 +35,16 @@ function AdminPanel() {
   const [videos, setVideos] = useState([]);
   const [pdfs, setPdfs] = useState([]);
   const [pdfFile, setPdfFile] = useState(null);
+  const [liveClasses, setLiveClasses] = useState([]);
+
+ const [liveForm, setLiveForm] = useState({
+   course: '',
+   title: '',
+   description: '',
+   liveUrl: '',
+   scheduledAt: '',
+   durationMinutes: 60,
+ });
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -286,6 +295,95 @@ function AdminPanel() {
     }
   };
 
+  const fetchLiveClasses = async (courseId) => {
+  if (!courseId) {
+    setLiveClasses([]);
+    return;
+  }
+
+  try {
+    const res = await axios.get(`${API}/api/live-classes/course/${courseId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setLiveClasses(res.data);
+  } catch (err) {
+    console.log('LIVE CLASSES FETCH ERROR:', err);
+    setMsg('❌ Live classes load nahi hui');
+    setTimeout(() => setMsg(''), 3000);
+  }
+};
+
+const createLiveClass = async () => {
+  if (!liveForm.course || !liveForm.title || !liveForm.liveUrl || !liveForm.scheduledAt) {
+    setMsg('❌ Course, title, live link aur date/time zaroori hai!');
+    setTimeout(() => setMsg(''), 3000);
+    return;
+  }
+
+  try {
+    const payload = {
+      course: liveForm.course,
+      title: liveForm.title,
+      description: liveForm.description,
+      liveUrl: liveForm.liveUrl,
+      scheduledAt: new Date(liveForm.scheduledAt).toISOString(),
+      durationMinutes: Number(liveForm.durationMinutes) || 60,
+    };
+
+    const res = await axios.post(`${API}/api/live-classes`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setMsg('✅ ' + (res.data.message || 'Live class created!'));
+
+    setLiveForm({
+      ...liveForm,
+      title: '',
+      description: '',
+      liveUrl: '',
+      scheduledAt: '',
+      durationMinutes: 60,
+    });
+
+    fetchLiveClasses(liveForm.course);
+
+    setTimeout(() => setMsg(''), 3000);
+  } catch (err) {
+    console.log('CREATE LIVE CLASS ERROR:', err);
+    setMsg('❌ ' + (err.response?.data?.message || 'Live class create failed'));
+    setTimeout(() => setMsg(''), 3000);
+  }
+};
+
+const deleteLiveClass = async (id) => {
+  if (!window.confirm('Ye live class delete karni hai?')) return;
+
+  try {
+    await axios.delete(`${API}/api/live-classes/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setMsg('✅ Live class deleted!');
+    fetchLiveClasses(liveForm.course);
+    setTimeout(() => setMsg(''), 3000);
+  } catch (err) {
+    console.log('DELETE LIVE CLASS ERROR:', err);
+    setMsg('❌ ' + (err.response?.data?.message || 'Live class delete failed'));
+    setTimeout(() => setMsg(''), 3000);
+  }
+};
+
+const getLiveStatus = (scheduledAt, durationMinutes) => {
+  const now = new Date();
+  const start = new Date(scheduledAt);
+  const end = new Date(start.getTime() + (durationMinutes || 60) * 60000);
+
+  if (now < start) return 'Upcoming';
+  if (now >= start && now <= end) return 'Live Now';
+  return 'Ended';
+};
+
   const inputStyle = {
     width: '100%',
     padding: '11px',
@@ -364,6 +462,10 @@ function AdminPanel() {
           <button onClick={() => setActiveTab('payments')} style={tabStyle('payments')}>
             💸 Payments ({payments.filter((p) => p.status === 'pending').length})
           </button>
+
+          <button onClick={() => setActiveTab('live')} style={tabStyle('live')}>
+            🔴 Live Classes
+           </button>
 
           <button onClick={() => setActiveTab('activity')} style={tabStyle('activity')}>
             🕶️ Activity Logs
@@ -1095,6 +1197,258 @@ function AdminPanel() {
             )}
           </div>
         )}
+        {activeTab === 'live' && (
+  <div>
+    <div
+      style={{
+        background: theme.card,
+        border: `1px solid ${theme.border}`,
+        borderRadius: theme.radius,
+        padding: '32px',
+        marginBottom: '32px',
+        boxShadow: theme.shadow,
+        backdropFilter: theme.glass,
+      }}
+    >
+      <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
+        🔴 Add Live Class
+      </h3>
+
+      <p style={{ color: theme.muted, marginTop: 0, marginBottom: '22px' }}>
+        Course select karo, Google Meet / Zoom / YouTube Live link add karo, aur students ko class dikh jayegi.
+      </p>
+
+      <select
+        style={inputStyle}
+        value={liveForm.course}
+        onChange={(e) => {
+          setLiveForm({ ...liveForm, course: e.target.value });
+          fetchLiveClasses(e.target.value);
+        }}
+      >
+        <option value="">Select Course *</option>
+        {courses.map((course) => (
+          <option key={course._id} value={course._id}>
+            {course.title}
+          </option>
+        ))}
+      </select>
+
+      <input
+        style={inputStyle}
+        placeholder="Live Class Title *"
+        value={liveForm.title}
+        onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })}
+      />
+
+      <textarea
+        style={{ ...inputStyle, height: '85px', resize: 'vertical' }}
+        placeholder="Description optional"
+        value={liveForm.description}
+        onChange={(e) => setLiveForm({ ...liveForm, description: e.target.value })}
+      />
+
+      <input
+        style={inputStyle}
+        placeholder="Live Class Link *  Example: https://meet.google.com/..."
+        value={liveForm.liveUrl}
+        onChange={(e) => setLiveForm({ ...liveForm, liveUrl: e.target.value })}
+      />
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '12px',
+        }}
+      >
+        <input
+          style={inputStyle}
+          type="datetime-local"
+          value={liveForm.scheduledAt}
+          onChange={(e) => setLiveForm({ ...liveForm, scheduledAt: e.target.value })}
+        />
+
+        <input
+          style={inputStyle}
+          type="number"
+          placeholder="Duration in minutes"
+          value={liveForm.durationMinutes}
+          onChange={(e) => setLiveForm({ ...liveForm, durationMinutes: e.target.value })}
+        />
+      </div>
+
+      <button
+        onClick={createLiveClass}
+        style={{
+          width: '100%',
+          padding: '14px',
+          background: 'linear-gradient(135deg, #ef4444, #7f1d1d)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '12px',
+          fontSize: '16px',
+          cursor: 'pointer',
+          fontWeight: '800',
+          boxShadow: theme.shadow,
+        }}
+      >
+        🔴 Create Live Class
+      </button>
+    </div>
+
+    <div>
+      <h3 style={{ color: theme.text, marginBottom: '16px' }}>
+        📡 Live Classes {liveForm.course ? `(${liveClasses.length})` : ''}
+      </h3>
+
+      {!liveForm.course ? (
+        <p style={{ color: theme.muted }}>Pehle course select karo live classes dekhne ke liye.</p>
+      ) : liveClasses.length === 0 ? (
+        <div
+          style={{
+            padding: '18px',
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '14px',
+            color: theme.muted,
+          }}
+        >
+          Abhi is course mein koi live class nahi hai.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '14px' }}>
+          {liveClasses.map((live) => {
+            const status = getLiveStatus(live.scheduledAt, live.durationMinutes);
+
+            return (
+              <div
+                key={live._id}
+                style={{
+                  background: theme.card,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  boxShadow: theme.shadow,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: '260px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      flexWrap: 'wrap',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <h4 style={{ color: theme.text, margin: 0 }}>{live.title}</h4>
+
+                    <span
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        background:
+                          status === 'Live Now'
+                            ? 'rgba(239,68,68,0.15)'
+                            : status === 'Upcoming'
+                            ? 'rgba(59,130,246,0.15)'
+                            : 'rgba(148,163,184,0.15)',
+                        color:
+                          status === 'Live Now'
+                            ? '#fca5a5'
+                            : status === 'Upcoming'
+                            ? '#93c5fd'
+                            : theme.muted,
+                        border: `1px solid ${theme.border}`,
+                      }}
+                    >
+                      {status}
+                    </span>
+                  </div>
+
+                  {live.description && (
+                    <p style={{ color: theme.muted, fontSize: '13px', marginBottom: '8px' }}>
+                      {live.description}
+                    </p>
+                  )}
+
+                  <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                    📅{' '}
+                    {new Date(live.scheduledAt).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
+                  </p>
+
+                  <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                    ⏱ Duration: {live.durationMinutes || 60} minutes
+                  </p>
+
+                  <p
+                    style={{
+                      color: theme.muted,
+                      fontSize: '12px',
+                      margin: '8px 0 0',
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    🔗 {live.liveUrl}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    onClick={() => window.open(live.liveUrl, '_blank')}
+                    style={{
+                      padding: '9px 14px',
+                      background: theme.primary,
+                      color: theme.buttonText,
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontWeight: '700',
+                    }}
+                  >
+                    Open
+                  </button>
+
+                  <button
+                    onClick={() => deleteLiveClass(live._id)}
+                    style={{
+                      padding: '9px 14px',
+                      background: theme.danger,
+                      color: theme.buttonText,
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontWeight: '700',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+)}
         {activeTab === 'activity' && (
           <SecurityLogsPanel theme={theme} />
         )}

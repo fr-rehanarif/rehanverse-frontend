@@ -9,6 +9,7 @@ import PaymentBox from '../components/PaymentBox';
 import { motion } from 'framer-motion';
 import { Document, Page, pdfjs } from 'react-pdf';
 import logActivity from '../utils/logActivity';
+import LiveClassesBox from '../components/LiveClassesBox';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -19,7 +20,6 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
   const [numPages, setNumPages] = useState(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [pdfError, setPdfError] = useState('');
-  const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
     if (pdf?.title) {
@@ -51,7 +51,6 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
           body: JSON.stringify({ pdfUrl: pdf.url }),
         });
 
-
         if (!res.ok) {
           throw new Error(`PDF fetch failed: ${res.status}`);
         }
@@ -78,11 +77,14 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
   useEffect(() => {
     const blockKeys = (e) => {
       const key = e.key.toLowerCase();
+
       if ((e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) || key === 'f12') {
         e.preventDefault();
 
         logActivity(
-          `Blocked shortcut attempt: CTRL + ${key.toUpperCase()} | PDF: ${pdf?.title || 'Unknown PDF'}`,
+          `Blocked shortcut attempt: CTRL + ${key.toUpperCase()} | PDF: ${
+            pdf?.title || 'Unknown PDF'
+          }`,
           'SecurePDFViewer'
         );
       }
@@ -94,6 +96,7 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
 
   const block = (e) => {
     e.preventDefault();
+
     logActivity(
       `Blocked right-click/copy attempt | PDF: ${pdf?.title || 'Unknown PDF'}`,
       'SecurePDFViewer'
@@ -136,8 +139,9 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
         }}
       >
         <strong>📄 {pdf?.title || 'PDF'}</strong>
+
         <span style={{ color: theme.muted, fontSize: '13px' }}>
-          View only • Download disabled • Watermarked By REHAN 
+          View only • Download disabled • Watermarked By REHAN
         </span>
       </div>
 
@@ -158,7 +162,7 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
           padding: '20px',
         }}
       >
-        REHANVERSE • Protected Content 
+        REHANVERSE • Protected Content
       </div>
 
       {pdfError ? (
@@ -418,8 +422,13 @@ function CourseDetail() {
                       }}
                       allowFullScreen
                     />
+
                     <h3 style={{ marginTop: '14px' }}>{activeVideo.title}</h3>
                   </div>
+                )}
+
+                {activeTab === 'videos' && !activeVideo && (
+                  <p style={{ color: theme.muted }}>No videos available.</p>
                 )}
 
                 {activeTab === 'pdfs' && (
@@ -438,6 +447,9 @@ function CourseDetail() {
               </>
             )}
           </motion.div>
+
+          {/* ✅ LIVE CLASSES ADDED HERE */}
+          <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
 
           <div style={{ marginTop: '30px' }}>
             <Reviews courseId={id} />
