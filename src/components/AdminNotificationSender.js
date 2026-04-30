@@ -16,10 +16,54 @@ function AdminNotificationSender({ theme }) {
 
   const token = localStorage.getItem('token');
 
+  const templates = [
+    {
+      label: '🚀 New Course',
+      title: '🚀 New Course Launched',
+      message: 'A new premium course is now live on REHANVERSE. Check it out now!',
+      type: 'course',
+      targetType: 'all',
+    },
+    {
+      label: '🔴 Live Class',
+      title: '🔴 Live Class Alert',
+      message: 'Your live class has been scheduled. Join on time and do not miss it!',
+      type: 'live',
+      targetType: 'course',
+    },
+    {
+      label: '⚡ Offer',
+      title: '⚡ Limited Time Offer',
+      message: 'A special offer is live for a limited time. Enroll before it ends!',
+      type: 'offer',
+      targetType: 'all',
+    },
+    {
+      label: '📄 Notes Added',
+      title: '📄 New Notes Added',
+      message: 'New study notes/PDF have been added to your enrolled course.',
+      type: 'pdf',
+      targetType: 'course',
+    },
+    {
+      label: '🎥 Video Added',
+      title: '🎥 New Video Added',
+      message: 'A new video lecture has been added to your enrolled course.',
+      type: 'video',
+      targetType: 'course',
+    },
+    {
+      label: '✅ Payment Info',
+      title: '✅ Payment Update',
+      message: 'Your payment status has been updated. Please check your course access.',
+      type: 'payment',
+      targetType: 'all',
+    },
+  ];
+
   const fetchCourses = async () => {
     try {
       const res = await fetch(`${API}/api/courses`);
-
       const data = await res.json();
 
       if (res.ok && Array.isArray(data)) {
@@ -38,12 +82,26 @@ function AdminNotificationSender({ theme }) {
     fetchCourses();
   }, []);
 
+  const applyTemplate = (template) => {
+    setForm((prev) => ({
+      ...prev,
+      title: template.title,
+      message: template.message,
+      type: template.type,
+      targetType: template.targetType,
+      courseId: template.targetType === 'course' ? prev.courseId : '',
+    }));
+
+    setMsg('');
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     setForm((prev) => ({
       ...prev,
       [name]: value,
+      ...(name === 'targetType' && value === 'all' ? { courseId: '' } : {}),
     }));
   };
 
@@ -129,13 +187,62 @@ function AdminNotificationSender({ theme }) {
 
       <p
         style={{
-          margin: '0 0 22px',
+          margin: '0 0 18px',
           opacity: 0.75,
           fontSize: '14px',
         }}
       >
         New course, live class, offer ya course update ke liye users ko notification bhejo.
       </p>
+
+      <div
+        style={{
+          marginBottom: '22px',
+          padding: '16px',
+          borderRadius: '18px',
+          background: theme?.bgSecondary || 'rgba(255,255,255,0.04)',
+          border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
+        }}
+      >
+        <p
+          style={{
+            margin: '0 0 12px',
+            fontSize: '14px',
+            fontWeight: '800',
+            color: theme?.text || '#fff',
+          }}
+        >
+          ⚡ Quick Templates
+        </p>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '10px',
+            flexWrap: 'wrap',
+          }}
+        >
+          {templates.map((template) => (
+            <button
+              key={template.label}
+              type="button"
+              onClick={() => applyTemplate(template)}
+              style={{
+                padding: '9px 13px',
+                borderRadius: '999px',
+                border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
+                background: theme?.cardSolid || 'rgba(255,255,255,0.06)',
+                color: theme?.text || '#fff',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '700',
+              }}
+            >
+              {template.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <form onSubmit={sendNotification}>
         <div style={styles.grid}>
@@ -148,7 +255,7 @@ function AdminNotificationSender({ theme }) {
               placeholder="Example: 🚀 New Course Launched"
               style={{
                 ...styles.input,
-                background: theme?.input || 'rgba(255,255,255,0.06)',
+                background: theme?.input || theme?.bgSecondary || 'rgba(255,255,255,0.06)',
                 color: theme?.text || '#fff',
                 border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
               }}
@@ -163,7 +270,7 @@ function AdminNotificationSender({ theme }) {
               onChange={handleChange}
               style={{
                 ...styles.input,
-                background: theme?.input || 'rgba(255,255,255,0.06)',
+                background: theme?.input || theme?.bgSecondary || 'rgba(255,255,255,0.06)',
                 color: theme?.text || '#fff',
                 border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
               }}
@@ -186,7 +293,7 @@ function AdminNotificationSender({ theme }) {
               onChange={handleChange}
               style={{
                 ...styles.input,
-                background: theme?.input || 'rgba(255,255,255,0.06)',
+                background: theme?.input || theme?.bgSecondary || 'rgba(255,255,255,0.06)',
                 color: theme?.text || '#fff',
                 border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
               }}
@@ -205,7 +312,7 @@ function AdminNotificationSender({ theme }) {
                 onChange={handleChange}
                 style={{
                   ...styles.input,
-                  background: theme?.input || 'rgba(255,255,255,0.06)',
+                  background: theme?.input || theme?.bgSecondary || 'rgba(255,255,255,0.06)',
                   color: theme?.text || '#fff',
                   border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
                 }}
@@ -232,7 +339,7 @@ function AdminNotificationSender({ theme }) {
             style={{
               ...styles.input,
               resize: 'vertical',
-              background: theme?.input || 'rgba(255,255,255,0.06)',
+              background: theme?.input || theme?.bgSecondary || 'rgba(255,255,255,0.06)',
               color: theme?.text || '#fff',
               border: `1px solid ${theme?.border || 'rgba(255,255,255,0.12)'}`,
             }}
