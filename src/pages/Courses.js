@@ -10,7 +10,9 @@ import API from '../api';
 function Courses() {
   const [courses, setCourses] = useState([]);
   const [enrolledIds, setEnrolledIds] = useState([]);
+  const [liveCounts, setLiveCounts] = useState({});
   const [msg, setMsg] = useState('');
+
   const theme = useTheme();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -18,11 +20,52 @@ function Courses() {
   useEffect(() => {
     fetchCourses();
     if (token) fetchEnrolled();
+    // eslint-disable-next-line
   }, []);
 
   const fetchCourses = async () => {
-    const res = await axios.get(`${API}/api/courses`);
-    setCourses(res.data);
+    try {
+      const res = await axios.get(`${API}/api/courses`);
+      setCourses(res.data);
+
+      // ✅ Har course ke live class count fetch honge
+      fetchLiveCounts(res.data);
+    } catch (err) {
+      console.log('COURSES FETCH ERROR:', err);
+    }
+  };
+
+  const fetchLiveCounts = async (courseList) => {
+    try {
+      const token = localStorage.getItem('token');
+      const counts = {};
+
+      await Promise.all(
+        courseList.map(async (course) => {
+          try {
+            const res = await axios.get(
+              `${API}/api/live-classes/course/${course._id}`,
+              {
+                headers: token
+                  ? {
+                      Authorization: `Bearer ${token}`,
+                    }
+                  : {},
+              }
+            );
+
+            counts[course._id] = res.data?.length || 0;
+          } catch (err) {
+            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err);
+            counts[course._id] = 0;
+          }
+        })
+      );
+
+      setLiveCounts(counts);
+    } catch (err) {
+      console.log('LIVE COUNTS ERROR:', err);
+    }
   };
 
   const fetchEnrolled = async () => {
@@ -30,6 +73,7 @@ function Courses() {
       const res = await axios.get(`${API}/api/enroll/my/courses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setEnrolledIds(res.data.map((c) => c._id));
     } catch (err) {
       console.log(err);
@@ -76,7 +120,10 @@ function Courses() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
         <Reveal>
           <div>
-            <h2 style={{ color: theme.primary, marginBottom: '8px' }}>📚 All Courses</h2>
+            <h2 style={{ color: theme.primary, marginBottom: '8px' }}>
+              📚 All Courses
+            </h2>
+
             <p style={{ color: theme.muted, marginBottom: '30px' }}>
               Start Today !! .... Tomorrow never comes..
             </p>
@@ -229,8 +276,22 @@ function Courses() {
                       <span style={{ fontSize: '12px', color: theme.muted }}>
                         📹 {course.videos?.length || 0} videos
                       </span>
+
                       <span style={{ fontSize: '12px', color: theme.muted }}>
                         📄 {course.pdfs?.length || 0} PDFs
+                      </span>
+
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color:
+                            (liveCounts[course._id] || 0) > 0
+                              ? '#f87171'
+                              : theme.muted,
+                          fontWeight: (liveCounts[course._id] || 0) > 0 ? '700' : '400',
+                        }}
+                      >
+                        🔴 {liveCounts[course._id] || 0} Live Classes
                       </span>
                     </div>
 
