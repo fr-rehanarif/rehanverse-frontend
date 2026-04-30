@@ -195,6 +195,53 @@ function NotificationBell({ theme }) {
     return 'Explore →';
   };
 
+  const getPriorityBadge = (type) => {
+    switch (type) {
+      case 'live':
+        return {
+          label: '🔴 Urgent',
+          bg: 'rgba(239,68,68,0.15)',
+          color: '#fca5a5',
+        };
+
+      case 'payment':
+        return {
+          label: '✅ Important',
+          bg: 'rgba(34,197,94,0.15)',
+          color: '#86efac',
+        };
+
+      case 'offer':
+        return {
+          label: '⚡ Offer',
+          bg: 'rgba(245,158,11,0.15)',
+          color: '#fcd34d',
+        };
+
+      case 'pdf':
+      case 'video':
+        return {
+          label: '📚 Course Update',
+          bg: 'rgba(59,130,246,0.15)',
+          color: '#93c5fd',
+        };
+
+      case 'course':
+        return {
+          label: '🚀 New',
+          bg: 'rgba(139,92,246,0.15)',
+          color: '#c4b5fd',
+        };
+
+      default:
+        return {
+          label: '🔔 Info',
+          bg: 'rgba(148,163,184,0.15)',
+          color: '#cbd5e1',
+        };
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return '';
 
@@ -215,6 +262,25 @@ function NotificationBell({ theme }) {
     fontWeight: '700',
     padding: 0,
     whiteSpace: 'nowrap',
+  };
+
+  const badgeStyle = (type) => {
+    const badge = getPriorityBadge(type);
+
+    return {
+      display: 'inline-flex',
+      alignItems: 'center',
+      width: 'fit-content',
+      marginTop: '6px',
+      marginBottom: '2px',
+      padding: '3px 8px',
+      borderRadius: '999px',
+      fontSize: '10px',
+      fontWeight: '900',
+      background: badge.bg,
+      color: badge.color,
+      border: `1px solid ${badge.color}33`,
+    };
   };
 
   return (
@@ -423,6 +489,10 @@ function NotificationBell({ theme }) {
                       )}
                     </div>
 
+                    <div style={badgeStyle(n.type)}>
+                      {getPriorityBadge(n.type).label}
+                    </div>
+
                     <p
                       style={{
                         margin: '5px 0 7px',
@@ -508,6 +578,16 @@ function NotificationBell({ theme }) {
               >
                 {toast.title}
               </h4>
+
+              <div
+                style={{
+                  ...badgeStyle(toast.type),
+                  marginTop: 0,
+                  marginBottom: '7px',
+                }}
+              >
+                {getPriorityBadge(toast.type).label}
+              </div>
 
               <p
                 style={{
