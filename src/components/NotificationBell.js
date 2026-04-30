@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 
@@ -8,6 +8,10 @@ function NotificationBell({ theme }) {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const firstLoadDone = useRef(false);
+  const previousIds = useRef(new Set());
 
   const token = localStorage.getItem('token');
 
@@ -26,8 +30,27 @@ function NotificationBell({ theme }) {
 
       const data = await res.json();
 
-      if (res.ok) {
-        setNotifications(Array.isArray(data) ? data : []);
+      if (res.ok && Array.isArray(data)) {
+        const newIds = new Set(data.map((n) => n._id));
+
+        if (firstLoadDone.current) {
+          const freshNotification = data.find(
+            (n) => !previousIds.current.has(n._id) && !n.isRead
+          );
+
+          if (freshNotification) {
+            setToast(freshNotification);
+
+            setTimeout(() => {
+              setToast(null);
+            }, 5000);
+          }
+        }
+
+        previousIds.current = newIds;
+        firstLoadDone.current = true;
+
+        setNotifications(data);
       } else {
         console.log('Notification fetch error:', data.message);
       }
@@ -71,6 +94,7 @@ function NotificationBell({ theme }) {
   const handleNotificationClick = async (notification) => {
     await markAsRead(notification._id);
     setOpen(false);
+    setToast(null);
 
     if (
       ['course', 'pdf', 'video', 'live'].includes(notification.type) &&
@@ -165,232 +189,321 @@ function NotificationBell({ theme }) {
   };
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      <button
-        onClick={toggleOpen}
-        style={{
-          position: 'relative',
-          border: 'none',
-          background: theme?.card || 'rgba(255,255,255,0.08)',
-          color: theme?.text || '#fff',
-          borderRadius: '999px',
-          padding: '9px 12px',
-          cursor: 'pointer',
-          fontSize: '18px',
-          boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
-        }}
-        title="Notifications"
-      >
-        🔔
-
-        {unreadCount > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: '-6px',
-              right: '-6px',
-              background: '#ff2d55',
-              color: '#fff',
-              minWidth: '20px',
-              height: '20px',
-              borderRadius: '999px',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: '700',
-              border: '2px solid #111',
-            }}
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div
+    <>
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <button
+          onClick={toggleOpen}
           style={{
-            position: 'absolute',
-            right: 0,
-            top: '48px',
-            width: '360px',
-            maxHeight: '430px',
-            overflowY: 'auto',
-            background: theme?.card || '#111827',
+            position: 'relative',
+            border: 'none',
+            background: theme?.card || 'rgba(255,255,255,0.08)',
             color: theme?.text || '#fff',
-            borderRadius: '18px',
-            boxShadow: '0 18px 45px rgba(0,0,0,0.35)',
-            border: `1px solid ${theme?.border || 'rgba(255,255,255,0.1)'}`,
-            zIndex: 9999,
-            padding: '12px',
+            borderRadius: '999px',
+            padding: '9px 12px',
+            cursor: 'pointer',
+            fontSize: '18px',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
           }}
+          title="Notifications"
         >
+          🔔
+
+          {unreadCount > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '-6px',
+                right: '-6px',
+                background: '#ff2d55',
+                color: '#fff',
+                minWidth: '20px',
+                height: '20px',
+                borderRadius: '999px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                border: '2px solid #111',
+              }}
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+
+        {open && (
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '10px',
+              position: 'absolute',
+              right: 0,
+              top: '48px',
+              width: '360px',
+              maxHeight: '430px',
+              overflowY: 'auto',
+              background: theme?.card || '#111827',
+              color: theme?.text || '#fff',
+              borderRadius: '18px',
+              boxShadow: '0 18px 45px rgba(0,0,0,0.35)',
+              border: `1px solid ${theme?.border || 'rgba(255,255,255,0.1)'}`,
+              zIndex: 9999,
+              padding: '12px',
             }}
           >
-            <h3 style={{ margin: 0, fontSize: '16px' }}>Notifications</h3>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '10px',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '16px' }}>Notifications</h3>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                onClick={fetchNotifications}
-                disabled={loading}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: theme?.primary || '#38bdf8',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  opacity: loading ? 0.6 : 1,
-                }}
-              >
-                {loading ? 'Refreshing...' : 'Refresh'}
-              </button>
-
-              {unreadCount > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
-                  onClick={markAllAsRead}
+                  onClick={fetchNotifications}
+                  disabled={loading}
                   style={{
                     border: 'none',
                     background: 'transparent',
                     color: theme?.primary || '#38bdf8',
-                    cursor: 'pointer',
+                    cursor: loading ? 'not-allowed' : 'pointer',
                     fontSize: '12px',
                     fontWeight: '700',
+                    opacity: loading ? 0.6 : 1,
                   }}
                 >
-                  Mark all read
+                  {loading ? 'Refreshing...' : 'Refresh'}
                 </button>
-              )}
+
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: theme?.primary || '#38bdf8',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                    }}
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
 
-          {loading && notifications.length === 0 && (
-            <p style={{ opacity: 0.7, fontSize: '14px' }}>
-              Loading notifications...
-            </p>
-          )}
-
-          {!loading && notifications.length === 0 && (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '28px 10px',
-                opacity: 0.75,
-              }}
-            >
-              <div style={{ fontSize: '34px', marginBottom: '8px' }}>🔕</div>
-              <p style={{ margin: 0, fontSize: '14px' }}>
-                No notifications yet
+            {loading && notifications.length === 0 && (
+              <p style={{ opacity: 0.7, fontSize: '14px' }}>
+                Loading notifications...
               </p>
-            </div>
-          )}
+            )}
 
-          {notifications.map((n) => (
-            <div
-              key={n._id}
-              onClick={() => handleNotificationClick(n)}
-              style={{
-                padding: '12px',
-                marginBottom: '9px',
-                borderRadius: '14px',
-                cursor: 'pointer',
-                background: n.isRead
-                  ? 'rgba(255,255,255,0.04)'
-                  : 'rgba(56,189,248,0.16)',
-                border: n.isRead
-                  ? '1px solid rgba(255,255,255,0.08)'
-                  : '1px solid rgba(56,189,248,0.35)',
-              }}
-            >
+            {!loading && notifications.length === 0 && (
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
+                  textAlign: 'center',
+                  padding: '28px 10px',
+                  opacity: 0.75,
                 }}
               >
-                <span style={{ fontSize: '20px' }}>{getIcon(n.type)}</span>
+                <div style={{ fontSize: '34px', marginBottom: '8px' }}>🔕</div>
+                <p style={{ margin: 0, fontSize: '14px' }}>
+                  No notifications yet
+                </p>
+              </div>
+            )}
 
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                    }}
-                  >
-                    <h4
+            {notifications.map((n) => (
+              <div
+                key={n._id}
+                onClick={() => handleNotificationClick(n)}
+                style={{
+                  padding: '12px',
+                  marginBottom: '9px',
+                  borderRadius: '14px',
+                  cursor: 'pointer',
+                  background: n.isRead
+                    ? 'rgba(255,255,255,0.04)'
+                    : 'rgba(56,189,248,0.16)',
+                  border: n.isRead
+                    ? '1px solid rgba(255,255,255,0.08)'
+                    : '1px solid rgba(56,189,248,0.35)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                  }}
+                >
+                  <span style={{ fontSize: '20px' }}>{getIcon(n.type)}</span>
+
+                  <div style={{ flex: 1 }}>
+                    <div
                       style={{
-                        margin: 0,
-                        fontSize: '14px',
-                        fontWeight: n.isRead ? '600' : '800',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '8px',
                       }}
                     >
-                      {n.title}
-                    </h4>
-
-                    {!n.isRead && (
-                      <span
+                      <h4
                         style={{
-                          width: '8px',
-                          height: '8px',
-                          borderRadius: '50%',
-                          background: '#38bdf8',
-                          marginTop: '5px',
-                          flexShrink: 0,
+                          margin: 0,
+                          fontSize: '14px',
+                          fontWeight: n.isRead ? '600' : '800',
                         }}
-                      />
-                    )}
-                  </div>
+                      >
+                        {n.title}
+                      </h4>
 
-                  <p
-                    style={{
-                      margin: '5px 0 7px',
-                      fontSize: '13px',
-                      lineHeight: '1.4',
-                      opacity: 0.82,
-                    }}
-                  >
-                    {n.message}
-                  </p>
+                      {!n.isRead && (
+                        <span
+                          style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: '#38bdf8',
+                            marginTop: '5px',
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                    </div>
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <small style={{ opacity: 0.55, fontSize: '11px' }}>
-                      {formatDate(n.createdAt)}
-                    </small>
-
-                    <small
+                    <p
                       style={{
-                        color: theme?.primary || '#38bdf8',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        whiteSpace: 'nowrap',
+                        margin: '5px 0 7px',
+                        fontSize: '13px',
+                        lineHeight: '1.4',
+                        opacity: 0.82,
                       }}
                     >
-                      {getActionText(n)}
-                    </small>
+                      {n.message}
+                    </p>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      <small style={{ opacity: 0.55, fontSize: '11px' }}>
+                        {formatDate(n.createdAt)}
+                      </small>
+
+                      <small
+                        style={{
+                          color: theme?.primary || '#38bdf8',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {getActionText(n)}
+                      </small>
+                    </div>
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {toast && (
+        <div
+          onClick={() => handleNotificationClick(toast)}
+          style={{
+            position: 'fixed',
+            right: '24px',
+            bottom: '24px',
+            width: '330px',
+            maxWidth: 'calc(100vw - 40px)',
+            zIndex: 99999,
+            padding: '16px',
+            borderRadius: '18px',
+            background: theme?.card || '#111827',
+            color: theme?.text || '#fff',
+            border: `1px solid ${theme?.primary || '#38bdf8'}`,
+            boxShadow: '0 18px 45px rgba(0,0,0,0.35)',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <div style={{ fontSize: '24px' }}>{getIcon(toast.type)}</div>
+
+            <div style={{ flex: 1 }}>
+              <p
+                style={{
+                  margin: '0 0 4px',
+                  fontSize: '12px',
+                  fontWeight: '800',
+                  color: theme?.primary || '#38bdf8',
+                }}
+              >
+                New Notification
+              </p>
+
+              <h4
+                style={{
+                  margin: '0 0 6px',
+                  fontSize: '15px',
+                  fontWeight: '900',
+                }}
+              >
+                {toast.title}
+              </h4>
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: '13px',
+                  lineHeight: '1.4',
+                  opacity: 0.8,
+                }}
+              >
+                {toast.message}
+              </p>
+
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  fontSize: '12px',
+                  fontWeight: '800',
+                  color: theme?.primary || '#38bdf8',
+                }}
+              >
+                {getActionText(toast)}
+              </p>
             </div>
-          ))}
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setToast(null);
+              }}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: theme?.muted || '#9ca3af',
+                cursor: 'pointer',
+                fontSize: '18px',
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
