@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api';
 
 function NotificationBell({ theme }) {
+  const navigate = useNavigate();
+
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,7 +42,6 @@ function NotificationBell({ theme }) {
     const nextOpen = !open;
     setOpen(nextOpen);
 
-    // ✅ Bell open hote hi latest notifications fetch
     if (nextOpen) {
       fetchNotifications();
     }
@@ -64,6 +66,26 @@ function NotificationBell({ theme }) {
     } catch (err) {
       console.log('Mark notification read failed:', err);
     }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    await markAsRead(notification._id);
+    setOpen(false);
+
+    if (
+      ['course', 'pdf', 'video', 'live'].includes(notification.type) &&
+      notification.courseId
+    ) {
+      navigate(`/course/${notification.courseId}`);
+      return;
+    }
+
+    if (notification.type === 'payment') {
+      navigate('/my-courses');
+      return;
+    }
+
+    navigate('/courses');
   };
 
   const markAllAsRead = async () => {
@@ -117,6 +139,18 @@ function NotificationBell({ theme }) {
       default:
         return '🔔';
     }
+  };
+
+  const getActionText = (notification) => {
+    if (['course', 'pdf', 'video', 'live'].includes(notification.type)) {
+      return 'Open course →';
+    }
+
+    if (notification.type === 'payment') {
+      return 'Open my courses →';
+    }
+
+    return 'Explore →';
   };
 
   const formatDate = (date) => {
@@ -261,7 +295,7 @@ function NotificationBell({ theme }) {
           {notifications.map((n) => (
             <div
               key={n._id}
-              onClick={() => markAsRead(n._id)}
+              onClick={() => handleNotificationClick(n)}
               style={{
                 padding: '12px',
                 marginBottom: '9px',
@@ -327,9 +361,29 @@ function NotificationBell({ theme }) {
                     {n.message}
                   </p>
 
-                  <small style={{ opacity: 0.55, fontSize: '11px' }}>
-                    {formatDate(n.createdAt)}
-                  </small>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <small style={{ opacity: 0.55, fontSize: '11px' }}>
+                      {formatDate(n.createdAt)}
+                    </small>
+
+                    <small
+                      style={{
+                        color: theme?.primary || '#38bdf8',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {getActionText(n)}
+                    </small>
+                  </div>
                 </div>
               </div>
             </div>
