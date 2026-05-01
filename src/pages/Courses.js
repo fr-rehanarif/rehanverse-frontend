@@ -216,26 +216,6 @@ function Courses() {
           </div>
         )}
 
-        {!course.isFree && !isEnrolled(course._id) && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '14px',
-              left: '14px',
-              zIndex: 5,
-              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-              color: '#fff',
-              padding: '6px 10px',
-              borderRadius: '999px',
-              fontSize: '12px',
-              fontWeight: '900',
-              boxShadow: '0 8px 25px rgba(245,158,11,0.25)',
-            }}
-          >
-            🔥 Preview Available
-          </div>
-        )}
-
         {course.thumbnail ? (
           <img
             src={course.thumbnail}
@@ -321,31 +301,6 @@ function Courses() {
             </span>
           </div>
 
-          {!course.isFree && !isEnrolled(course._id) && (
-            <div
-              style={{
-                padding: '10px 12px',
-                borderRadius: '12px',
-                background:
-                  theme.mode === 'dark'
-                    ? 'rgba(251,191,36,0.12)'
-                    : '#fef3c7',
-                color: theme.mode === 'dark' ? '#fbbf24' : '#92400e',
-                border:
-                  theme.mode === 'dark'
-                    ? '1px solid rgba(251,191,36,0.25)'
-                    : '1px solid #fde68a',
-                fontSize: '12px',
-                fontWeight: '800',
-                marginBottom: '14px',
-                lineHeight: '1.5',
-              }}
-            >
-              🔒 Click karke full course overview dekho — videos, PDFs aur live
-              classes preview available.
-            </div>
-          )}
-
           <div
             style={{
               marginTop: 'auto',
@@ -376,15 +331,13 @@ function Courses() {
                 padding: '10px 20px',
                 background: isEnrolled(course._id)
                   ? theme.success
-                  : !course.isFree
-                  ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
                   : theme.primary,
                 color: theme.buttonText,
                 border: 'none',
                 borderRadius: '12px',
                 cursor: 'pointer',
                 fontSize: '14px',
-                fontWeight: '800',
+                fontWeight: '600',
                 boxShadow: theme.shadow,
                 minWidth: '150px',
               }}
