@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { useTheme } from '../context/ThemeContext';
 import API from '../api';
 import SecurityLogsPanel from '../components/SecurityLogsPanel';
@@ -71,6 +72,63 @@ function AdminPanel() {
     fetchCoupons();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
+  const showConfirmToast = ({ title, message, confirmText = 'Yes, Delete', onConfirm }) => {
+    const toastId = toast(
+      <div>
+        <div style={{ fontWeight: 900, fontSize: '16px', marginBottom: '6px' }}>
+          {title}
+        </div>
+
+        <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '14px', lineHeight: '1.4' }}>
+          {message}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={async () => {
+              toast.dismiss(toastId);
+              await onConfirm();
+            }}
+            style={{
+              background: 'linear-gradient(135deg, #ef4444, #991b1b)',
+              color: '#fff',
+              border: 'none',
+              padding: '8px 14px',
+              borderRadius: '10px',
+              fontWeight: '800',
+              cursor: 'pointer',
+            }}
+          >
+            {confirmText}
+          </button>
+
+          <button
+            onClick={() => toast.dismiss(toastId)}
+            style={{
+              background: 'linear-gradient(135deg, #334155, #0f172a)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.18)',
+              padding: '8px 14px',
+              borderRadius: '10px',
+              fontWeight: '800',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>,
+      {
+        type: 'warning',
+        autoClose: false,
+        closeOnClick: false,
+        draggable: true,
+        position: 'top-right',
+      }
+    );
+  };
 
   const fetchCourses = async () => {
     try {
@@ -171,21 +229,29 @@ function AdminPanel() {
   };
 
   const deleteCoupon = async (id, code) => {
-    if (!window.confirm(`Coupon "${code}" delete karna hai?`)) return;
+    showConfirmToast({
+      title: 'Delete Coupon?',
+      message: `Coupon "${code}" permanently delete karna hai?`,
+      confirmText: 'Delete Coupon',
+      onConfirm: async () => {
+        try {
+          const res = await axios.delete(`${API}/api/coupon/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-    try {
-      const res = await axios.delete(`${API}/api/coupon/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setMsg('✅ ' + (res.data.message || 'Coupon deleted!'));
-      fetchCoupons();
-      setTimeout(() => setMsg(''), 3000);
-    } catch (err) {
-      console.log('DELETE COUPON ERROR:', err);
-      setMsg('❌ ' + (err.response?.data?.message || 'Coupon delete failed'));
-      setTimeout(() => setMsg(''), 3000);
-    }
+          setMsg('✅ ' + (res.data.message || 'Coupon deleted!'));
+          toast.success('✅ Coupon deleted!');
+          fetchCoupons();
+          setTimeout(() => setMsg(''), 3000);
+        } catch (err) {
+          console.log('DELETE COUPON ERROR:', err);
+          const errorMsg = err.response?.data?.message || 'Coupon delete failed';
+          setMsg('❌ ' + errorMsg);
+          toast.error('❌ ' + errorMsg);
+          setTimeout(() => setMsg(''), 3000);
+        }
+      },
+    });
   };
 
   const toggleCouponStatus = async (coupon) => {
@@ -243,16 +309,23 @@ function AdminPanel() {
   };
 
   const deleteUser = async (id, name) => {
-    if (!window.confirm(`${name} ko delete karo?`)) return;
+    showConfirmToast({
+      title: 'Delete User?',
+      message: `${name} ko permanently delete karna hai?`,
+      confirmText: 'Delete User',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API}/api/users/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-    try {
-      await axios.delete(`${API}/api/users/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchUsers();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Error!');
-    }
+          toast.success(`✅ ${name} deleted successfully!`);
+          fetchUsers();
+        } catch (err) {
+          toast.error(err.response?.data?.message || '❌ Error!');
+        }
+      },
+    });
   };
 
   const fetchEnrolledUsers = async (courseId) => {
@@ -400,19 +473,28 @@ function AdminPanel() {
   };
 
   const deleteCourse = async (id) => {
-    if (!window.confirm('Delete this course?')) return;
+    showConfirmToast({
+      title: 'Delete Course?',
+      message: 'Ye course permanently delete karna hai?',
+      confirmText: 'Delete Course',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API}/api/courses/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-    try {
-      await axios.delete(`${API}/api/courses/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+          if (editingId === id) cancelEdit();
 
-      if (editingId === id) cancelEdit();
-      fetchCourses();
-    } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.message || 'Delete failed'));
-      setTimeout(() => setMsg(''), 3000);
-    }
+          toast.success('✅ Course deleted!');
+          fetchCourses();
+        } catch (err) {
+          const errorMsg = err.response?.data?.message || 'Delete failed';
+          setMsg('❌ ' + errorMsg);
+          toast.error('❌ ' + errorMsg);
+          setTimeout(() => setMsg(''), 3000);
+        }
+      },
+    });
   };
 
   const fetchLiveClasses = async (courseId) => {
@@ -476,21 +558,29 @@ function AdminPanel() {
   };
 
   const deleteLiveClass = async (id) => {
-    if (!window.confirm('Ye live class delete karni hai?')) return;
+    showConfirmToast({
+      title: 'Delete Live Class?',
+      message: 'Ye live class permanently delete karni hai?',
+      confirmText: 'Delete Live Class',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API}/api/live-classes/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-    try {
-      await axios.delete(`${API}/api/live-classes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setMsg('✅ Live class deleted!');
-      fetchLiveClasses(liveForm.course);
-      setTimeout(() => setMsg(''), 3000);
-    } catch (err) {
-      console.log('DELETE LIVE CLASS ERROR:', err);
-      setMsg('❌ ' + (err.response?.data?.message || 'Live class delete failed'));
-      setTimeout(() => setMsg(''), 3000);
-    }
+          setMsg('✅ Live class deleted!');
+          toast.success('✅ Live class deleted!');
+          fetchLiveClasses(liveForm.course);
+          setTimeout(() => setMsg(''), 3000);
+        } catch (err) {
+          console.log('DELETE LIVE CLASS ERROR:', err);
+          const errorMsg = err.response?.data?.message || 'Live class delete failed';
+          setMsg('❌ ' + errorMsg);
+          toast.error('❌ ' + errorMsg);
+          setTimeout(() => setMsg(''), 3000);
+        }
+      },
+    });
   };
 
   const getLiveStatus = (scheduledAt, durationMinutes) => {
