@@ -349,41 +349,93 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
             padding: '8px 14px',
             borderRadius: '999px',
             background:
-              'linear-gradient(135deg, rgba(34,197,94,0.18), rgba(59,130,246,0.16))',
-            border: '1px solid rgba(34,197,94,0.35)',
-            color: '#86efac',
+              'linear-gradient(135deg, rgba(239,68,68,0.18), rgba(251,191,36,0.16))',
+            border: '1px solid rgba(251,191,36,0.35)',
+            color: '#fbbf24',
             fontWeight: '900',
             fontSize: '13px',
             marginBottom: '14px',
           }}
         >
-          ✨ Premium Course Preview
+          🔥 Premium Locked Preview • Launch Access
         </div>
 
         <h2
           style={{
             margin: '0 0 10px',
             color: theme.text,
-            fontSize: '28px',
+            fontSize: '30px',
             lineHeight: '1.2',
           }}
         >
-          🔒 Unlock Full Course Access
+          🔒 Preview Locked — Full Course Waiting Inside
         </h2>
 
         <p
           style={{
             color: theme.muted,
-            lineHeight: '1.75',
-            maxWidth: '760px',
+            lineHeight: '1.8',
+            maxWidth: '820px',
             margin: '0 auto',
             fontSize: '15px',
           }}
         >
-          Is course ke andar structured videos, premium protected PDFs, live
-          classes aur complete learning material milega. Neeche full content
-          preview dekh sakte ho — access enrollment ke baad unlock hoga.
+          Tum abhi sirf preview dekh rahe ho. Full access ke baad videos,
+          premium PDFs, live classes aur complete unit-wise material unlock hoga
+          — sab kuch ek jagah, exam-focused format me.
         </p>
+
+        <div
+          style={{
+            marginTop: '18px',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '10px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span
+            style={{
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: 'rgba(34,197,94,0.14)',
+              color: '#86efac',
+              border: '1px solid rgba(34,197,94,0.25)',
+              fontSize: '12px',
+              fontWeight: '900',
+            }}
+          >
+            ✅ Saves Study Time
+          </span>
+
+          <span
+            style={{
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: 'rgba(59,130,246,0.14)',
+              color: '#93c5fd',
+              border: '1px solid rgba(59,130,246,0.25)',
+              fontSize: '12px',
+              fontWeight: '900',
+            }}
+          >
+            📚 Organized Notes
+          </span>
+
+          <span
+            style={{
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: 'rgba(251,191,36,0.14)',
+              color: '#fbbf24',
+              border: '1px solid rgba(251,191,36,0.25)',
+              fontSize: '12px',
+              fontWeight: '900',
+            }}
+          >
+            ⚡ Exam Focused
+          </span>
+        </div>
       </div>
 
       <div
@@ -465,6 +517,73 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
           <span>✅ Live class access</span>
           <span>✅ Structured unit-wise learning</span>
           <span>✅ Lifetime course access</span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '14px',
+          marginBottom: '24px',
+        }}
+      >
+        <div
+          style={{
+            padding: '16px',
+            borderRadius: '16px',
+            background:
+              theme.mode === 'dark'
+                ? 'rgba(239,68,68,0.10)'
+                : 'rgba(254,226,226,0.8)',
+            border:
+              theme.mode === 'dark'
+                ? '1px solid rgba(239,68,68,0.25)'
+                : '1px solid #fecaca',
+          }}
+        >
+          <strong style={{ color: theme.text }}>❌ Without This Course</strong>
+          <p
+            style={{
+              color: theme.muted,
+              margin: '8px 0 0',
+              lineHeight: '1.55',
+              fontSize: '13px',
+            }}
+          >
+            Random PDFs, incomplete topics, scattered YouTube videos, aur exam
+            ke time confusion.
+          </p>
+        </div>
+
+        <div
+          style={{
+            padding: '16px',
+            borderRadius: '16px',
+            background:
+              theme.mode === 'dark'
+                ? 'rgba(34,197,94,0.11)'
+                : 'rgba(220,252,231,0.85)',
+            border:
+              theme.mode === 'dark'
+                ? '1px solid rgba(34,197,94,0.28)'
+                : '1px solid #bbf7d0',
+          }}
+        >
+          <strong style={{ color: theme.mode === 'dark' ? '#86efac' : '#166534' }}>
+            ✅ With REHANVERSE
+          </strong>
+          <p
+            style={{
+              color: theme.muted,
+              margin: '8px 0 0',
+              lineHeight: '1.55',
+              fontSize: '13px',
+            }}
+          >
+            Proper structure, premium PDFs, videos, live access, aur ek clean
+            dashboard me complete material.
+          </p>
         </div>
       </div>
 
@@ -574,57 +693,146 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
       <div
         style={{
           textAlign: 'center',
-          padding: '24px',
-          borderRadius: '18px',
+          padding: '30px',
+          borderRadius: '22px',
           background:
-            'linear-gradient(135deg, rgba(34,197,94,0.18), rgba(59,130,246,0.16))',
-          border: '1px solid rgba(34,197,94,0.35)',
-          boxShadow: '0 14px 40px rgba(34,197,94,0.12)',
+            'linear-gradient(135deg, rgba(34,197,94,0.20), rgba(59,130,246,0.18), rgba(139,92,246,0.16))',
+          border: '1px solid rgba(34,197,94,0.40)',
+          boxShadow: '0 18px 50px rgba(34,197,94,0.16)',
         }}
       >
-        <h3 style={{ marginTop: 0, color: theme.text }}>
-          ⚡ Ready to unlock this course?
-        </h3>
+        <div
+          style={{
+            display: 'inline-flex',
+            padding: '7px 14px',
+            borderRadius: '999px',
+            background: 'rgba(239,68,68,0.16)',
+            color: '#fca5a5',
+            fontSize: '12px',
+            fontWeight: '900',
+            marginBottom: '14px',
+            border: '1px solid rgba(239,68,68,0.28)',
+          }}
+        >
+          🔥 Launch Access • Limited Time
+        </div>
+
+        <h2
+          style={{
+            margin: '0 0 10px',
+            color: theme.text,
+            fontSize: '26px',
+            lineHeight: '1.25',
+          }}
+        >
+          Stop searching random notes. Unlock everything in one place.
+        </h2>
 
         <p
           style={{
             color: theme.muted,
-            lineHeight: '1.65',
-            maxWidth: '680px',
+            lineHeight: '1.75',
+            maxWidth: '780px',
             margin: '0 auto 18px',
+            fontSize: '15px',
           }}
         >
-          Enroll karne ke baad complete videos, PDFs aur live classes approval ke
-          baad accessible ho jayengi. Launch pricing ke time access lena best
-          rahega.
+          Free resources scattered hote hain, incomplete hote hain aur exam time
+          par confusion create karte hain. Is course me tumhe unit-wise PDFs,
+          videos, live class access aur protected premium notes ek hi jagah
+          milenge — clean, organized aur ready-to-study.
         </p>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+            marginBottom: '20px',
+          }}
+        >
+          <span
+            style={{
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: 'rgba(34,197,94,0.14)',
+              color: '#86efac',
+              fontSize: '12px',
+              fontWeight: '900',
+              border: '1px solid rgba(34,197,94,0.25)',
+            }}
+          >
+            ✅ Less Confusion
+          </span>
+
+          <span
+            style={{
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: 'rgba(59,130,246,0.14)',
+              color: '#93c5fd',
+              fontSize: '12px',
+              fontWeight: '900',
+              border: '1px solid rgba(59,130,246,0.25)',
+            }}
+          >
+            📚 Unit-wise Material
+          </span>
+
+          <span
+            style={{
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: 'rgba(251,191,36,0.14)',
+              color: '#fbbf24',
+              fontSize: '12px',
+              fontWeight: '900',
+              border: '1px solid rgba(251,191,36,0.25)',
+            }}
+          >
+            ⚡ Start Prepared Today
+          </span>
+        </div>
 
         <button
           onClick={onUnlock}
           style={{
-            padding: '14px 28px',
-            borderRadius: '16px',
+            padding: '16px 34px',
+            borderRadius: '18px',
             border: 'none',
             background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
             color: 'white',
-            fontWeight: '900',
+            fontWeight: '1000',
             cursor: 'pointer',
-            fontSize: '16px',
-            boxShadow: '0 12px 35px rgba(34,197,94,0.25)',
+            fontSize: '17px',
+            boxShadow: '0 16px 42px rgba(34,197,94,0.30)',
+            letterSpacing: '0.2px',
           }}
         >
-          Buy Now / Apply Coupon
+          🚀 Unlock Full Course Now
         </button>
 
         <div
           style={{
             marginTop: '12px',
+            color: '#fbbf24',
+            fontSize: '13px',
+            fontWeight: '900',
+          }}
+        >
+          Don’t wait for exam pressure. Start prepared today.
+        </div>
+
+        <div
+          style={{
+            marginTop: '8px',
             color: theme.muted,
             fontSize: '12px',
             fontWeight: '700',
           }}
         >
-          🔐 Content unlocks only after enrollment/payment approval.
+          🔐 Videos, PDFs and live classes unlock only after enrollment/payment approval.
         </div>
       </div>
     </div>
@@ -1013,7 +1221,7 @@ function CourseDetail() {
                   boxShadow: '0 12px 35px rgba(34,197,94,0.25)',
                 }}
               >
-                Buy Now / Apply Coupon
+                🚀 Unlock Full Course Now
               </button>
             </div>
           )}
@@ -1047,8 +1255,8 @@ function CourseDetail() {
                 fontWeight: '700',
               }}
             >
-              🔒 Preview only. Enroll karne ke baad actual videos, PDFs aur live
-              classes unlock honge.
+              🔒 Preview only. Unlock karne ke baad actual videos, PDFs aur
+              live classes open honge.
             </div>
           )}
 
@@ -1204,7 +1412,7 @@ function CourseDetail() {
                 boxShadow: '0 12px 28px rgba(34,197,94,0.22)',
               }}
             >
-              Unlock Full Access
+              🚀 Unlock Course Now
             </button>
           )}
         </div>
