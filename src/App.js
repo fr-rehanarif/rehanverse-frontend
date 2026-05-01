@@ -12,6 +12,11 @@ import Navbar from './components/Navbar';
 import { useTheme } from './context/ThemeContext';
 import ActivityDashboard from './pages/ActivityDashboard';
 
+import { useEffect } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './toastTheme.css';
+
 function GlobalSelectFix() {
   return (
     <style>
@@ -65,6 +70,53 @@ function GlobalSelectFix() {
 function App() {
   const theme = useTheme();
 
+  // ✅ GLOBAL ALERT FIX
+  // App me jahan bhi alert("message") hoga,
+  // ab browser popup ki jagah top-right toast aayega.
+  useEffect(() => {
+    const originalAlert = window.alert;
+
+    window.alert = (message) => {
+      const cleanMessage =
+        typeof message === 'string' ? message : String(message || 'Notification');
+
+      toast.success(
+        <div>
+          <div
+            style={{
+              fontWeight: 800,
+              fontSize: '15px',
+              lineHeight: '1.4',
+            }}
+          >
+            {cleanMessage}
+          </div>
+
+          <button
+            className="rehan-toast-ok-btn"
+            onClick={() => toast.dismiss()}
+          >
+            OK
+          </button>
+        </div>,
+        {
+          autoClose: false,
+          closeOnClick: false,
+          draggable: true,
+        }
+      );
+    };
+
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, []);
+
+  const toastTheme =
+    theme?.isDark === false || theme?.mode === 'light' || theme?.theme === 'light'
+      ? 'light'
+      : 'dark';
+
   return (
     <div
       style={{
@@ -78,6 +130,7 @@ function App() {
 
       <BrowserRouter>
         <Navbar />
+
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -91,6 +144,17 @@ function App() {
           <Route path="/course/:id" element={<CourseDetail />} />
           <Route path="/courses/:id" element={<CourseDetail />} />
         </Routes>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={false}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick={false}
+          pauseOnHover
+          draggable
+          theme={toastTheme}
+        />
       </BrowserRouter>
     </div>
   );
