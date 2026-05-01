@@ -38,6 +38,17 @@ function AdminPanel() {
   const [pdfs, setPdfs] = useState([]);
   const [pdfFile, setPdfFile] = useState(null);
   const [liveClasses, setLiveClasses] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+
+  const [couponForm, setCouponForm] = useState({
+    code: '',
+    discountType: 'free',
+    discountValue: '',
+    course: '',
+    usageLimit: '',
+    expiresAt: '',
+    isActive: true,
+  });
 
   const [liveForm, setLiveForm] = useState({
     course: '',
@@ -57,6 +68,8 @@ function AdminPanel() {
     fetchCourses();
     fetchUsers();
     fetchPayments();
+    fetchCoupons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCourses = async () => {
@@ -90,6 +103,109 @@ function AdminPanel() {
     }
   };
 
+  const fetchCoupons = async () => {
+    try {
+      const res = await axios.get(`${API}/api/coupon/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setCoupons(res.data);
+    } catch (err) {
+      console.log('COUPON FETCH ERROR:', err);
+    }
+  };
+
+  const createCoupon = async () => {
+    try {
+      if (!couponForm.code || !couponForm.discountType) {
+        setMsg('❌ Coupon code aur discount type zaroori hai!');
+        setTimeout(() => setMsg(''), 3000);
+        return;
+      }
+
+      if (
+        couponForm.discountType !== 'free' &&
+        (!couponForm.discountValue || Number(couponForm.discountValue) <= 0)
+      ) {
+        setMsg('❌ Discount value valid hona chahiye!');
+        setTimeout(() => setMsg(''), 3000);
+        return;
+      }
+
+      const payload = {
+        code: couponForm.code.trim().toUpperCase(),
+        discountType: couponForm.discountType,
+        discountValue:
+          couponForm.discountType === 'free'
+            ? 0
+            : Number(couponForm.discountValue),
+        course: couponForm.course || '',
+        usageLimit: Number(couponForm.usageLimit || 0),
+        expiresAt: couponForm.expiresAt || '',
+        isActive: couponForm.isActive,
+      };
+
+      const res = await axios.post(`${API}/api/coupon/create`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setMsg('✅ ' + (res.data.message || 'Coupon created!'));
+
+      setCouponForm({
+        code: '',
+        discountType: 'free',
+        discountValue: '',
+        course: '',
+        usageLimit: '',
+        expiresAt: '',
+        isActive: true,
+      });
+
+      fetchCoupons();
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.log('CREATE COUPON ERROR:', err);
+      setMsg('❌ ' + (err.response?.data?.message || 'Coupon create failed'));
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
+
+  const deleteCoupon = async (id, code) => {
+    if (!window.confirm(`Coupon "${code}" delete karna hai?`)) return;
+
+    try {
+      const res = await axios.delete(`${API}/api/coupon/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setMsg('✅ ' + (res.data.message || 'Coupon deleted!'));
+      fetchCoupons();
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.log('DELETE COUPON ERROR:', err);
+      setMsg('❌ ' + (err.response?.data?.message || 'Coupon delete failed'));
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
+
+  const toggleCouponStatus = async (coupon) => {
+    try {
+      const res = await axios.put(
+        `${API}/api/coupon/${coupon._id}`,
+        { isActive: !coupon.isActive },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMsg('✅ ' + (res.data.message || 'Coupon updated!'));
+      fetchCoupons();
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      console.log('TOGGLE COUPON ERROR:', err);
+      setMsg('❌ ' + (err.response?.data?.message || 'Coupon update failed'));
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
+
   const approvePayment = async (id) => {
     try {
       const res = await axios.put(
@@ -101,6 +217,7 @@ function AdminPanel() {
       setMsg('✅ ' + res.data.message);
       fetchPayments();
       fetchUsers();
+      fetchCoupons();
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
       setMsg('❌ ' + (err.response?.data?.message || 'Approve failed'));
@@ -350,7 +467,6 @@ function AdminPanel() {
       });
 
       fetchLiveClasses(liveForm.course);
-
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
       console.log('CREATE LIVE CLASS ERROR:', err);
@@ -429,6 +545,336 @@ function AdminPanel() {
     boxShadow: activeTab === tabName ? theme.shadow : 'none',
   });
 
+  const renderCouponSection = () => (
+    <div>
+      <div
+        style={{
+          background: theme.card,
+          border: `1px solid ${theme.border}`,
+          borderRadius: theme.radius,
+          padding: '32px',
+          marginBottom: '32px',
+          boxShadow: theme.shadow,
+          backdropFilter: theme.glass,
+        }}
+      >
+        <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
+          🎟️ Create Coupon Code
+        </h3>
+
+        <p style={{ color: theme.muted, marginTop: 0, marginBottom: '22px' }}>
+          Free access, percentage discount ya fixed discount coupon banao.
+        </p>
+
+        <input
+          style={inputStyle}
+          placeholder="Coupon Code *  Example: REHAN100"
+          value={couponForm.code}
+          onChange={(e) =>
+            setCouponForm({
+              ...couponForm,
+              code: e.target.value.toUpperCase(),
+            })
+          }
+        />
+
+        <select
+          style={inputStyle}
+          value={couponForm.discountType}
+          onChange={(e) =>
+            setCouponForm({
+              ...couponForm,
+              discountType: e.target.value,
+              discountValue:
+                e.target.value === 'free' ? '' : couponForm.discountValue,
+            })
+          }
+        >
+          <option value="free">Free Course Access</option>
+          <option value="percentage">Percentage Discount</option>
+          <option value="fixed">Fixed Amount Discount</option>
+        </select>
+
+        {couponForm.discountType !== 'free' && (
+          <input
+            style={inputStyle}
+            type="number"
+            placeholder={
+              couponForm.discountType === 'percentage'
+                ? 'Discount Percentage Example: 50'
+                : 'Fixed Discount Amount Example: 20'
+            }
+            value={couponForm.discountValue}
+            onChange={(e) =>
+              setCouponForm({
+                ...couponForm,
+                discountValue: e.target.value,
+              })
+            }
+          />
+        )}
+
+        <select
+          style={inputStyle}
+          value={couponForm.course}
+          onChange={(e) =>
+            setCouponForm({
+              ...couponForm,
+              course: e.target.value,
+            })
+          }
+        >
+          <option value="">All Courses</option>
+          {courses.map((course) => (
+            <option key={course._id} value={course._id}>
+              {course.title} — {course.isFree ? 'Free' : `₹${course.price}`}
+            </option>
+          ))}
+        </select>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '12px',
+          }}
+        >
+          <input
+            style={inputStyle}
+            type="number"
+            placeholder="Usage Limit — 0 means unlimited"
+            value={couponForm.usageLimit}
+            onChange={(e) =>
+              setCouponForm({
+                ...couponForm,
+                usageLimit: e.target.value,
+              })
+            }
+          />
+
+          <input
+            style={inputStyle}
+            type="date"
+            value={couponForm.expiresAt}
+            onChange={(e) =>
+              setCouponForm({
+                ...couponForm,
+                expiresAt: e.target.value,
+              })
+            }
+          />
+        </div>
+
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: theme.text,
+            marginBottom: '18px',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={couponForm.isActive}
+            onChange={(e) =>
+              setCouponForm({
+                ...couponForm,
+                isActive: e.target.checked,
+              })
+            }
+          />
+          Active Coupon
+        </label>
+
+        <button
+          onClick={createCoupon}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: 'linear-gradient(135deg, #22c55e, #15803d)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '16px',
+            cursor: 'pointer',
+            fontWeight: '800',
+            boxShadow: theme.shadow,
+          }}
+        >
+          🎟️ Create Coupon
+        </button>
+      </div>
+
+      <div>
+        <h3 style={{ color: theme.text, marginBottom: '16px' }}>
+          🎫 Existing Coupons ({coupons.length})
+        </h3>
+
+        {coupons.length === 0 ? (
+          <div
+            style={{
+              padding: '18px',
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '14px',
+              color: theme.muted,
+            }}
+          >
+            Abhi koi coupon nahi bana.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '14px' }}>
+            {coupons.map((coupon) => {
+              const expired =
+                coupon.expiresAt && new Date(coupon.expiresAt) < new Date();
+
+              return (
+                <div
+                  key={coupon._id}
+                  style={{
+                    background: theme.card,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '16px',
+                    padding: '20px',
+                    boxShadow: theme.shadow,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: '260px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        flexWrap: 'wrap',
+                        marginBottom: '10px',
+                      }}
+                    >
+                      <h4 style={{ color: theme.text, margin: 0 }}>
+                        🎟️ {coupon.code}
+                      </h4>
+
+                      <span
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: '800',
+                          background: coupon.isActive
+                            ? 'rgba(34,197,94,0.15)'
+                            : 'rgba(239,68,68,0.15)',
+                          color: coupon.isActive ? '#86efac' : '#fca5a5',
+                          border: `1px solid ${theme.border}`,
+                        }}
+                      >
+                        {coupon.isActive ? 'Active' : 'Inactive'}
+                      </span>
+
+                      {expired && (
+                        <span
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '999px',
+                            fontSize: '12px',
+                            fontWeight: '800',
+                            background: 'rgba(239,68,68,0.15)',
+                            color: '#fca5a5',
+                            border: `1px solid ${theme.border}`,
+                          }}
+                        >
+                          Expired
+                        </span>
+                      )}
+                    </div>
+
+                    <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                      Type:{' '}
+                      <strong style={{ color: theme.text }}>
+                        {coupon.discountType === 'free'
+                          ? 'Free Course Access'
+                          : coupon.discountType === 'percentage'
+                          ? `${coupon.discountValue}% Off`
+                          : `₹${coupon.discountValue} Off`}
+                      </strong>
+                    </p>
+
+                    <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                      Course:{' '}
+                      <strong style={{ color: theme.text }}>
+                        {coupon.course?.title || 'All Courses'}
+                      </strong>
+                    </p>
+
+                    <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                      Used:{' '}
+                      <strong style={{ color: theme.text }}>
+                        {coupon.usedCount || 0} /{' '}
+                        {coupon.usageLimit === 0 ? 'Unlimited' : coupon.usageLimit}
+                      </strong>
+                    </p>
+
+                    <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                      Expiry:{' '}
+                      <strong style={{ color: theme.text }}>
+                        {coupon.expiresAt
+                          ? new Date(coupon.expiresAt).toLocaleDateString('en-IN')
+                          : 'No expiry'}
+                      </strong>
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      onClick={() => toggleCouponStatus(coupon)}
+                      style={{
+                        padding: '9px 14px',
+                        background: coupon.isActive ? theme.warning : theme.success,
+                        color: theme.buttonText,
+                        border: 'none',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontWeight: '700',
+                      }}
+                    >
+                      {coupon.isActive ? 'Disable' : 'Enable'}
+                    </button>
+
+                    <button
+                      onClick={() => deleteCoupon(coupon._id, coupon.code)}
+                      style={{
+                        padding: '9px 14px',
+                        background: theme.danger,
+                        color: theme.buttonText,
+                        border: 'none',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        fontWeight: '700',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div
       style={{
@@ -489,6 +935,10 @@ function AdminPanel() {
 
           <button onClick={() => setActiveTab('payments')} style={tabStyle('payments')}>
             💸 Payments ({payments.filter((p) => p.status === 'pending').length})
+          </button>
+
+          <button onClick={() => setActiveTab('coupons')} style={tabStyle('coupons')}>
+            🎟️ Coupons ({coupons.length})
           </button>
 
           <button onClick={() => setActiveTab('live')} style={tabStyle('live')}>
@@ -552,7 +1002,8 @@ function AdminPanel() {
                 <div
                   style={{
                     padding: '12px 14px',
-                    background: theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
+                    background:
+                      theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
                     border: `1px solid ${
                       theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.35)' : '#fcd34d'
                     }`,
@@ -1055,7 +1506,14 @@ function AdminPanel() {
                       )}
 
                       <div>
-                        <h4 style={{ color: theme.text, margin: 0, fontSize: '16px', fontWeight: '800' }}>
+                        <h4
+                          style={{
+                            color: theme.text,
+                            margin: 0,
+                            fontSize: '16px',
+                            fontWeight: '800',
+                          }}
+                        >
                           {u.name}
                         </h4>
                         <p style={{ color: theme.muted, margin: 0, fontSize: '12px' }}>
@@ -1206,6 +1664,59 @@ function AdminPanel() {
                         </span>
                       </p>
 
+                      {(payment.couponCode ||
+                        payment.discountAmount > 0 ||
+                        payment.finalPrice ||
+                        payment.originalPrice) && (
+                        <div
+                          style={{
+                            marginTop: '12px',
+                            padding: '12px',
+                            background: theme.bgSecondary,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: '12px',
+                          }}
+                        >
+                          <p
+                            style={{
+                              color: theme.text,
+                              fontWeight: '800',
+                              margin: '0 0 8px',
+                            }}
+                          >
+                            🎟️ Coupon / Amount Details
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Code:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {payment.couponCode || 'No coupon'}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Original Price:{' '}
+                            <strong style={{ color: theme.text }}>
+                              ₹{payment.originalPrice || payment.course?.price || payment.amount}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Discount:{' '}
+                            <strong style={{ color: theme.success }}>
+                              ₹{payment.discountAmount || 0}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Final Paid:{' '}
+                            <strong style={{ color: theme.text }}>
+                              ₹{payment.finalPrice || payment.amount}
+                            </strong>
+                          </p>
+                        </div>
+                      )}
+
                       <div
                         style={{
                           marginTop: '16px',
@@ -1355,6 +1866,8 @@ function AdminPanel() {
             )}
           </div>
         )}
+
+        {activeTab === 'coupons' && renderCouponSection()}
 
         {activeTab === 'live' && (
           <div>
@@ -1609,13 +2122,9 @@ function AdminPanel() {
           </div>
         )}
 
-        {activeTab === 'notifications' && (
-          <AdminNotificationSender theme={theme} />
-        )}
+        {activeTab === 'notifications' && <AdminNotificationSender theme={theme} />}
 
-        {activeTab === 'activity' && (
-          <SecurityLogsPanel theme={theme} />
-        )}
+        {activeTab === 'activity' && <SecurityLogsPanel theme={theme} />}
       </div>
     </div>
   );

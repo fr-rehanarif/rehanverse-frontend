@@ -4,8 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import Reviews from '../components/Reviews';
+import CheckoutModal from '../components/CheckoutModal';
 import Footer from '../components/Footer';
-import PaymentBox from '../components/PaymentBox';
 import { motion } from 'framer-motion';
 import { Document, Page, pdfjs } from 'react-pdf';
 import logActivity from '../utils/logActivity';
@@ -168,7 +168,9 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
       {pdfError ? (
         <p style={{ color: '#fca5a5', textAlign: 'center' }}>{pdfError}</p>
       ) : !pdfBlobUrl ? (
-        <p style={{ color: theme.muted, textAlign: 'center' }}>Loading PDF...</p>
+        <p style={{ color: theme.muted, textAlign: 'center' }}>
+          Loading PDF...
+        </p>
       ) : (
         <Document
           file={pdfBlobUrl}
@@ -215,6 +217,7 @@ function CourseDetail() {
   const [activeVideo, setActiveVideo] = useState(null);
   const [activePdf, setActivePdf] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -279,11 +282,15 @@ function CourseDetail() {
   const getEmbedUrl = (url) => {
     if (!url) return null;
 
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    const ytMatch = url.match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/
+    );
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
 
     const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-    if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    if (driveMatch) {
+      return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    }
 
     return url;
   };
@@ -292,7 +299,9 @@ function CourseDetail() {
     setActiveVideo(video);
 
     logActivity(
-      `Clicked video: ${video.title} | Course: ${course?.title || 'Unknown Course'}`,
+      `Clicked video: ${video.title} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
       'CourseDetail'
     );
   };
@@ -301,7 +310,9 @@ function CourseDetail() {
     setActivePdf(pdf);
 
     logActivity(
-      `Clicked PDF: ${pdf.title} | Course: ${course?.title || 'Unknown Course'}`,
+      `Clicked PDF: ${pdf.title} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
       'CourseDetail'
     );
   };
@@ -310,7 +321,9 @@ function CourseDetail() {
     setActiveTab(tab);
 
     logActivity(
-      `Switched tab to: ${tab} | Course: ${course?.title || 'Unknown Course'}`,
+      `Switched tab to: ${tab} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
       'CourseDetail'
     );
   };
@@ -472,8 +485,52 @@ function CourseDetail() {
           )}
 
           {course.price > 0 && !isEnrolled && (
-            <div style={{ marginTop: '30px' }}>
-              <PaymentBox courseId={id} />
+            <div
+              style={{
+                marginTop: '30px',
+                padding: '20px',
+                borderRadius: '18px',
+                background: theme.card,
+                border: `1px solid ${theme.border || '#334155'}`,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+                textAlign: 'center',
+              }}
+            >
+              <h3 style={{ marginTop: 0 }}>🔐 Unlock This Course</h3>
+
+              <p
+                style={{
+                  color: theme.muted,
+                  lineHeight: '1.6',
+                  marginBottom: '18px',
+                }}
+              >
+                Apply coupon code, scan QR, upload payment screenshot, or enroll
+                directly if your coupon makes this course free.
+              </p>
+
+              <button
+                onClick={() => {
+                  logActivity(
+                    `Opened checkout modal | Course: ${course.title}`,
+                    'CourseDetail'
+                  );
+                  setShowCheckout(true);
+                }}
+                style={{
+                  padding: '14px 24px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+                  color: 'white',
+                  fontWeight: '900',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  boxShadow: '0 12px 35px rgba(34,197,94,0.25)',
+                }}
+              >
+                Buy Now / Apply Coupon
+              </button>
             </div>
           )}
         </div>
@@ -538,8 +595,13 @@ function CourseDetail() {
                       marginBottom: '10px',
                       cursor: 'pointer',
                       background:
-                        activeVideo?.title === video.title ? theme.primary : theme.bg,
-                      color: activeVideo?.title === video.title ? '#fff' : theme.text,
+                        activeVideo?.title === video.title
+                          ? theme.primary
+                          : theme.bg,
+                      color:
+                        activeVideo?.title === video.title
+                          ? '#fff'
+                          : theme.text,
                       border: `1px solid ${theme.border || '#334155'}`,
                       fontWeight: '500',
                     }}
@@ -566,8 +628,11 @@ function CourseDetail() {
                       marginBottom: '10px',
                       cursor: 'pointer',
                       background:
-                        activePdf?.title === pdf.title ? theme.primary : theme.bg,
-                      color: activePdf?.title === pdf.title ? '#fff' : theme.text,
+                        activePdf?.title === pdf.title
+                          ? theme.primary
+                          : theme.bg,
+                      color:
+                        activePdf?.title === pdf.title ? '#fff' : theme.text,
                       border: `1px solid ${theme.border || '#334155'}`,
                       fontWeight: '500',
                     }}
@@ -582,6 +647,19 @@ function CourseDetail() {
           )}
         </div>
       </div>
+
+      {showCheckout && (
+        <CheckoutModal
+          course={course}
+          onClose={() => {
+            logActivity(
+              `Closed checkout modal | Course: ${course.title}`,
+              'CourseDetail'
+            );
+            setShowCheckout(false);
+          }}
+        />
+      )}
 
       <Footer />
     </div>
