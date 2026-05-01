@@ -330,17 +330,14 @@ function CourseDetail() {
 
   const handleCheckoutSuccess = () => {
     logActivity(
-      `Checkout success | Redirecting to course: ${course?.title || 'Unknown Course'}`,
+      `Checkout success | Redirecting to My Courses | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
       'CourseDetail'
     );
 
     setShowCheckout(false);
-
-    if (course?._id) {
-      window.location.href = `/courses/${course._id}`;
-    } else {
-      window.location.href = `/courses/${id}`;
-    }
+    window.location.href = '/my-courses';
   };
 
   if (!course) {
@@ -476,7 +473,6 @@ function CourseDetail() {
             )}
           </motion.div>
 
-          {/* ✅ LIVE CLASSES ADDED HERE */}
           <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
 
           <div style={{ marginTop: '30px' }}>

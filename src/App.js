@@ -89,6 +89,7 @@ function App() {
           <Route path="/payment/:courseId" element={<Payment />} />
           <Route path="/my-courses" element={<MyCourses />} />
           <Route path="/course/:id" element={<CourseDetail />} />
+          <Route path="/courses/:id" element={<CourseDetail />} />
         </Routes>
       </BrowserRouter>
     </div>

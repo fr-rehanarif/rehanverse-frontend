@@ -44,9 +44,9 @@ function Payment() {
           (c) => c._id?.toString() === courseId.toString()
         );
 
-        // ✅ 3. Agar already enrolled hai to payment modal nahi, direct course page
+        // ✅ 3. Already enrolled hai to payment modal nahi, direct My Courses
         if (alreadyEnrolled) {
-          navigate(`/courses/${courseId}`, { replace: true });
+          navigate('/my-courses', { replace: true });
           return;
         }
 
@@ -62,14 +62,8 @@ function Payment() {
     fetchCourseAndCheckEnrollment();
   }, [courseId, navigate]);
 
-  const goToCourse = () => {
-    if (course?._id) {
-      navigate(`/courses/${course._id}`, { replace: true });
-    } else if (courseId) {
-      navigate(`/courses/${courseId}`, { replace: true });
-    } else {
-      navigate('/courses', { replace: true });
-    }
+  const goToMyCourses = () => {
+    navigate('/my-courses', { replace: true });
   };
 
   return (
@@ -144,8 +138,8 @@ function Payment() {
       {!loading && !msg && course && (
         <CheckoutModal
           course={course}
-          onClose={goToCourse}
-          onSuccess={goToCourse}
+          onClose={goToMyCourses}
+          onSuccess={goToMyCourses}
         />
       )}
     </div>
