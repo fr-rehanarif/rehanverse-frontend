@@ -331,8 +331,10 @@ function Courses() {
                 padding: '10px 20px',
                 background: isEnrolled(course._id)
                   ? theme.success
-                  : theme.primary,
-                color: theme.buttonText,
+                  : course.isFree
+                  ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+                  : 'linear-gradient(135deg, #f97316, #ea580c)',
+                color: '#ffffff',
                 border: 'none',
                 borderRadius: '12px',
                 cursor: 'pointer',
