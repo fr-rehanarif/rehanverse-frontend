@@ -14,6 +14,19 @@ function Navbar() {
     navigate('/login');
   };
 
+  const allThemes =
+    theme.themeOptions && Array.isArray(theme.themeOptions)
+      ? theme.themeOptions
+      : [
+          { id: 'cosmicDark', icon: '🌌', name: 'Cosmic Dark' },
+          { id: 'liquidGlassDark', icon: '🫧', name: 'Liquid Glass Dark' },
+          { id: 'liquidGlassLight', icon: '🍏', name: 'Liquid Glass Light' },
+          { id: 'cosmicGlass', icon: '🪐', name: 'Cosmic Glass' },
+          { id: 'midnightMinimal', icon: '🌑', name: 'Midnight Minimal' },
+          { id: 'cleanGlass', icon: '💎', name: 'Clean Glass' },
+          { id: 'softPremium', icon: '☀️', name: 'Soft Premium' },
+        ];
+
   return (
     <nav
       style={{
@@ -22,6 +35,7 @@ function Navbar() {
         borderBottom: `1px solid ${theme.border}`,
         boxShadow: theme.shadow,
         backdropFilter: theme.glass,
+        WebkitBackdropFilter: theme.glass,
       }}
     >
       <motion.div whileHover={{ scale: 1.05 }}>
@@ -61,12 +75,15 @@ function Navbar() {
             color: theme.text,
             border: `1px solid ${theme.border}`,
             boxShadow: theme.glow,
+            backdropFilter: theme.glass,
+            WebkitBackdropFilter: theme.glass,
           }}
         >
-          <option value="cosmicDark">🌌 Cosmic Dark</option>
-          <option value="midnightMinimal">🌑 Midnight Minimal</option>
-          <option value="cleanGlass">💎 Clean Glass</option>
-          <option value="softPremium">☀️ Soft Premium</option>
+          {allThemes.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.icon} {item.name}
+            </option>
+          ))}
         </select>
 
         {user && (
@@ -82,7 +99,6 @@ function Navbar() {
 
         {user ? (
           <>
-            {/* ✅ Notification Bell Added Here */}
             <NotificationBell theme={theme} />
 
             <motion.div whileHover={{ y: -2 }}>
@@ -224,6 +240,7 @@ const styles = {
     fontSize: '13px',
     fontWeight: '600',
     outline: 'none',
+    minWidth: '210px',
   },
 };
 
