@@ -94,7 +94,7 @@ function Courses() {
 
   const isEnrolled = (id) => enrolledIds.includes(id);
 
-  // ✅ Card click: course detail/preview page
+  // ✅ Course detail preview page open
   const openCourseDetail = (course) => {
     if (!token) {
       navigate('/login');
@@ -116,13 +116,13 @@ function Courses() {
       return;
     }
 
-    // ✅ Paid course direct payment nahi — pehle CourseDetail preview page
+    // ✅ PAID COURSE: direct payment nahi, pehle preview CourseDetail page
     if (!course.isFree) {
       navigate(`/courses/${course._id}`);
       return;
     }
 
-    // ✅ Free course enroll + redirect
+    // ✅ FREE COURSE: enroll + redirect
     try {
       const res = await axios.post(
         `${API}/api/enroll/${course._id}`,
@@ -216,6 +216,26 @@ function Courses() {
           </div>
         )}
 
+        {!course.isFree && !isEnrolled(course._id) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '14px',
+              left: '14px',
+              zIndex: 5,
+              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+              color: '#fff',
+              padding: '6px 10px',
+              borderRadius: '999px',
+              fontSize: '12px',
+              fontWeight: '900',
+              boxShadow: '0 8px 25px rgba(245,158,11,0.25)',
+            }}
+          >
+            🔥 Preview Available
+          </div>
+        )}
+
         {course.thumbnail ? (
           <img
             src={course.thumbnail}
@@ -301,6 +321,31 @@ function Courses() {
             </span>
           </div>
 
+          {!course.isFree && !isEnrolled(course._id) && (
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: '12px',
+                background:
+                  theme.mode === 'dark'
+                    ? 'rgba(251,191,36,0.12)'
+                    : '#fef3c7',
+                color: theme.mode === 'dark' ? '#fbbf24' : '#92400e',
+                border:
+                  theme.mode === 'dark'
+                    ? '1px solid rgba(251,191,36,0.25)'
+                    : '1px solid #fde68a',
+                fontSize: '12px',
+                fontWeight: '800',
+                marginBottom: '14px',
+                lineHeight: '1.5',
+              }}
+            >
+              🔒 Click karke full course overview dekho — videos, PDFs aur live
+              classes preview available.
+            </div>
+          )}
+
           <div
             style={{
               marginTop: 'auto',
@@ -331,18 +376,24 @@ function Courses() {
                 padding: '10px 20px',
                 background: isEnrolled(course._id)
                   ? theme.success
+                  : !course.isFree
+                  ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
                   : theme.primary,
                 color: theme.buttonText,
                 border: 'none',
                 borderRadius: '12px',
                 cursor: 'pointer',
                 fontSize: '14px',
-                fontWeight: '600',
+                fontWeight: '800',
                 boxShadow: theme.shadow,
-                minWidth: '140px',
+                minWidth: '150px',
               }}
             >
-              {isEnrolled(course._id) ? '✅ Enrolled' : 'Enroll Now'}
+              {isEnrolled(course._id)
+                ? '✅ Enrolled'
+                : course.isFree
+                ? 'Enroll for Free'
+                : 'Preview & Enroll'}
             </motion.button>
           </div>
         </div>
@@ -721,17 +772,17 @@ function Courses() {
         ) : (
           <>
             <CourseSection
-              title="✅ Already Enrolled"
-              subtitle="Ye courses tumhare account me already owned/enrolled hain."
-              data={enrolledCourses}
-              emptyText="Is filter me koi enrolled course nahi mila."
-            />
-
-            <CourseSection
               title="🛒 Not Owned"
               subtitle="Ye courses abhi tumhare account me enrolled nahi hain."
               data={notOwnedCourses}
               emptyText="Is filter me koi not-owned course nahi mila."
+            />
+
+            <CourseSection
+              title="✅ Already Enrolled"
+              subtitle="Ye courses tumhare account me already owned/enrolled hain."
+              data={enrolledCourses}
+              emptyText="Is filter me koi enrolled course nahi mila."
             />
           </>
         )}
