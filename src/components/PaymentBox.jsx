@@ -1,100 +1,103 @@
-import { useState } from "react";
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import API from '../api';
+import CheckoutModal from './CheckoutModal';
 
-function PaymentBox({ courseId }) {
-  const [screenshot, setScreenshot] = useState(null);
-  const [loading, setLoading] = useState(false);
+function PaymentBox({ courseId, course: courseProp }) {
+  const [course, setCourse] = useState(courseProp || null);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [loading, setLoading] = useState(!courseProp);
+  const [error, setError] = useState('');
 
-  const handleSubmitProof = async () => {
-  if (!screenshot) {
-    alert("Screenshot upload kar");
-    return;
-  }
+  useEffect(() => {
+    const fetchCourse = async () => {
+      try {
+        if (courseProp) {
+          setCourse(courseProp);
+          setLoading(false);
+          return;
+        }
 
-  try {
-    setLoading(true);
+        if (!courseId) {
+          setError('Course ID missing');
+          setLoading(false);
+          return;
+        }
 
-    const formData = new FormData();
-    formData.append("courseId", courseId);
-    formData.append("screenshot", screenshot);
+        setLoading(true);
 
-    const res = await fetch("https://rehanverse.onrender.com/api/payment/request", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: formData,
-    });
+        const res = await axios.get(`${API}/api/courses/${courseId}`);
+        setCourse(res.data);
+        setError('');
+      } catch (err) {
+        console.log('PAYMENTBOX COURSE FETCH ERROR:', err);
+        setError(err.response?.data?.message || 'Course load failed');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const data = await res.json();
-    console.log("UPLOAD RESPONSE:", data);
-
-    if (!res.ok) {
-      alert(data.message || "Request failed");
-      return;
-    }
-
-    alert(data.message || "Payment proof submitted successfully");
-    setScreenshot(null);
-  } catch (error) {
-    console.error("UPLOAD ERROR:", error);
-    alert("Server error");
-  } finally {
-    setLoading(false);
-  }
-};
+    fetchCourse();
+  }, [courseId, courseProp]);
 
   return (
     <div
       style={{
-        marginTop: "20px",
-        padding: "20px",
-        borderRadius: "16px",
-        background: "#111",
-        color: "#fff",
-        border: "1px solid #333",
+        marginTop: '20px',
+        padding: '22px',
+        borderRadius: '18px',
+        background: '#0f172a',
+        color: '#fff',
+        border: '1px solid rgba(139,92,246,0.35)',
+        textAlign: 'center',
+        boxShadow: '0 18px 50px rgba(0,0,0,0.25)',
       }}
     >
-      <h3 style={{ marginBottom: "10px" }}>Pay via QR</h3>
+      <h3 style={{ marginTop: 0, marginBottom: '10px', color: '#a78bfa' }}>
+        🔐 Secure Checkout
+      </h3>
 
-      <img
-        src="/qr.jpg"
-        alt="Payment QR"
-        style={{
-          width: "260px",
-          maxWidth: "100%",
-          borderRadius: "12px",
-          marginBottom: "15px",
-        }}
-      />
-
-      <p style={{ marginBottom: "12px" }}>
-        QR scan karke payment karo, fir screenshot upload karo.
+      <p style={{ color: '#cbd5e1', lineHeight: '1.6', marginBottom: '18px' }}>
+        QR payment, coupon code aur screenshot upload ab ek hi checkout window mein hai.
       </p>
 
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => setScreenshot(e.target.files[0])}
-        style={{ marginBottom: "12px" }}
-      />
+      {loading && (
+        <p style={{ color: '#94a3b8', marginBottom: '14px' }}>
+          Loading checkout...
+        </p>
+      )}
 
-      <br />
+      {error && (
+        <p style={{ color: '#f87171', marginBottom: '14px', fontWeight: '700' }}>
+          {error}
+        </p>
+      )}
 
       <button
-        onClick={handleSubmitProof}
-        disabled={loading}
+        onClick={() => setShowCheckout(true)}
+        disabled={loading || !course}
         style={{
-          padding: "10px 18px",
-          border: "none",
-          borderRadius: "10px",
-          cursor: "pointer",
-          background: "#00c853",
-          color: "#fff",
-          fontWeight: "bold",
+          padding: '14px 24px',
+          borderRadius: '16px',
+          border: 'none',
+          background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+          color: 'white',
+          fontWeight: '900',
+          cursor: loading || !course ? 'not-allowed' : 'pointer',
+          fontSize: '16px',
+          opacity: loading || !course ? 0.65 : 1,
+          boxShadow: '0 12px 35px rgba(34,197,94,0.25)',
         }}
       >
-        {loading ? "Submitting..." : "Submit Payment Proof"}
+        Buy Now / Apply Coupon
       </button>
+
+      {showCheckout && course && (
+        <CheckoutModal
+          course={course}
+          onClose={() => setShowCheckout(false)}
+        />
+      )}
     </div>
   );
 }
