@@ -20,7 +20,7 @@ function Payment() {
       return;
     }
 
-    const fetchCourse = async () => {
+    const fetchCourseAndCheckEnrollment = async () => {
       try {
         if (!courseId) {
           setMsg('Course ID missing!');
@@ -28,18 +28,38 @@ function Payment() {
           return;
         }
 
-        const res = await axios.get(`${API}/api/courses/${courseId}`);
-        setCourse(res.data);
+        // ✅ 1. Course fetch
+        const courseRes = await axios.get(`${API}/api/courses/${courseId}`);
+        const courseData = courseRes.data;
+        setCourse(courseData);
+
+        // ✅ 2. User enrolled courses check
+        const enrolledRes = await axios.get(`${API}/api/enroll/my/courses`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const alreadyEnrolled = enrolledRes.data.some(
+          (c) => c._id?.toString() === courseId.toString()
+        );
+
+        // ✅ 3. Agar already enrolled hai to payment modal nahi, direct course page
+        if (alreadyEnrolled) {
+          navigate(`/courses/${courseId}`, { replace: true });
+          return;
+        }
+
         setMsg('');
       } catch (err) {
-        console.log('PAYMENT PAGE COURSE FETCH ERROR:', err);
+        console.log('PAYMENT PAGE COURSE/ENROLLMENT CHECK ERROR:', err);
         setMsg(err.response?.data?.message || 'Course load failed!');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCourse();
+    fetchCourseAndCheckEnrollment();
   }, [courseId, navigate]);
 
   const goToCourse = () => {
@@ -78,11 +98,11 @@ function Payment() {
           }}
         >
           <h2 style={{ color: '#8b5cf6', marginTop: 0 }}>
-            Loading Checkout...
+            Checking Enrollment...
           </h2>
 
           <p style={{ color: '#cbd5e1', marginBottom: 0 }}>
-            Please wait, secure checkout open ho raha hai.
+            Please wait, course access check ho raha hai.
           </p>
         </div>
       )}
@@ -99,9 +119,7 @@ function Payment() {
             boxShadow: '0 0 30px rgba(239,68,68,0.15)',
           }}
         >
-          <h2 style={{ color: '#f87171', marginTop: 0 }}>
-            Checkout Error
-          </h2>
+          <h2 style={{ color: '#f87171', marginTop: 0 }}>Checkout Error</h2>
 
           <p style={{ color: '#fecaca' }}>❌ {msg}</p>
 
@@ -123,7 +141,7 @@ function Payment() {
         </div>
       )}
 
-      {!loading && course && (
+      {!loading && !msg && course && (
         <CheckoutModal
           course={course}
           onClose={goToCourse}
