@@ -41,6 +41,135 @@ export const themes = {
     radius: "20px"
   },
 
+  liquidGlassDark: {
+    id: "liquidGlassDark",
+    name: "Liquid Glass Dark",
+    mode: "dark",
+    icon: "🫧",
+
+    bg:
+      "radial-gradient(circle at top left, rgba(99,102,241,0.22), transparent 34%), radial-gradient(circle at bottom right, rgba(34,211,238,0.16), transparent 32%), #050816",
+    bgSecondary: "rgba(15, 23, 42, 0.68)",
+    bgTertiary: "rgba(30, 41, 59, 0.66)",
+    card: "rgba(15, 23, 42, 0.52)",
+    cardSolid: "#0f172a",
+    navbar: "rgba(5, 8, 22, 0.54)",
+
+    text: "#f8fafc",
+    textSecondary: "#dbeafe",
+    muted: "#a5b4fc",
+
+    primary: "#a78bfa",
+    primaryHover: "#8b5cf6",
+    secondary: "#67e8f9",
+    accent: "#38bdf8",
+
+    border: "rgba(255, 255, 255, 0.16)",
+    borderStrong: "rgba(167, 139, 250, 0.36)",
+
+    shadow: "0 18px 45px rgba(0, 0, 0, 0.34)",
+    shadowHover: "0 24px 60px rgba(99, 102, 241, 0.26)",
+    glow: "0 0 34px rgba(103, 232, 249, 0.20)",
+
+    success: "#22c55e",
+    warning: "#fbbf24",
+    danger: "#fb7185",
+    info: "#38bdf8",
+
+    buttonText: "#ffffff",
+    cardText: "#f8fafc",
+
+    overlay: "rgba(2, 6, 23, 0.62)",
+    glass: "blur(26px) saturate(180%)",
+    radius: "26px"
+  },
+
+  liquidGlassLight: {
+    id: "liquidGlassLight",
+    name: "Liquid Glass Light",
+    mode: "light",
+    icon: "🍏",
+
+    bg:
+      "radial-gradient(circle at top left, rgba(96,165,250,0.28), transparent 32%), radial-gradient(circle at bottom right, rgba(167,139,250,0.24), transparent 34%), #f8fbff",
+    bgSecondary: "rgba(255, 255, 255, 0.66)",
+    bgTertiary: "rgba(226, 232, 240, 0.72)",
+    card: "rgba(255, 255, 255, 0.54)",
+    cardSolid: "#ffffff",
+    navbar: "rgba(255, 255, 255, 0.50)",
+
+    text: "#0f172a",
+    textSecondary: "#1e293b",
+    muted: "#475569",
+
+    primary: "#2563eb",
+    primaryHover: "#1d4ed8",
+    secondary: "#7c3aed",
+    accent: "#06b6d4",
+
+    border: "rgba(255, 255, 255, 0.62)",
+    borderStrong: "rgba(37, 99, 235, 0.20)",
+
+    shadow: "0 18px 45px rgba(15, 23, 42, 0.10)",
+    shadowHover: "0 22px 55px rgba(37, 99, 235, 0.16)",
+    glow: "0 0 26px rgba(96, 165, 250, 0.22)",
+
+    success: "#16a34a",
+    warning: "#d97706",
+    danger: "#dc2626",
+    info: "#0284c7",
+
+    buttonText: "#ffffff",
+    cardText: "#0f172a",
+
+    overlay: "rgba(255, 255, 255, 0.62)",
+    glass: "blur(28px) saturate(180%)",
+    radius: "26px"
+  },
+
+  cosmicGlass: {
+    id: "cosmicGlass",
+    name: "Cosmic Glass",
+    mode: "dark",
+    icon: "🪐",
+
+    bg:
+      "radial-gradient(circle at 18% 12%, rgba(168,85,247,0.26), transparent 28%), radial-gradient(circle at 85% 75%, rgba(14,165,233,0.18), transparent 30%), linear-gradient(135deg, #020617, #090b1f 45%, #111827)",
+    bgSecondary: "rgba(15, 23, 42, 0.62)",
+    bgTertiary: "rgba(30, 41, 59, 0.60)",
+    card: "rgba(15, 23, 42, 0.48)",
+    cardSolid: "#111827",
+    navbar: "rgba(2, 6, 23, 0.55)",
+
+    text: "#f8fafc",
+    textSecondary: "#dbeafe",
+    muted: "#93c5fd",
+
+    primary: "#c084fc",
+    primaryHover: "#a855f7",
+    secondary: "#22d3ee",
+    accent: "#60a5fa",
+
+    border: "rgba(192, 132, 252, 0.22)",
+    borderStrong: "rgba(34, 211, 238, 0.34)",
+
+    shadow: "0 18px 48px rgba(2, 6, 23, 0.40)",
+    shadowHover: "0 24px 60px rgba(168, 85, 247, 0.24)",
+    glow: "0 0 30px rgba(192, 132, 252, 0.24)",
+
+    success: "#22c55e",
+    warning: "#f59e0b",
+    danger: "#fb7185",
+    info: "#38bdf8",
+
+    buttonText: "#ffffff",
+    cardText: "#f8fafc",
+
+    overlay: "rgba(2, 6, 23, 0.68)",
+    glass: "blur(24px) saturate(175%)",
+    radius: "26px"
+  },
+
   midnightMinimal: {
     id: "midnightMinimal",
     name: "Midnight Minimal",
