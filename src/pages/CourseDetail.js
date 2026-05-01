@@ -328,6 +328,21 @@ function CourseDetail() {
     );
   };
 
+  const handleCheckoutSuccess = () => {
+    logActivity(
+      `Checkout success | Redirecting to course: ${course?.title || 'Unknown Course'}`,
+      'CourseDetail'
+    );
+
+    setShowCheckout(false);
+
+    if (course?._id) {
+      window.location.href = `/courses/${course._id}`;
+    } else {
+      window.location.href = `/courses/${id}`;
+    }
+  };
+
   if (!course) {
     return (
       <div
@@ -658,6 +673,7 @@ function CourseDetail() {
             );
             setShowCheckout(false);
           }}
+          onSuccess={handleCheckoutSuccess}
         />
       )}
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import API from '../api';
 
-function CheckoutModal({ course, onClose }) {
+function CheckoutModal({ course, onClose, onSuccess }) {
   const [couponCode, setCouponCode] = useState('');
   const [couponData, setCouponData] = useState(null);
   const [screenshot, setScreenshot] = useState(null);
@@ -16,6 +16,15 @@ function CheckoutModal({ course, onClose }) {
   const finalPrice = Number(couponData?.finalPrice ?? originalPrice);
   const discountAmount = Number(couponData?.discountAmount ?? 0);
   const isFreeByCoupon = couponData?.isFreeByCoupon === true || finalPrice === 0;
+
+  const finishSuccess = (fallbackPath) => {
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+
+    window.location.href = fallbackPath || `/courses/${course._id}`;
+  };
 
   const applyCoupon = async () => {
     try {
@@ -95,7 +104,8 @@ function CheckoutModal({ course, onClose }) {
       );
 
       alert(res.data.message || 'Enrolled successfully');
-      window.location.reload();
+
+      finishSuccess(`/courses/${course._id}`);
     } catch (err) {
       setMessage(err.response?.data?.message || 'Enrollment failed');
       setMessageType('error');
@@ -142,7 +152,8 @@ function CheckoutModal({ course, onClose }) {
       });
 
       alert(res.data.message || 'Payment proof submitted successfully');
-      window.location.reload();
+
+      finishSuccess(`/courses/${course._id}`);
     } catch (err) {
       setMessage(err.response?.data?.message || 'Payment proof upload failed');
       setMessageType('error');

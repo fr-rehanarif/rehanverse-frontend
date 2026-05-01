@@ -9,7 +9,6 @@ function Payment() {
   const navigate = useNavigate();
 
   const [course, setCourse] = useState(null);
-  const [showCheckout, setShowCheckout] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
 
@@ -17,7 +16,7 @@ function Payment() {
     const token = localStorage.getItem('token');
 
     if (!token) {
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
 
@@ -31,7 +30,6 @@ function Payment() {
 
         const res = await axios.get(`${API}/api/courses/${courseId}`);
         setCourse(res.data);
-        setShowCheckout(true);
         setMsg('');
       } catch (err) {
         console.log('PAYMENT PAGE COURSE FETCH ERROR:', err);
@@ -43,6 +41,16 @@ function Payment() {
 
     fetchCourse();
   }, [courseId, navigate]);
+
+  const goToCourse = () => {
+    if (course?._id) {
+      navigate(`/courses/${course._id}`, { replace: true });
+    } else if (courseId) {
+      navigate(`/courses/${courseId}`, { replace: true });
+    } else {
+      navigate('/courses', { replace: true });
+    }
+  };
 
   return (
     <div
@@ -57,95 +65,69 @@ function Payment() {
         textAlign: 'center',
       }}
     >
-      <div
-        style={{
-          background: '#0f172a',
-          border: '1px solid #312e81',
-          borderRadius: '22px',
-          padding: '30px',
-          maxWidth: '560px',
-          width: '100%',
-          boxShadow: '0 0 30px rgba(99,102,241,0.15)',
-        }}
-      >
-        <h2
+      {loading && (
+        <div
           style={{
-            color: '#8b5cf6',
-            marginTop: 0,
-            marginBottom: '10px',
+            background: '#0f172a',
+            border: '1px solid #312e81',
+            borderRadius: '22px',
+            padding: '30px',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 0 30px rgba(99,102,241,0.15)',
           }}
         >
-          Secure Checkout
-        </h2>
+          <h2 style={{ color: '#8b5cf6', marginTop: 0 }}>
+            Loading Checkout...
+          </h2>
 
-        {loading && (
-          <p style={{ color: '#cbd5e1' }}>
-            Loading checkout...
+          <p style={{ color: '#cbd5e1', marginBottom: 0 }}>
+            Please wait, secure checkout open ho raha hai.
           </p>
-        )}
+        </div>
+      )}
 
-        {!loading && msg && (
-          <p
+      {!loading && msg && (
+        <div
+          style={{
+            background: '#0f172a',
+            border: '1px solid #7f1d1d',
+            borderRadius: '22px',
+            padding: '30px',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 0 30px rgba(239,68,68,0.15)',
+          }}
+        >
+          <h2 style={{ color: '#f87171', marginTop: 0 }}>
+            Checkout Error
+          </h2>
+
+          <p style={{ color: '#fecaca' }}>❌ {msg}</p>
+
+          <button
+            onClick={() => navigate('/courses', { replace: true })}
             style={{
-              color: '#f87171',
-              fontWeight: '700',
-              marginBottom: '18px',
+              marginTop: '14px',
+              padding: '12px 20px',
+              borderRadius: '12px',
+              border: 'none',
+              background: '#8b5cf6',
+              color: '#fff',
+              cursor: 'pointer',
+              fontWeight: '800',
             }}
           >
-            ❌ {msg}
-          </p>
-        )}
+            Go To Courses
+          </button>
+        </div>
+      )}
 
-        {!loading && course && (
-          <>
-            <p
-              style={{
-                color: '#cbd5e1',
-                lineHeight: '1.6',
-                marginBottom: '20px',
-              }}
-            >
-              Course: <strong>{course.title}</strong>
-              <br />
-              QR payment, coupon code aur screenshot upload ek hi checkout
-              window mein hoga.
-            </p>
-
-            <button
-              onClick={() => setShowCheckout(true)}
-              style={{
-                padding: '14px 24px',
-                borderRadius: '16px',
-                border: 'none',
-                background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
-                color: 'white',
-                fontWeight: '900',
-                cursor: 'pointer',
-                fontSize: '16px',
-                boxShadow: '0 12px 35px rgba(34,197,94,0.25)',
-              }}
-            >
-              Buy Now / Apply Coupon
-            </button>
-          </>
-        )}
-
-        <p
-          onClick={() => navigate(-1)}
-          style={{
-            marginTop: '20px',
-            color: '#cbd5e1',
-            cursor: 'pointer',
-          }}
-        >
-          ← Go Back
-        </p>
-      </div>
-
-      {showCheckout && course && (
+      {!loading && course && (
         <CheckoutModal
           course={course}
-          onClose={() => setShowCheckout(false)}
+          onClose={goToCourse}
+          onSuccess={goToCourse}
         />
       )}
     </div>

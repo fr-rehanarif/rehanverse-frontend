@@ -40,6 +40,16 @@ function PaymentBox({ courseId, course: courseProp }) {
     fetchCourse();
   }, [courseId, courseProp]);
 
+  const goToCourse = () => {
+    const finalCourseId = course?._id || courseId;
+
+    if (finalCourseId) {
+      window.location.href = `/courses/${finalCourseId}`;
+    } else {
+      window.location.href = '/courses';
+    }
+  };
+
   return (
     <div
       style={{
@@ -96,6 +106,7 @@ function PaymentBox({ courseId, course: courseProp }) {
         <CheckoutModal
           course={course}
           onClose={() => setShowCheckout(false)}
+          onSuccess={goToCourse}
         />
       )}
     </div>
