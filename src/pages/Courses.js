@@ -94,6 +94,16 @@ function Courses() {
 
   const isEnrolled = (id) => enrolledIds.includes(id);
 
+  // ✅ Course detail preview page open
+  const openCourseDetail = (course) => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    navigate(`/courses/${course._id}`);
+  };
+
   const handleEnroll = async (course) => {
     if (!token) {
       navigate('/login');
@@ -106,13 +116,13 @@ function Courses() {
       return;
     }
 
-    // ✅ Paid course payment page
+    // ✅ PAID COURSE: direct payment nahi, pehle preview/brainwash CourseDetail page
     if (!course.isFree) {
-      navigate(`/payment/${course._id}`);
+      navigate(`/courses/${course._id}`);
       return;
     }
 
-    // ✅ Free course enroll + redirect
+    // ✅ FREE COURSE: enroll + redirect
     try {
       const res = await axios.post(
         `${API}/api/enroll/${course._id}`,
@@ -171,6 +181,7 @@ function Courses() {
       <motion.div
         whileHover={{ y: -8, scale: 1.02 }}
         transition={{ type: 'spring', stiffness: 200 }}
+        onClick={() => openCourseDetail(course)}
         style={{
           background: theme.card,
           border: `1px solid ${theme.border}`,
@@ -202,6 +213,26 @@ function Courses() {
             }}
           >
             ✅ Owned
+          </div>
+        )}
+
+        {!course.isFree && !isEnrolled(course._id) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '14px',
+              left: '14px',
+              zIndex: 5,
+              background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+              color: '#fff',
+              padding: '6px 10px',
+              borderRadius: '999px',
+              fontSize: '12px',
+              fontWeight: '900',
+              boxShadow: '0 8px 25px rgba(245,158,11,0.25)',
+            }}
+          >
+            🔥 Preview Available
           </div>
         )}
 
@@ -290,6 +321,31 @@ function Courses() {
             </span>
           </div>
 
+          {!course.isFree && !isEnrolled(course._id) && (
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: '12px',
+                background:
+                  theme.mode === 'dark'
+                    ? 'rgba(251,191,36,0.12)'
+                    : '#fef3c7',
+                color: theme.mode === 'dark' ? '#fbbf24' : '#92400e',
+                border:
+                  theme.mode === 'dark'
+                    ? '1px solid rgba(251,191,36,0.25)'
+                    : '1px solid #fde68a',
+                fontSize: '12px',
+                fontWeight: '800',
+                marginBottom: '14px',
+                lineHeight: '1.5',
+              }}
+            >
+              🔒 Click karke full course overview dekho — videos, PDFs aur live
+              classes preview available.
+            </div>
+          )}
+
           <div
             style={{
               marginTop: 'auto',
@@ -312,21 +368,32 @@ function Courses() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => handleEnroll(course)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEnroll(course);
+              }}
               style={{
                 padding: '10px 20px',
-                background: isEnrolled(course._id) ? theme.success : theme.primary,
+                background: isEnrolled(course._id)
+                  ? theme.success
+                  : !course.isFree
+                  ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
+                  : theme.primary,
                 color: theme.buttonText,
                 border: 'none',
                 borderRadius: '12px',
                 cursor: 'pointer',
                 fontSize: '14px',
-                fontWeight: '600',
+                fontWeight: '800',
                 boxShadow: theme.shadow,
                 minWidth: '140px',
               }}
             >
-              {isEnrolled(course._id) ? '✅ Enrolled' : 'Enroll Now'}
+              {isEnrolled(course._id)
+                ? '✅ Enrolled'
+                : course.isFree
+                ? 'Enroll Free'
+                : 'Preview & Buy'}
             </motion.button>
           </div>
         </div>
@@ -559,7 +626,10 @@ function Courses() {
                     padding: '11px 12px',
                     borderRadius: '12px',
                     border: `1px solid ${theme.border}`,
-                    background: priceFilter === 'custom' ? theme.bg : 'rgba(148,163,184,0.12)',
+                    background:
+                      priceFilter === 'custom'
+                        ? theme.bg
+                        : 'rgba(148,163,184,0.12)',
                     color: theme.text,
                     outline: 'none',
                     fontWeight: '700',
@@ -592,7 +662,10 @@ function Courses() {
                     padding: '11px 12px',
                     borderRadius: '12px',
                     border: `1px solid ${theme.border}`,
-                    background: priceFilter === 'custom' ? theme.bg : 'rgba(148,163,184,0.12)',
+                    background:
+                      priceFilter === 'custom'
+                        ? theme.bg
+                        : 'rgba(148,163,184,0.12)',
                     color: theme.text,
                     outline: 'none',
                     fontWeight: '700',
@@ -625,7 +698,8 @@ function Courses() {
                   }}
                   style={{
                     width: '100%',
-                    cursor: priceFilter === 'custom' ? 'pointer' : 'not-allowed',
+                    cursor:
+                      priceFilter === 'custom' ? 'pointer' : 'not-allowed',
                   }}
                 />
 
