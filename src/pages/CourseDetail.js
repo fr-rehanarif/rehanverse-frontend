@@ -1,20 +1,35 @@
+import API from '../api';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
-import Reveal from '../components/Reveal';
+import Reviews from '../components/Reviews';
+import CheckoutModal from '../components/CheckoutModal';
 import Footer from '../components/Footer';
-import API from '../api';
+import LiveClassesBox from '../components/LiveClassesBox';
 
-function MyCourses() {
-  const [courseRows, setCourseRows] = useState([]);
-  const [liveCounts, setLiveCounts] = useState({});
-  const [loading, setLoading] = useState(true);
-
-  const theme = useTheme();
+function CourseDetail() {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
   const token = localStorage.getItem('token');
+
+  const [course, setCourse] = useState(null);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [activeTab, setActiveTab] = useState('videos');
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [activePdf, setActivePdf] = useState(null);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
+
+  const [courseProgress, setCourseProgress] = useState({
+    progressPercent: 0,
+    completedVideoUrls: [],
+    completedPdfUrls: [],
+  });
 
   useEffect(() => {
     if (!token) {
@@ -22,182 +37,277 @@ function MyCourses() {
       return;
     }
 
-    fetchMyCoursesWithProgress();
+    fetchCourseDetail();
     // eslint-disable-next-line
-  }, [token, navigate]);
+  }, [id, token]);
 
-  const fetchMyCoursesWithProgress = async () => {
+  const authHeader = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const fetchCourseDetail = async () => {
     try {
       setLoading(true);
 
-      const res = await axios.get(`${API}/api/progress/my-courses`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const courseRes = await axios.get(`${API}/api/courses/${id}`);
+      const courseData = courseRes.data;
 
-      const rows = Array.isArray(res.data) ? res.data : [];
-      setCourseRows(rows);
+      setCourse(courseData);
 
-      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
-      fetchLiveCounts(onlyCourses);
-    } catch (err) {
-      console.log('MY COURSES REAL PROGRESS FETCH ERROR:', err);
+      if (courseData.videos?.length > 0) {
+        setActiveVideo(courseData.videos[0]);
+      }
+
+      if (courseData.pdfs?.length > 0) {
+        setActivePdf(courseData.pdfs[0]);
+      }
 
       try {
-        const fallbackRes = await axios.get(`${API}/api/enroll/my/courses`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const enrolledRes = await axios.get(`${API}/api/enroll/my/courses`, authHeader);
 
-        const oldCourses = Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
+        const owned = enrolledRes.data.some(
+          (c) => c._id?.toString() === id?.toString()
+        );
 
-        const fallbackRows = oldCourses.map((course) => ({
-          course,
-          progress: {
-            progressPercent: 0,
-            openedItems: 0,
-            completedItems: 0,
-            totalItems: (course.videos?.length || 0) + (course.pdfs?.length || 0),
-            openedVideosCount: 0,
-            openedPdfsCount: 0,
-            completedVideosCount: 0,
-            completedPdfsCount: 0,
-            streakCount: 0,
-            lastStudyDate: '',
-            lastOpenedAt: null,
-            lastOpenedType: '',
-            lastOpenedTitle: '',
-          },
-        }));
+        setIsEnrolled(owned);
 
-        setCourseRows(fallbackRows);
-        fetchLiveCounts(oldCourses);
-      } catch (fallbackErr) {
-        console.log('MY COURSES FALLBACK ERROR:', fallbackErr);
+        if (owned) {
+          fetchCourseProgress();
+          if (courseData.videos?.length > 0) {
+            trackProgress({
+              type: 'video',
+              title: courseData.videos[0].title,
+              url: courseData.videos[0].url,
+              action: 'open',
+            });
+          }
+        }
+      } catch (enrollErr) {
+        console.log('ENROLLMENT CHECK ERROR:', enrollErr.response?.data || enrollErr.message);
       }
+    } catch (err) {
+      console.log('COURSE DETAIL FETCH ERROR:', err.response?.data || err.message);
+      setMsg('⚠️ Course load nahi ho pa raha. Backend ya course ID check karo.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchLiveCounts = async (courseList) => {
+  const fetchCourseProgress = async () => {
     try {
-      const counts = {};
+      const res = await axios.get(`${API}/api/progress/course/${id}`, authHeader);
 
-      await Promise.all(
-        courseList.map(async (course) => {
-          try {
-            const res = await axios.get(
-              `${API}/api/live-classes/course/${course._id}`,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
-
-            counts[course._id] = res.data?.length || 0;
-          } catch (err) {
-            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err);
-            counts[course._id] = 0;
-          }
-        })
-      );
-
-      setLiveCounts(counts);
+      setCourseProgress({
+        progressPercent: res.data.progressPercent || 0,
+        completedVideoUrls: res.data.completedVideoUrls || [],
+        completedPdfUrls: res.data.completedPdfUrls || [],
+      });
     } catch (err) {
-      console.log('LIVE COUNTS ERROR:', err);
+      console.log('COURSE PROGRESS FETCH ERROR:', err.response?.data || err.message);
     }
   };
 
-  const formatLastOpened = (dateValue) => {
-    if (!dateValue) return 'Not started yet';
+  const trackProgress = async ({ type, title, url, action = 'open' }) => {
+    try {
+      if (!id || !type) return;
 
-    const date = new Date(dateValue);
+      const res = await axios.post(
+        `${API}/api/progress/track`,
+        {
+          courseId: id,
+          type,
+          title: title || '',
+          url: url || '',
+          action,
+        },
+        authHeader
+      );
 
-    return date.toLocaleString('en-IN', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
+      if (action === 'complete') {
+        setMsg(`✅ ${title || 'Content'} marked as done`);
+        setTimeout(() => setMsg(''), 2500);
+        await fetchCourseProgress();
+      }
+
+      return res.data;
+    } catch (err) {
+      console.log('PROGRESS TRACK ERROR:', err.response?.data || err.message);
+      if (action === 'complete') {
+        setMsg('⚠️ Mark as done failed. Try again.');
+        setTimeout(() => setMsg(''), 2500);
+      }
+    }
+  };
+
+  const getEmbedUrl = (url) => {
+    if (!url) return '';
+
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+
+    return url;
+  };
+
+  const isVideoDone = (video) => {
+    if (!video?.url) return false;
+    return courseProgress.completedVideoUrls.includes(video.url);
+  };
+
+  const isPdfDone = (pdf) => {
+    if (!pdf?.url) return false;
+    return courseProgress.completedPdfUrls.includes(pdf.url);
+  };
+
+  const handleVideoClick = async (video) => {
+    if (isLocked) {
+      setMsg('🔒 Enroll/payment approval ke baad video unlock hoga.');
+      setTimeout(() => setMsg(''), 2500);
+      return;
+    }
+
+    setActiveTab('videos');
+    setActiveVideo(video);
+
+    await trackProgress({
+      type: 'video',
+      title: video?.title || 'Video',
+      url: video?.url || '',
+      action: 'open',
     });
   };
 
-  const getLastOpenedLabel = (progress) => {
-    if (!progress?.lastOpenedAt) return 'Open a video or PDF to start tracking';
+  const handlePdfClick = async (pdf) => {
+    if (isLocked) {
+      setMsg('🔒 Enroll/payment approval ke baad PDF unlock hoga.');
+      setTimeout(() => setMsg(''), 2500);
+      return;
+    }
 
-    const typeLabel =
-      progress.lastOpenedType === 'video'
-        ? 'Video'
-        : progress.lastOpenedType === 'pdf'
-        ? 'PDF'
-        : 'Course';
+    setActiveTab('pdfs');
+    setActivePdf(pdf);
 
-    return `${typeLabel}: ${progress.lastOpenedTitle || 'Course Content'}`;
+    await trackProgress({
+      type: 'pdf',
+      title: pdf?.title || 'PDF',
+      url: pdf?.url || '',
+      action: 'open',
+    });
   };
 
-  const openCourse = (courseId) => {
-    navigate(`/courses/${courseId}`);
+  const markVideoDone = async () => {
+    if (!activeVideo || isVideoDone(activeVideo)) return;
+
+    await trackProgress({
+      type: 'video',
+      title: activeVideo?.title || 'Video',
+      url: activeVideo?.url || '',
+      action: 'complete',
+    });
   };
 
-  const courses = courseRows.map((item) => item.course).filter(Boolean);
+  const markPdfDone = async () => {
+    if (!activePdf || isPdfDone(activePdf)) return;
 
-  const totalVideos = courses.reduce(
-    (sum, course) => sum + (course.videos?.length || 0),
-    0
-  );
+    await trackProgress({
+      type: 'pdf',
+      title: activePdf?.title || 'PDF',
+      url: activePdf?.url || '',
+      action: 'complete',
+    });
+  };
 
-  const totalPdfs = courses.reduce(
-    (sum, course) => sum + (course.pdfs?.length || 0),
-    0
-  );
+  const handleFreeEnroll = async () => {
+    if (!course || enrolling) return;
 
-  const totalLiveClasses = Object.values(liveCounts).reduce(
-    (sum, count) => sum + count,
-    0
-  );
+    try {
+      setEnrolling(true);
 
-  const totalCompletedItems = courseRows.reduce(
-    (sum, item) => sum + Number(item.progress?.completedItems || 0),
-    0
-  );
+      const res = await axios.post(`${API}/api/enroll/${course._id}`, {}, authHeader);
 
-  const totalOpenedItems = courseRows.reduce(
-    (sum, item) => sum + Number(item.progress?.openedItems || 0),
-    0
-  );
+      setIsEnrolled(true);
+      setMsg(`✅ ${res.data.message || 'Course enrolled successfully'}`);
 
-  const totalTrackableItems = courseRows.reduce(
-    (sum, item) => sum + Number(item.progress?.totalItems || 0),
-    0
-  );
+      if (course.videos?.length > 0) {
+        await trackProgress({
+          type: 'video',
+          title: course.videos[0].title,
+          url: course.videos[0].url,
+          action: 'open',
+        });
+      }
 
-  const bestStreak = courseRows.reduce(
-    (max, item) => Math.max(max, Number(item.progress?.streakCount || 0)),
-    0
-  );
+      fetchCourseProgress();
+      setTimeout(() => setMsg(''), 2500);
+    } catch (err) {
+      setMsg('⚠️ ' + (err.response?.data?.message || 'Enrollment failed'));
+      setTimeout(() => setMsg(''), 2500);
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
-  const latestProgress = courseRows
-    .map((item) => item.progress)
-    .filter((progress) => progress?.lastOpenedAt)
-    .sort((a, b) => new Date(b.lastOpenedAt) - new Date(a.lastOpenedAt))[0];
+  const handleCheckoutSuccess = () => {
+    setShowCheckout(false);
+    setMsg('✅ Payment request submitted. Approval ke baad course unlock hoga.');
+    setTimeout(() => setMsg(''), 3000);
+  };
 
-  const stats = [
-    {
-      icon: '📚',
-      label: 'Enrolled Courses',
-      value: courses.length,
-    },
-    {
-      icon: '🔥',
-      label: 'Best Real Streak',
-      value: `${bestStreak} day${bestStreak > 1 ? 's' : ''}`,
-    },
-    {
-      icon: '✅',
-      label: 'Completed Items',
-      value: `${totalCompletedItems}/${totalTrackableItems}`,
-    },
-    {
-      icon: '👀',
-      label: 'Opened Items',
-      value: `${totalOpenedItems}/${totalTrackableItems}`,
-    },
-  ];
+  if (loading) {
+    return (
+      <div
+        style={{
+          background: theme.bg,
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          color: theme.text,
+        }}
+      >
+        <h2>Loading course...</h2>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div
+        style={{
+          background: theme.bg,
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          color: theme.text,
+          padding: '20px',
+          textAlign: 'center',
+        }}
+      >
+        <div>
+          <h2>Course not found</h2>
+          <p style={{ color: theme.muted }}>{msg || 'Course load nahi ho paaya.'}</p>
+          <button
+            onClick={() => navigate('/my-courses')}
+            style={{
+              ...styles.primaryBtn,
+              background: theme.primary,
+              color: theme.buttonText,
+            }}
+          >
+            Back to My Courses
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isFreeCourse = course.isFree || Number(course.price || 0) === 0;
+  const isLocked = !isEnrolled && !isFreeCourse;
+  const totalVideos = course.videos?.length || 0;
+  const totalPdfs = course.pdfs?.length || 0;
 
   return (
     <div
@@ -214,425 +324,410 @@ function MyCourses() {
       <div style={styles.glowTwo} />
 
       <main style={styles.page}>
-        <Reveal>
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            ...styles.hero,
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            boxShadow: theme.shadow,
+            backdropFilter: theme.glass,
+            WebkitBackdropFilter: theme.glass,
+            borderRadius: theme.radius,
+          }}
+        >
+          <div>
+            <button
+              onClick={() => navigate('/my-courses')}
+              style={{
+                ...styles.backBtn,
+                background: theme.bgSecondary,
+                color: theme.text,
+                border: `1px solid ${theme.border}`,
+              }}
+            >
+              ← Back
+            </button>
+
+            <div style={styles.tags}>
+              <span style={{ ...styles.tag, color: isEnrolled ? theme.success : theme.primary }}>
+                {isEnrolled ? '✅ Enrolled' : isFreeCourse ? '🆓 Free Course' : '🔒 Premium Course'}
+              </span>
+
+              <span style={{ ...styles.tag, color: theme.muted }}>
+                🎥 {totalVideos} Videos
+              </span>
+
+              <span style={{ ...styles.tag, color: theme.muted }}>
+                📄 {totalPdfs} PDFs
+              </span>
+
+              {isEnrolled && (
+                <span style={{ ...styles.tag, color: theme.success }}>
+                  📈 {courseProgress.progressPercent || 0}% Done
+                </span>
+              )}
+            </div>
+
+            <h1 style={{ ...styles.title, color: theme.text }}>
+              {course.title}
+            </h1>
+
+            <p style={{ ...styles.desc, color: theme.muted }}>
+              {course.description}
+            </p>
+          </div>
+
           <div
             style={{
-              ...styles.hero,
+              ...styles.priceCard,
+              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <p style={{ margin: 0, color: theme.muted, fontWeight: 900 }}>
+              Course Access
+            </p>
+
+            <h2
+              style={{
+                margin: '8px 0',
+                fontSize: '34px',
+                color: isFreeCourse ? theme.success : '#f97316',
+              }}
+            >
+              {isFreeCourse ? 'Free' : `₹${course.price}`}
+            </h2>
+
+            {isEnrolled ? (
+              <p style={{ color: theme.muted, fontWeight: 800 }}>
+                You already own this course.
+              </p>
+            ) : isFreeCourse ? (
+              <button
+                onClick={handleFreeEnroll}
+                disabled={enrolling}
+                style={{
+                  ...styles.primaryBtn,
+                  width: '100%',
+                  background: theme.success,
+                  color: '#fff',
+                  opacity: enrolling ? 0.7 : 1,
+                }}
+              >
+                {enrolling ? 'Enrolling...' : 'Enroll Free 🚀'}
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCheckout(true)}
+                style={{
+                  ...styles.primaryBtn,
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                  color: '#fff',
+                }}
+              >
+                Unlock Course 🚀
+              </button>
+            )}
+          </div>
+        </motion.div>
+
+        {msg && (
+          <div
+            style={{
+              ...styles.msg,
+              background: msg.includes('✅')
+                ? theme.isDark
+                  ? 'rgba(34,197,94,0.13)'
+                  : '#dcfce7'
+                : theme.isDark
+                ? 'rgba(251,191,36,0.13)'
+                : '#fef3c7',
+              color: msg.includes('✅')
+                ? theme.isDark
+                  ? '#86efac'
+                  : '#166534'
+                : theme.isDark
+                ? '#fbbf24'
+                : '#92400e',
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            {msg}
+          </div>
+        )}
+
+        <div style={styles.layout}>
+          <section
+            style={{
+              ...styles.playerCard,
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadow,
               backdropFilter: theme.glass,
               WebkitBackdropFilter: theme.glass,
-              borderRadius: theme.radius,
             }}
           >
-            <div>
-              <p style={{ ...styles.kicker, color: theme.primary }}>
-                🎒 MY LEARNING DASHBOARD
-              </p>
-
-              <h2 style={{ ...styles.heroTitle, color: theme.text }}>
-                Continue where you left off.
-              </h2>
-
-              <p style={{ ...styles.heroText, color: theme.muted }}>
-                Real progress yahan sirf “Mark as Done” se badhega. Open karne se last opened aur streak update hota hai.
-              </p>
-            </div>
-
-            <motion.div
-              whileHover={{ y: -3 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              style={{
-                ...styles.streakCard,
-                background: theme.isDark
-                  ? 'linear-gradient(135deg, rgba(249,115,22,0.16), rgba(139,92,246,0.12))'
-                  : 'linear-gradient(135deg, rgba(255,237,213,0.95), rgba(237,233,254,0.90))',
-                border: `1px solid ${theme.border}`,
-              }}
-            >
-              <div style={styles.streakIcon}>🔥</div>
-
-              <div>
-                <p style={{ ...styles.streakLabel, color: theme.muted }}>
-                  Real Study Streak
+            {isLocked ? (
+              <div style={styles.lockedBox}>
+                <h2 style={{ color: theme.text }}>🔒 Course Locked</h2>
+                <p style={{ color: theme.muted, lineHeight: 1.7 }}>
+                  Payment approval ke baad videos, PDFs aur live classes unlock ho jayenge.
                 </p>
 
-                <h3 style={{ ...styles.streakValue, color: theme.primary }}>
-                  {bestStreak} Day{bestStreak > 1 ? 's' : ''}
-                </h3>
-
-                <p style={{ ...styles.streakSub, color: theme.textSecondary }}>
-                  {latestProgress
-                    ? `Last studied: ${formatLastOpened(latestProgress.lastOpenedAt)}`
-                    : 'Open a video or PDF to begin'}
-                </p>
-              </div>
-            </motion.div>
-          </div>
-        </Reveal>
-
-        <Reveal>
-          <div style={styles.statsGrid}>
-            {stats.map((item) => (
-              <motion.div
-                key={item.label}
-                whileHover={{ y: -3 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                style={{
-                  ...styles.statCard,
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  boxShadow: theme.shadow,
-                  backdropFilter: theme.glass,
-                  WebkitBackdropFilter: theme.glass,
-                }}
-              >
-                <span style={styles.statIcon}>{item.icon}</span>
-
-                <div>
-                  <p style={{ ...styles.statLabel, color: theme.muted }}>
-                    {item.label}
-                  </p>
-
-                  <h3 style={{ ...styles.statValue, color: theme.text }}>
-                    {item.value}
-                  </h3>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </Reveal>
-
-        <Reveal>
-          <div
-            style={{
-              ...styles.noticeStrip,
-              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.76)',
-              border: `1px solid ${theme.border}`,
-              color: theme.textSecondary,
-            }}
-          >
-            <span>🎯</span>
-            <span>
-              Honest tracking: video/PDF open karne se last opened + streak update hoga. Progress percentage sirf “Mark as Done” button dabane se badhega.
-            </span>
-          </div>
-        </Reveal>
-
-        {loading ? (
-          <Reveal>
-            <div
-              style={{
-                ...styles.emptyBox,
-                background: theme.card,
-                border: `1px solid ${theme.border}`,
-                color: theme.muted,
-              }}
-            >
-              Loading your courses...
-            </div>
-          </Reveal>
-        ) : courses.length === 0 ? (
-          <Reveal>
-            <div
-              style={{
-                ...styles.emptyBox,
-                background: theme.card,
-                border: `1px solid ${theme.border}`,
-                boxShadow: theme.shadow,
-                color: theme.muted,
-              }}
-            >
-              <div style={styles.emptyIcon}>📭</div>
-
-              <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: '24px' }}>
-                No courses purchased yet
-              </h3>
-
-              <p style={{ margin: '0 auto 22px', maxWidth: '520px', lineHeight: 1.7 }}>
-                Abhi tumhare account me koi enrolled course nahi hai. Start with a free course or preview paid courses.
-              </p>
-
-              <motion.button
-                whileHover={{ scale: 1.018, y: -1 }}
-                whileTap={{ scale: 0.985 }}
-                transition={{ duration: 0.16, ease: 'easeOut' }}
-                onClick={() => navigate('/courses')}
-                style={{
-                  ...styles.primaryBtn,
-                  background: theme.primary,
-                  color: theme.buttonText,
-                  boxShadow: `0 0 20px ${theme.primary}40`,
-                }}
-              >
-                Browse Courses 🚀
-              </motion.button>
-            </div>
-          </Reveal>
-        ) : (
-          <>
-            <Reveal>
-              <div style={styles.sectionHeader}>
-                <div>
-                  <h3 style={{ ...styles.sectionTitle, color: theme.text }}>
-                    🚀 Continue Learning
-                  </h3>
-
-                  <p style={{ ...styles.sectionSubtitle, color: theme.muted }}>
-                    Your enrolled courses with real manual progress
-                  </p>
-                </div>
-
-                <span
+                <button
+                  onClick={() => setShowCheckout(true)}
                   style={{
-                    ...styles.courseCount,
-                    color: theme.primary,
-                    background: theme.isDark
-                      ? 'rgba(139,92,246,0.12)'
-                      : 'rgba(139,92,246,0.10)',
-                    border: `1px solid ${theme.border}`,
+                    ...styles.primaryBtn,
+                    background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+                    color: '#fff',
                   }}
                 >
-                  {courses.length} owned
-                </span>
+                  Unlock Now 🚀
+                </button>
               </div>
-            </Reveal>
+            ) : (
+              <>
+                {activeTab === 'videos' && (
+                  <div>
+                    {activeVideo ? (
+                      <>
+                        <iframe
+                          src={getEmbedUrl(activeVideo.url)}
+                          title={activeVideo.title}
+                          width="100%"
+                          height="430"
+                          allowFullScreen
+                          style={{
+                            border: 'none',
+                            borderRadius: '18px',
+                            background: '#000',
+                          }}
+                        />
 
-            <div style={styles.courseGrid}>
-              {courseRows.map((row, index) => {
-                const course = row.course;
-                const progress = row.progress || {};
-                const liveCount = liveCounts[course._id] || 0;
-
-                const progressValue = Number(progress.progressPercent || 0);
-                const completedItems = Number(progress.completedItems || 0);
-                const openedItems = Number(progress.openedItems || 0);
-                const totalItems = Number(progress.totalItems || 0);
-
-                return (
-                  <Reveal key={course._id} delay={index * 0.04}>
-                    <motion.div
-                      whileHover={{ y: -4 }}
-                      transition={{ duration: 0.18, ease: 'easeOut' }}
-                      style={{
-                        ...styles.courseCard,
-                        background: theme.card,
-                        border: `1px solid ${theme.border}`,
-                        boxShadow: theme.shadow,
-                        backdropFilter: theme.glass,
-                        WebkitBackdropFilter: theme.glass,
-                      }}
-                    >
-                      <div style={styles.thumbnailWrap}>
-                        {course.thumbnail ? (
-                          <img
-                            src={course.thumbnail}
-                            alt={course.title}
-                            style={styles.thumbnail}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              ...styles.emptyThumb,
-                              background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
-                            }}
-                          >
-                            🎓
-                          </div>
-                        )}
-
-                        <div style={styles.ownedBadge}>✅ Enrolled</div>
-                      </div>
-
-                      <div style={styles.cardBody}>
-                        <h3 style={{ ...styles.cardTitle, color: theme.text }}>
-                          {course.title}
+                        <h3 style={{ color: theme.text, marginTop: '16px' }}>
+                          ▶️ {activeVideo.title}
                         </h3>
 
-                        <p style={{ ...styles.cardDesc, color: theme.muted }}>
-                          {course.description
-                            ? course.description.length > 90
-                              ? `${course.description.slice(0, 90)}...`
-                              : course.description
-                            : 'Continue your learning journey with this course.'}
-                        </p>
-
-                        <div style={styles.metaGrid}>
-                          <div
-                            style={{
-                              ...styles.metaPill,
-                              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                              border: `1px solid ${theme.border}`,
-                              color: theme.muted,
-                            }}
-                          >
-                            🎥 {progress.completedVideosCount || 0}/{course.videos?.length || 0} Videos done
-                          </div>
-
-                          <div
-                            style={{
-                              ...styles.metaPill,
-                              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                              border: `1px solid ${theme.border}`,
-                              color: theme.muted,
-                            }}
-                          >
-                            📄 {progress.completedPdfsCount || 0}/{course.pdfs?.length || 0} PDFs done
-                          </div>
-
-                          <div
-                            style={{
-                              ...styles.metaPill,
-                              background: liveCount > 0
-                                ? 'rgba(239, 68, 68, 0.12)'
-                                : theme.isDark
-                                ? 'rgba(255,255,255,0.035)'
-                                : 'rgba(255,255,255,0.72)',
-                              border: `1px solid ${
-                                liveCount > 0 ? 'rgba(248,113,113,0.35)' : theme.border
-                              }`,
-                              color: liveCount > 0 ? '#f87171' : theme.muted,
-                              gridColumn: '1 / -1',
-                            }}
-                          >
-                            🔴 {liveCount} Live Classes
-                          </div>
-                        </div>
-
-                        <div
+                        <button
+                          onClick={markVideoDone}
+                          disabled={isVideoDone(activeVideo)}
                           style={{
-                            ...styles.lastOpenedBox,
-                            background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                            border: `1px solid ${theme.border}`,
+                            ...styles.doneBtn,
+                            background: isVideoDone(activeVideo)
+                              ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                              : theme.success,
+                            opacity: isVideoDone(activeVideo) ? 0.75 : 1,
+                            cursor: isVideoDone(activeVideo) ? 'not-allowed' : 'pointer',
                           }}
                         >
-                          <p style={{ ...styles.lastOpenedLabel, color: theme.muted }}>
-                            Last opened
-                          </p>
+                          {isVideoDone(activeVideo) ? '✅ Video Done' : '✅ Mark Video as Done'}
+                        </button>
+                      </>
+                    ) : (
+                      <p style={{ color: theme.muted }}>No videos available.</p>
+                    )}
+                  </div>
+                )}
 
-                          <p style={{ ...styles.lastOpenedTitle, color: theme.text }}>
-                            {getLastOpenedLabel(progress)}
-                          </p>
+                {activeTab === 'pdfs' && (
+                  <div>
+                    {activePdf ? (
+                      <>
+                        <iframe
+                          src={activePdf.url}
+                          title={activePdf.title}
+                          width="100%"
+                          height="640"
+                          style={{
+                            border: 'none',
+                            borderRadius: '18px',
+                            background: '#fff',
+                          }}
+                        />
 
-                          <p style={{ ...styles.lastOpenedTime, color: theme.muted }}>
-                            {formatLastOpened(progress.lastOpenedAt)}
-                          </p>
-                        </div>
+                        <h3 style={{ color: theme.text, marginTop: '16px' }}>
+                          📄 {activePdf.title}
+                        </h3>
 
-                        <div style={styles.progressArea}>
-                          <div style={styles.progressTop}>
-                            <span style={{ color: theme.muted }}>
-                              Real learning progress
-                            </span>
+                        <button
+                          onClick={markPdfDone}
+                          disabled={isPdfDone(activePdf)}
+                          style={{
+                            ...styles.doneBtn,
+                            background: isPdfDone(activePdf)
+                              ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                              : theme.success,
+                            opacity: isPdfDone(activePdf) ? 0.75 : 1,
+                            cursor: isPdfDone(activePdf) ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {isPdfDone(activePdf) ? '✅ PDF Done' : '✅ Mark PDF as Done'}
+                        </button>
+                      </>
+                    ) : (
+                      <p style={{ color: theme.muted }}>No PDFs available.</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
 
-                            <strong style={{ color: theme.primary }}>
-                              {progressValue}%
-                            </strong>
-                          </div>
+          <aside
+            style={{
+              ...styles.sidebar,
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              boxShadow: theme.shadow,
+              backdropFilter: theme.glass,
+              WebkitBackdropFilter: theme.glass,
+            }}
+          >
+            <h3 style={{ marginTop: 0, color: theme.text }}>
+              Course Content
+            </h3>
 
-                          <div
-                            style={{
-                              ...styles.progressTrack,
-                              background: theme.isDark
-                                ? 'rgba(255,255,255,0.08)'
-                                : 'rgba(15,23,42,0.10)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                ...styles.progressFill,
-                                width: `${progressValue}%`,
-                                background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
-                              }}
-                            />
-                          </div>
-
-                          <p style={{ ...styles.progressSmall, color: theme.muted }}>
-                            {completedItems}/{totalItems} items completed • {openedItems}/{totalItems} opened • Course streak: {progress.streakCount || 0} day{Number(progress.streakCount || 0) > 1 ? 's' : ''}
-                          </p>
-                        </div>
-
-                        <div style={styles.bottomRow}>
-                          <div>
-                            <p style={{ ...styles.smallLabel, color: theme.muted }}>
-                              Status
-                            </p>
-
-                            <strong style={{ color: theme.success }}>
-                              {progressValue >= 100
-                                ? 'Completed'
-                                : progressValue > 0
-                                ? 'In Progress'
-                                : openedItems > 0
-                                ? 'Started'
-                                : 'Not Started'}
-                            </strong>
-                          </div>
-
-                          <motion.button
-                            whileHover={{ scale: 1.018, y: -1 }}
-                            whileTap={{ scale: 0.985 }}
-                            transition={{ duration: 0.16, ease: 'easeOut' }}
-                            onClick={() => openCourse(course._id)}
-                            style={{
-                              ...styles.continueBtn,
-                              background: theme.primary,
-                              color: theme.buttonText,
-                              boxShadow: `0 0 18px ${theme.primary}35`,
-                            }}
-                          >
-                            ▶️ Continue
-                          </motion.button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </Reveal>
-                );
-              })}
-            </div>
-
-            <Reveal>
+            {isEnrolled && (
               <div
                 style={{
-                  ...styles.summaryBox,
-                  background: theme.card,
+                  ...styles.progressBox,
+                  background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
                   border: `1px solid ${theme.border}`,
-                  boxShadow: theme.shadow,
-                  color: theme.textSecondary,
+                  color: theme.text,
                 }}
               >
-                <div>
-                  <h3 style={{ color: theme.text, margin: '0 0 8px' }}>
-                    📌 Your Learning Summary
-                  </h3>
-
-                  <p style={{ margin: 0, lineHeight: 1.7 }}>
-                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, {totalOpenedItems}/{totalTrackableItems} opened, and {totalCompletedItems}/{totalTrackableItems} manually completed.
-                  </p>
-                </div>
-
-                <motion.button
-                  whileHover={{ scale: 1.018, y: -1 }}
-                  whileTap={{ scale: 0.985 }}
-                  transition={{ duration: 0.16, ease: 'easeOut' }}
-                  onClick={() => navigate('/courses')}
-                  style={{
-                    ...styles.secondaryBtn,
-                    border: `1px solid ${theme.border}`,
-                    color: theme.primary,
-                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
-                  }}
-                >
-                  Explore More →
-                </motion.button>
+                📈 Progress: {courseProgress.progressPercent || 0}%
+                <br />
+                <span style={{ color: theme.muted }}>
+                  Open = streak, Done = progress
+                </span>
               </div>
-            </Reveal>
-          </>
-        )}
+            )}
+
+            <div style={styles.tabRow}>
+              <button
+                onClick={() => setActiveTab('videos')}
+                style={{
+                  ...styles.tabBtn,
+                  background: activeTab === 'videos' ? theme.primary : theme.bgSecondary,
+                  color: activeTab === 'videos' ? '#fff' : theme.text,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                Videos
+              </button>
+
+              <button
+                onClick={() => setActiveTab('pdfs')}
+                style={{
+                  ...styles.tabBtn,
+                  background: activeTab === 'pdfs' ? theme.primary : theme.bgSecondary,
+                  color: activeTab === 'pdfs' ? '#fff' : theme.text,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                PDFs
+              </button>
+            </div>
+
+            {activeTab === 'videos' && (
+              <ContentList
+                items={course.videos}
+                type="video"
+                activeTitle={activeVideo?.title}
+                completedUrls={courseProgress.completedVideoUrls}
+                locked={isLocked}
+                theme={theme}
+                onClick={handleVideoClick}
+              />
+            )}
+
+            {activeTab === 'pdfs' && (
+              <ContentList
+                items={course.pdfs}
+                type="pdf"
+                activeTitle={activePdf?.title}
+                completedUrls={courseProgress.completedPdfUrls}
+                locked={isLocked}
+                theme={theme}
+                onClick={handlePdfClick}
+              />
+            )}
+          </aside>
+        </div>
+
+        <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
+
+        <div style={{ marginTop: '30px' }}>
+          <Reviews courseId={id} />
+        </div>
       </main>
 
+      {showCheckout && (
+        <CheckoutModal
+          course={course}
+          onClose={() => setShowCheckout(false)}
+          onSuccess={handleCheckoutSuccess}
+        />
+      )}
+
       <Footer />
+    </div>
+  );
+}
+
+function ContentList({ items, type, activeTitle, completedUrls = [], locked, theme, onClick }) {
+  if (!items?.length) {
+    return (
+      <p style={{ color: theme.muted }}>
+        No {type === 'video' ? 'videos' : 'PDFs'} available.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      {items.map((item, index) => {
+        const active = !locked && activeTitle === item.title;
+        const done = item?.url && completedUrls.includes(item.url);
+
+        return (
+          <div
+            key={index}
+            onClick={() => onClick(item)}
+            style={{
+              ...styles.contentItem,
+              background: active
+                ? theme.primary
+                : done
+                ? theme.isDark
+                  ? 'rgba(34,197,94,0.13)'
+                  : '#dcfce7'
+                : theme.isDark
+                ? 'rgba(255,255,255,0.035)'
+                : 'rgba(255,255,255,0.72)',
+              color: active ? '#fff' : theme.text,
+              border: `1px solid ${done ? 'rgba(34,197,94,0.35)' : theme.border}`,
+            }}
+          >
+            <span>
+              {locked ? '🔒' : type === 'video' ? '▶️' : '📄'} {item.title || `${type} ${index + 1}`}
+            </span>
+
+            {locked ? (
+              <small style={{ color: '#fbbf24', fontWeight: 900 }}>Locked</small>
+            ) : done ? (
+              <small style={{ color: '#22c55e', fontWeight: 900 }}>Done</small>
+            ) : (
+              <small style={{ color: theme.muted, fontWeight: 900 }}>Open</small>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -650,349 +745,153 @@ const styles = {
   },
   glowOne: {
     position: 'absolute',
-    top: '90px',
-    left: '-130px',
-    width: '300px',
-    height: '300px',
+    top: '100px',
+    left: '-140px',
+    width: '320px',
+    height: '320px',
     borderRadius: '50%',
-    background: 'rgba(124, 58, 237, 0.18)',
+    background: 'rgba(124,58,237,0.18)',
     filter: 'blur(95px)',
-    zIndex: 0,
     pointerEvents: 'none',
   },
   glowTwo: {
     position: 'absolute',
-    top: '650px',
-    right: '-140px',
+    top: '720px',
+    right: '-150px',
     width: '340px',
     height: '340px',
     borderRadius: '50%',
-    background: 'rgba(59, 130, 246, 0.14)',
+    background: 'rgba(59,130,246,0.14)',
     filter: 'blur(100px)',
-    zIndex: 0,
     pointerEvents: 'none',
   },
   page: {
-    maxWidth: '1180px',
+    maxWidth: '1240px',
     margin: '0 auto',
-    padding: '40px 20px',
+    padding: '34px 20px',
     position: 'relative',
     zIndex: 1,
   },
   hero: {
-    padding: '30px',
-    marginBottom: '24px',
+    padding: '28px',
+    marginBottom: '22px',
     display: 'grid',
-    gridTemplateColumns: '1.25fr 0.75fr',
+    gridTemplateColumns: '1.35fr 0.65fr',
     gap: '24px',
     alignItems: 'center',
   },
-  kicker: {
-    margin: '0 0 8px',
-    fontWeight: 950,
-    letterSpacing: '0.5px',
-    fontSize: '13px',
-  },
-  heroTitle: {
-    fontSize: 'clamp(30px, 4vw, 48px)',
-    lineHeight: 1.08,
-    margin: '0 0 12px',
-    fontWeight: 950,
-    letterSpacing: '-0.8px',
-  },
-  heroText: {
-    margin: 0,
-    lineHeight: 1.7,
-    fontSize: '15px',
-    maxWidth: '680px',
-  },
-  streakCard: {
-    padding: '22px',
-    borderRadius: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    minHeight: '150px',
-  },
-  streakIcon: {
-    width: '62px',
-    height: '62px',
-    borderRadius: '20px',
-    display: 'grid',
-    placeItems: 'center',
-    background: 'rgba(249, 115, 22, 0.16)',
-    fontSize: '32px',
-    flex: '0 0 auto',
-  },
-  streakLabel: {
-    margin: '0 0 6px',
-    fontSize: '13px',
+  backBtn: {
+    padding: '10px 14px',
+    borderRadius: '14px',
+    cursor: 'pointer',
     fontWeight: 900,
-    textTransform: 'uppercase',
-    letterSpacing: '0.4px',
-  },
-  streakValue: {
-    margin: '0 0 6px',
-    fontSize: '34px',
-    fontWeight: 950,
-  },
-  streakSub: {
-    margin: 0,
-    fontSize: '13px',
-    fontWeight: 800,
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-    gap: '16px',
-    marginBottom: '18px',
-  },
-  statCard: {
-    padding: '20px',
-    borderRadius: '22px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    minHeight: '105px',
-  },
-  statIcon: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '16px',
-    display: 'grid',
-    placeItems: 'center',
-    background: 'rgba(167, 139, 250, 0.12)',
-    fontSize: '24px',
-    flex: '0 0 auto',
-  },
-  statLabel: {
-    margin: '0 0 5px',
-    fontSize: '13px',
-    fontWeight: 900,
-  },
-  statValue: {
-    margin: 0,
-    fontSize: '24px',
-    fontWeight: 950,
-  },
-  noticeStrip: {
-    padding: '14px 16px',
-    borderRadius: '18px',
-    marginBottom: '28px',
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'center',
-    fontWeight: 800,
-    lineHeight: 1.5,
-  },
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: '14px',
-    marginBottom: '18px',
-    flexWrap: 'wrap',
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: '24px',
-    fontWeight: 950,
-  },
-  sectionSubtitle: {
-    margin: '6px 0 0',
-    fontSize: '14px',
-  },
-  courseCount: {
-    fontWeight: 900,
-    padding: '8px 13px',
-    borderRadius: '999px',
-    fontSize: '13px',
-  },
-  courseGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    gap: '24px',
-    marginBottom: '30px',
-  },
-  courseCard: {
-    borderRadius: '24px',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '620px',
-  },
-  thumbnailWrap: {
-    height: '200px',
-    position: 'relative',
-    overflow: 'hidden',
-    background: '#111827',
-  },
-  thumbnail: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    display: 'block',
-  },
-  emptyThumb: {
-    width: '100%',
-    height: '100%',
-    display: 'grid',
-    placeItems: 'center',
-    fontSize: '52px',
-  },
-  ownedBadge: {
-    position: 'absolute',
-    top: '14px',
-    right: '14px',
-    background: 'rgba(34,197,94,0.95)',
-    color: '#fff',
-    padding: '7px 11px',
-    borderRadius: '999px',
-    fontSize: '12px',
-    fontWeight: 950,
-    boxShadow: '0 8px 24px rgba(34,197,94,0.22)',
-  },
-  cardBody: {
-    padding: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 1,
-  },
-  cardTitle: {
-    margin: '0 0 9px',
-    fontSize: '18px',
-    fontWeight: 950,
-    lineHeight: 1.3,
-    minHeight: '46px',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
-  },
-  cardDesc: {
-    fontSize: '13px',
-    margin: '0 0 16px',
-    lineHeight: 1.65,
-    minHeight: '44px',
-  },
-  metaGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '10px',
-    marginBottom: '14px',
-  },
-  metaPill: {
-    padding: '9px 10px',
-    borderRadius: '13px',
-    fontSize: '12px',
-    fontWeight: 850,
-  },
-  lastOpenedBox: {
-    padding: '12px 13px',
-    borderRadius: '15px',
     marginBottom: '16px',
   },
-  lastOpenedLabel: {
-    margin: '0 0 5px',
-    fontSize: '11px',
-    fontWeight: 900,
-    textTransform: 'uppercase',
-    letterSpacing: '0.4px',
-  },
-  lastOpenedTitle: {
-    margin: '0 0 5px',
-    fontSize: '13px',
-    fontWeight: 950,
-    lineHeight: 1.45,
-  },
-  lastOpenedTime: {
-    margin: 0,
-    fontSize: '12px',
-    fontWeight: 800,
-  },
-  progressArea: {
-    marginBottom: '18px',
-  },
-  progressTop: {
+  tags: {
     display: 'flex',
-    justifyContent: 'space-between',
     gap: '10px',
-    marginBottom: '8px',
-    fontSize: '12px',
-    fontWeight: 900,
+    flexWrap: 'wrap',
+    marginBottom: '14px',
   },
-  progressTrack: {
-    width: '100%',
-    height: '9px',
+  tag: {
+    padding: '8px 12px',
     borderRadius: '999px',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: '999px',
-  },
-  progressSmall: {
-    margin: '8px 0 0',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
     fontSize: '12px',
-    fontWeight: 800,
-    lineHeight: 1.45,
-  },
-  bottomRow: {
-    marginTop: 'auto',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  smallLabel: {
-    margin: '0 0 3px',
-    fontSize: '12px',
-    fontWeight: 800,
-  },
-  continueBtn: {
-    padding: '12px 16px',
-    border: 'none',
-    borderRadius: '14px',
-    cursor: 'pointer',
-    fontSize: '13px',
     fontWeight: 950,
-    minWidth: '130px',
   },
-  emptyBox: {
-    padding: '38px 24px',
+  title: {
+    margin: '0 0 12px',
+    fontSize: 'clamp(30px, 4vw, 48px)',
+    lineHeight: 1.08,
+    fontWeight: 950,
+  },
+  desc: {
+    margin: 0,
+    lineHeight: 1.75,
+    fontSize: '15px',
+  },
+  priceCard: {
+    padding: '22px',
     borderRadius: '24px',
-    textAlign: 'center',
-    fontWeight: 800,
-    marginTop: '28px',
-  },
-  emptyIcon: {
-    fontSize: '52px',
-    marginBottom: '12px',
   },
   primaryBtn: {
-    padding: '13px 24px',
+    padding: '13px 18px',
     border: 'none',
-    borderRadius: '14px',
+    borderRadius: '15px',
     cursor: 'pointer',
     fontWeight: 950,
     fontSize: '15px',
   },
-  summaryBox: {
-    padding: '22px',
+  msg: {
+    marginBottom: '18px',
+    padding: '13px 16px',
+    borderRadius: '16px',
+    fontWeight: 900,
+  },
+  layout: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 330px',
+    gap: '22px',
+    alignItems: 'start',
+  },
+  playerCard: {
     borderRadius: '24px',
+    padding: '18px',
+    minWidth: 0,
+  },
+  lockedBox: {
+    minHeight: '420px',
+    display: 'grid',
+    placeItems: 'center',
+    textAlign: 'center',
+    padding: '30px',
+  },
+  doneBtn: {
+    marginTop: '10px',
+    padding: '12px 16px',
+    borderRadius: '14px',
+    border: 'none',
+    color: '#fff',
+    fontWeight: 950,
+  },
+  sidebar: {
+    borderRadius: '24px',
+    padding: '18px',
+    position: 'sticky',
+    top: '92px',
+  },
+  progressBox: {
+    padding: '12px',
+    borderRadius: '14px',
+    marginBottom: '14px',
+    lineHeight: 1.6,
+    fontWeight: 900,
+  },
+  tabRow: {
+    display: 'flex',
+    gap: '10px',
+    marginBottom: '18px',
+  },
+  tabBtn: {
+    flex: 1,
+    padding: '11px 14px',
+    borderRadius: '13px',
+    cursor: 'pointer',
+    fontWeight: 900,
+  },
+  contentItem: {
+    padding: '12px 14px',
+    borderRadius: '14px',
+    marginBottom: '10px',
+    fontWeight: 800,
     display: 'flex',
     justifyContent: 'space-between',
+    gap: '8px',
     alignItems: 'center',
-    gap: '18px',
-    flexWrap: 'wrap',
-  },
-  secondaryBtn: {
-    padding: '12px 18px',
-    borderRadius: '14px',
     cursor: 'pointer',
-    fontWeight: 950,
-    fontSize: '14px',
   },
 };
 
-export default MyCourses;
+export default CourseDetail;
