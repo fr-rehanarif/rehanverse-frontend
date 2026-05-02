@@ -224,7 +224,13 @@ function Courses() {
             WebkitBackdropFilter: theme.glass,
           }}
         >
-          <div style={styles.thumbnailWrap}>
+          <div
+            style={{
+              ...styles.thumbnailWrap,
+              borderBottom: `1px solid ${theme.border}`,
+              background: theme.isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+            }}
+          >
             {course.thumbnail ? (
               <img
                 src={course.thumbnail}
@@ -259,46 +265,44 @@ function Courses() {
           </div>
 
           <div style={styles.cardBody}>
-            <div>
+            <div style={styles.titleDescBlock}>
               <h3 style={{ ...styles.cardTitle, color: theme.text }}>
                 {course.title}
               </h3>
 
               <p style={{ ...styles.cardDesc, color: theme.muted }}>
-                {course.description
-                  ? course.description.length > 95
-                    ? `${course.description.slice(0, 95)}...`
-                    : course.description
-                  : 'No description available for this course yet.'}
+                {course.description || 'No description available for this course yet.'}
               </p>
             </div>
 
-            <div style={styles.metaGrid}>
-              <div
-                style={{
-                  ...styles.metaPill,
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  border: `1px solid ${theme.border}`,
-                  color: theme.muted,
-                }}
-              >
-                🎥 {course.videos?.length || 0} Videos
+            <div style={styles.metaBlock}>
+              <div style={styles.metaGrid}>
+                <div
+                  style={{
+                    ...styles.metaPill,
+                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                    border: `1px solid ${theme.border}`,
+                    color: theme.text,
+                  }}
+                >
+                  🎥 {course.videos?.length || 0} Videos
+                </div>
+
+                <div
+                  style={{
+                    ...styles.metaPill,
+                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                    border: `1px solid ${theme.border}`,
+                    color: theme.text,
+                  }}
+                >
+                  📄 {course.pdfs?.length || 0} PDFs
+                </div>
               </div>
 
               <div
                 style={{
-                  ...styles.metaPill,
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  border: `1px solid ${theme.border}`,
-                  color: theme.muted,
-                }}
-              >
-                📄 {course.pdfs?.length || 0} PDFs
-              </div>
-
-              <div
-                style={{
-                  ...styles.metaPill,
+                  ...styles.livePill,
                   background: liveCount > 0
                     ? 'rgba(239, 68, 68, 0.12)'
                     : theme.isDark
@@ -307,8 +311,7 @@ function Courses() {
                   border: `1px solid ${
                     liveCount > 0 ? 'rgba(248,113,113,0.35)' : theme.border
                   }`,
-                  color: liveCount > 0 ? '#f87171' : theme.muted,
-                  gridColumn: '1 / -1',
+                  color: liveCount > 0 ? '#f87171' : theme.text,
                 }}
               >
                 🔴 {liveCount} Live Classes
@@ -323,7 +326,8 @@ function Courses() {
                 <strong
                   style={{
                     color: isFreeCourse ? theme.success : '#f97316',
-                    fontSize: '18px',
+                    fontSize: '22px',
+                    fontWeight: 950,
                   }}
                 >
                   {isFreeCourse ? 'Free' : `₹${course.price}`}
@@ -868,23 +872,26 @@ const styles = {
   },
   courseGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
     gap: '24px',
+    alignItems: 'stretch',
   },
   courseCard: {
     borderRadius: '24px',
     overflow: 'hidden',
     cursor: 'pointer',
-    minHeight: '515px',
+    minHeight: '630px',
+    height: '100%',
     display: 'flex',
     flexDirection: 'column',
     position: 'relative',
   },
   thumbnailWrap: {
-    height: '220px',
+    height: '255px',
+    minHeight: '255px',
+    maxHeight: '255px',
     position: 'relative',
     overflow: 'hidden',
-    background: '#111827',
   },
   thumbnail: {
     width: '100%',
@@ -930,53 +937,82 @@ const styles = {
     padding: '20px',
     display: 'flex',
     flexDirection: 'column',
-    flexGrow: 1,
+    flex: 1,
+  },
+  titleDescBlock: {
+    minHeight: '138px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
   },
   cardTitle: {
-    margin: '0 0 9px',
-    fontSize: '18px',
+    margin: 0,
+    fontSize: '20px',
     fontWeight: 950,
-    lineHeight: 1.3,
+    lineHeight: 1.25,
+    minHeight: '56px',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
   },
   cardDesc: {
-    fontSize: '13px',
-    margin: '0 0 16px',
-    lineHeight: 1.65,
-    minHeight: '64px',
+    fontSize: '14px',
+    marginTop: '12px',
+    marginBottom: 0,
+    lineHeight: 1.7,
+    minHeight: '70px',
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  },
+  metaBlock: {
+    marginTop: '18px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    minHeight: '118px',
   },
   metaGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '10px',
-    marginBottom: '18px',
+    gap: '12px',
   },
   metaPill: {
-    padding: '9px 10px',
-    borderRadius: '13px',
-    fontSize: '12px',
+    padding: '12px 14px',
+    borderRadius: '16px',
+    fontSize: '14px',
+    fontWeight: 850,
+  },
+  livePill: {
+    padding: '12px 14px',
+    borderRadius: '16px',
+    fontSize: '14px',
     fontWeight: 850,
   },
   bottomRow: {
     marginTop: 'auto',
+    paddingTop: '18px',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
+    alignItems: 'flex-end',
+    gap: '14px',
   },
   priceLabel: {
-    margin: '0 0 3px',
-    fontSize: '12px',
+    margin: '0 0 6px',
+    fontSize: '13px',
     fontWeight: 800,
   },
   actionBtn: {
-    padding: '11px 16px',
+    minWidth: '142px',
+    padding: '14px 18px',
     color: '#ffffff',
     border: 'none',
-    borderRadius: '14px',
+    borderRadius: '16px',
     cursor: 'pointer',
-    fontSize: '13px',
+    fontSize: '15px',
     fontWeight: 950,
-    minWidth: '120px',
     boxShadow: '0 10px 24px rgba(0,0,0,0.16)',
   },
   emptyBox: {
