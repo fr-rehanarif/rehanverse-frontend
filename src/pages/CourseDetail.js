@@ -475,7 +475,99 @@ function CourseDetail() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [lockedMsg, setLockedMsg] = useState('');
+  const [doneMsg, setDoneMsg] = useState('');
   const [loadingFreeEnroll, setLoadingFreeEnroll] = useState(false);
+
+  const [courseProgress, setCourseProgress] = useState({
+    progressPercent: 0,
+    completedVideoUrls: [],
+    completedPdfUrls: [],
+  });
+
+  const fetchCourseProgress = async () => {
+    try {
+      if (!token || !id) return;
+
+      const res = await axios.get(`${API}/api/progress/course/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setCourseProgress({
+        progressPercent: res.data.progressPercent || 0,
+        completedVideoUrls: res.data.completedVideoUrls || [],
+        completedPdfUrls: res.data.completedPdfUrls || [],
+      });
+    } catch (err) {
+      console.log('FETCH COURSE PROGRESS ERROR:', err.response?.data || err.message);
+    }
+  };
+
+  const trackProgress = async ({ type, title, url, action = 'open' }) => {
+    try {
+      if (!token || !id || !type) return;
+
+      const res = await axios.post(
+        `${API}/api/progress/track`,
+        {
+          courseId: id,
+          type,
+          title: title || '',
+          url: url || '',
+          action,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (action === 'complete') {
+        setDoneMsg(`✅ ${title || 'Content'} marked as done!`);
+        setTimeout(() => setDoneMsg(''), 2500);
+        await fetchCourseProgress();
+      }
+
+      return res.data;
+    } catch (err) {
+      console.log('PROGRESS TRACK ERROR:', err.response?.data || err.message);
+
+      if (action === 'complete') {
+        setDoneMsg('⚠️ Unable to mark as done. Try again.');
+        setTimeout(() => setDoneMsg(''), 2500);
+      }
+    }
+  };
+
+  const isVideoDone = (video) => {
+    if (!video?.url) return false;
+    return courseProgress.completedVideoUrls?.includes(video.url);
+  };
+
+  const isPdfDone = (pdf) => {
+    if (!pdf?.url) return false;
+    return courseProgress.completedPdfUrls?.includes(pdf.url);
+  };
+
+  const markActiveVideoDone = async () => {
+    if (!activeVideo || isVideoDone(activeVideo)) return;
+
+    await trackProgress({
+      type: 'video',
+      title: activeVideo?.title || 'Video',
+      url: activeVideo?.url || '',
+      action: 'complete',
+    });
+  };
+
+  const markActivePdfDone = async () => {
+    if (!activePdf || isPdfDone(activePdf)) return;
+
+    await trackProgress({
+      type: 'pdf',
+      title: activePdf?.title || 'PDF',
+      url: activePdf?.url || '',
+      action: 'complete',
+    });
+  };
 
   useEffect(() => {
     if (!token) {
@@ -516,6 +608,19 @@ function CourseDetail() {
 
         setIsEnrolled(enrolled);
 
+        if (enrolled) {
+          await fetchCourseProgress();
+
+          if (courseRes.data.videos?.length > 0) {
+            await trackProgress({
+              type: 'video',
+              title: courseRes.data.videos[0].title,
+              url: courseRes.data.videos[0].url,
+              action: 'open',
+            });
+          }
+        }
+
         logActivity(
           enrolled
             ? `Enrollment check: User is enrolled | Course: ${courseRes.data.title}`
@@ -523,18 +628,23 @@ function CourseDetail() {
           'CourseDetail'
         );
       } catch (err) {
-        console.log('Course detail error:', err);
+        console.log('Course detail error:', err.response?.data || err.message);
 
         logActivity(
-          `Course detail error or unauthorized access attempt | Course ID: ${id}`,
+          `Course detail error | Course ID: ${id}`,
           'CourseDetail'
         );
 
-        navigate('/my-courses');
+        setLockedMsg('⚠️ Course load issue. Please refresh once.');
+        setTimeout(() => setLockedMsg(''), 4000);
+
+        // IMPORTANT: yahan redirect mat karo
+        // navigate('/my-courses');
       }
     };
 
     fetchData();
+    // eslint-disable-next-line
   }, [id, token, navigate]);
 
   const getEmbedUrl = (url) => {
@@ -588,6 +698,18 @@ function CourseDetail() {
       );
 
       setIsEnrolled(true);
+
+      await fetchCourseProgress();
+
+      if (course.videos?.length > 0) {
+        await trackProgress({
+          type: 'video',
+          title: course.videos[0].title,
+          url: course.videos[0].url,
+          action: 'open',
+        });
+      }
+
       setLockedMsg(`✅ ${res.data.message || 'Course enrolled successfully'}`);
       setTimeout(() => setLockedMsg(''), 3000);
     } catch (err) {
@@ -611,13 +733,20 @@ function CourseDetail() {
     setTimeout(() => setLockedMsg(''), 3000);
   };
 
-  const handleVideoClick = (video) => {
+  const handleVideoClick = async (video) => {
     if (locked) {
       showLockedMessage(video?.title || 'Video');
       return;
     }
 
     setActiveVideo(video);
+
+    await trackProgress({
+      type: 'video',
+      title: video?.title || 'Video',
+      url: video?.url || '',
+      action: 'open',
+    });
 
     logActivity(
       `Clicked video: ${video.title} | Course: ${
@@ -627,13 +756,20 @@ function CourseDetail() {
     );
   };
 
-  const handlePdfClick = (pdf) => {
+  const handlePdfClick = async (pdf) => {
     if (locked) {
       showLockedMessage(pdf?.title || 'PDF');
       return;
     }
 
     setActivePdf(pdf);
+
+    await trackProgress({
+      type: 'pdf',
+      title: pdf?.title || 'PDF',
+      url: pdf?.url || '',
+      action: 'open',
+    });
 
     logActivity(
       `Clicked PDF: ${pdf.title} | Course: ${
@@ -643,8 +779,26 @@ function CourseDetail() {
     );
   };
 
-  const handleTabChange = (tab) => {
+  const handleTabChange = async (tab) => {
     setActiveTab(tab);
+
+    if (tab === 'pdfs' && activePdf && !locked) {
+      await trackProgress({
+        type: 'pdf',
+        title: activePdf.title || 'PDF',
+        url: activePdf.url || '',
+        action: 'open',
+      });
+    }
+
+    if (tab === 'videos' && activeVideo && !locked) {
+      await trackProgress({
+        type: 'video',
+        title: activeVideo.title || 'Video',
+        url: activeVideo.url || '',
+        action: 'open',
+      });
+    }
 
     logActivity(
       `Switched tab to: ${tab} | Course: ${
@@ -769,6 +923,19 @@ function CourseDetail() {
               >
                 📄 {totalPdfs} PDFs
               </span>
+
+              {isEnrolled && (
+                <span
+                  style={{
+                    ...styles.heroTag,
+                    background: theme.isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7',
+                    color: theme.success,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                >
+                  📈 {courseProgress.progressPercent || 0}% Done
+                </span>
+              )}
             </div>
 
             <h1 style={{ ...styles.heroTitle, color: theme.text }}>
@@ -880,6 +1047,33 @@ function CourseDetail() {
           </motion.div>
         )}
 
+        {doneMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              ...styles.lockedMsg,
+              background: doneMsg.includes('✅')
+                ? theme.isDark
+                  ? 'rgba(34,197,94,0.14)'
+                  : '#dcfce7'
+                : theme.isDark
+                ? 'rgba(251,191,36,0.14)'
+                : '#fef3c7',
+              color: doneMsg.includes('✅')
+                ? theme.isDark
+                  ? '#86efac'
+                  : '#166534'
+                : theme.isDark
+                ? '#fbbf24'
+                : '#92400e',
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            {doneMsg}
+          </motion.div>
+        )}
+
         <div style={styles.mainLayout}>
           <div style={styles.contentArea}>
             <motion.div
@@ -921,6 +1115,23 @@ function CourseDetail() {
                       <h3 style={{ marginTop: '16px', color: theme.text }}>
                         ▶️ {activeVideo.title}
                       </h3>
+
+                      <button
+                        onClick={markActiveVideoDone}
+                        disabled={isVideoDone(activeVideo)}
+                        style={{
+                          ...styles.doneBtn,
+                          background: isVideoDone(activeVideo)
+                            ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                            : theme.success,
+                          opacity: isVideoDone(activeVideo) ? 0.75 : 1,
+                          cursor: isVideoDone(activeVideo) ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {isVideoDone(activeVideo)
+                          ? '✅ Video Done'
+                          : '✅ Mark Video as Done'}
+                      </button>
                     </div>
                   )}
 
@@ -931,11 +1142,31 @@ function CourseDetail() {
                   {activeTab === 'pdfs' && (
                     <div>
                       {activePdf ? (
-                        <SecurePDFViewer
-                          pdf={activePdf}
-                          theme={theme}
-                          courseTitle={course.title}
-                        />
+                        <>
+                          <SecurePDFViewer
+                            pdf={activePdf}
+                            theme={theme}
+                            courseTitle={course.title}
+                          />
+
+                          <button
+                            onClick={markActivePdfDone}
+                            disabled={isPdfDone(activePdf)}
+                            style={{
+                              ...styles.doneBtn,
+                              marginTop: '14px',
+                              background: isPdfDone(activePdf)
+                                ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                                : theme.success,
+                              opacity: isPdfDone(activePdf) ? 0.75 : 1,
+                              cursor: isPdfDone(activePdf) ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {isPdfDone(activePdf)
+                              ? '✅ PDF Done'
+                              : '✅ Mark PDF as Done'}
+                          </button>
+                        </>
                       ) : (
                         <p style={{ color: theme.muted, fontWeight: 800 }}>No PDFs available.</p>
                       )}
@@ -1001,6 +1232,20 @@ function CourseDetail() {
               Course Content
             </h3>
 
+            {isEnrolled && (
+              <div
+                style={{
+                  ...styles.previewOnlyBox,
+                  background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
+                  border: `1px solid ${theme.border}`,
+                  color: theme.textSecondary,
+                }}
+              >
+                📈 Real progress: {courseProgress.progressPercent || 0}% complete.
+                Open = streak, Mark Done = progress.
+              </div>
+            )}
+
             {locked && (
               <div
                 style={{
@@ -1048,6 +1293,7 @@ function CourseDetail() {
                 activeTitle={activeVideo?.title}
                 onClick={handleVideoClick}
                 theme={theme}
+                completedUrls={courseProgress.completedVideoUrls}
               />
             )}
 
@@ -1059,6 +1305,7 @@ function CourseDetail() {
                 activeTitle={activePdf?.title}
                 onClick={handlePdfClick}
                 theme={theme}
+                completedUrls={courseProgress.completedPdfUrls}
               />
             )}
 
@@ -1099,7 +1346,7 @@ function CourseDetail() {
   );
 }
 
-function ContentList({ items, type, locked, activeTitle, onClick, theme }) {
+function ContentList({ items, type, locked, activeTitle, onClick, theme, completedUrls = [] }) {
   if (!items?.length) {
     return <p style={{ color: theme.muted }}>No {type === 'video' ? 'videos' : 'PDFs'} available.</p>;
   }
@@ -1108,6 +1355,7 @@ function ContentList({ items, type, locked, activeTitle, onClick, theme }) {
     <div>
       {items.map((item, i) => {
         const active = !locked && activeTitle === item.title;
+        const done = item?.url && completedUrls.includes(item.url);
 
         return (
           <div
@@ -1116,16 +1364,30 @@ function ContentList({ items, type, locked, activeTitle, onClick, theme }) {
             style={{
               ...styles.contentItem,
               cursor: 'pointer',
-              background: active ? theme.primary : theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+              background: active
+                ? theme.primary
+                : done
+                ? theme.isDark
+                  ? 'rgba(34,197,94,0.13)'
+                  : '#dcfce7'
+                : theme.isDark
+                ? 'rgba(255,255,255,0.035)'
+                : 'rgba(255,255,255,0.72)',
               color: active ? '#fff' : theme.text,
-              border: `1px solid ${theme.border}`,
+              border: `1px solid ${done ? 'rgba(34,197,94,0.35)' : theme.border}`,
             }}
           >
             <span>
               {locked ? '🔒' : type === 'video' ? '▶️' : '📄'} {item.title}
             </span>
 
-            {locked && <span style={styles.lockedSmall}>Locked</span>}
+            {locked ? (
+              <span style={styles.lockedSmall}>Locked</span>
+            ) : done ? (
+              <span style={{ ...styles.lockedSmall, color: '#22c55e' }}>Done</span>
+            ) : (
+              <span style={{ ...styles.lockedSmall, color: theme.muted }}>Open</span>
+            )}
           </div>
         );
       })}
@@ -1239,6 +1501,15 @@ const styles = {
     cursor: 'pointer',
     fontSize: '15px',
     marginTop: '10px',
+  },
+  doneBtn: {
+    marginTop: '10px',
+    padding: '12px 16px',
+    borderRadius: '14px',
+    border: 'none',
+    color: '#fff',
+    fontWeight: 950,
+    cursor: 'pointer',
   },
   lockedMsg: {
     marginBottom: '18px',
