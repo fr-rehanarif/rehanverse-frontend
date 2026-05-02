@@ -477,6 +477,29 @@ function CourseDetail() {
   const [lockedMsg, setLockedMsg] = useState('');
   const [loadingFreeEnroll, setLoadingFreeEnroll] = useState(false);
 
+  const trackProgress = async ({ type, title, url }) => {
+    try {
+      if (!token || !id || !type) return;
+
+      await axios.post(
+        `${API}/api/progress/track`,
+        {
+          courseId: id,
+          type,
+          title: title || '',
+          url: url || '',
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      console.log('✅ Progress tracked:', type, title);
+    } catch (err) {
+      console.log('PROGRESS TRACK ERROR:', err.response?.data || err.message);
+    }
+  };
+
   useEffect(() => {
     if (!token) {
       navigate('/login');
@@ -516,6 +539,14 @@ function CourseDetail() {
 
         setIsEnrolled(enrolled);
 
+        if (enrolled && courseRes.data.videos?.length > 0) {
+          await trackProgress({
+            type: 'video',
+            title: courseRes.data.videos[0].title,
+            url: courseRes.data.videos[0].url,
+          });
+        }
+
         logActivity(
           enrolled
             ? `Enrollment check: User is enrolled | Course: ${courseRes.data.title}`
@@ -535,6 +566,7 @@ function CourseDetail() {
     };
 
     fetchData();
+    // eslint-disable-next-line
   }, [id, token, navigate]);
 
   const getEmbedUrl = (url) => {
@@ -588,6 +620,15 @@ function CourseDetail() {
       );
 
       setIsEnrolled(true);
+
+      if (course.videos?.length > 0) {
+        await trackProgress({
+          type: 'video',
+          title: course.videos[0].title,
+          url: course.videos[0].url,
+        });
+      }
+
       setLockedMsg(`✅ ${res.data.message || 'Course enrolled successfully'}`);
       setTimeout(() => setLockedMsg(''), 3000);
     } catch (err) {
@@ -611,13 +652,19 @@ function CourseDetail() {
     setTimeout(() => setLockedMsg(''), 3000);
   };
 
-  const handleVideoClick = (video) => {
+  const handleVideoClick = async (video) => {
     if (locked) {
       showLockedMessage(video?.title || 'Video');
       return;
     }
 
     setActiveVideo(video);
+
+    await trackProgress({
+      type: 'video',
+      title: video?.title || 'Video',
+      url: video?.url || '',
+    });
 
     logActivity(
       `Clicked video: ${video.title} | Course: ${
@@ -627,13 +674,19 @@ function CourseDetail() {
     );
   };
 
-  const handlePdfClick = (pdf) => {
+  const handlePdfClick = async (pdf) => {
     if (locked) {
       showLockedMessage(pdf?.title || 'PDF');
       return;
     }
 
     setActivePdf(pdf);
+
+    await trackProgress({
+      type: 'pdf',
+      title: pdf?.title || 'PDF',
+      url: pdf?.url || '',
+    });
 
     logActivity(
       `Clicked PDF: ${pdf.title} | Course: ${
@@ -643,8 +696,24 @@ function CourseDetail() {
     );
   };
 
-  const handleTabChange = (tab) => {
+  const handleTabChange = async (tab) => {
     setActiveTab(tab);
+
+    if (tab === 'pdfs' && activePdf && !locked) {
+      await trackProgress({
+        type: 'pdf',
+        title: activePdf.title || 'PDF',
+        url: activePdf.url || '',
+      });
+    }
+
+    if (tab === 'videos' && activeVideo && !locked) {
+      await trackProgress({
+        type: 'video',
+        title: activeVideo.title || 'Video',
+        url: activeVideo.url || '',
+      });
+    }
 
     logActivity(
       `Switched tab to: ${tab} | Course: ${

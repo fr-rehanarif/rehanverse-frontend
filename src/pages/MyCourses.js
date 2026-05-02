@@ -8,12 +8,9 @@ import Footer from '../components/Footer';
 import API from '../api';
 
 function MyCourses() {
-  const [courses, setCourses] = useState([]);
+  const [courseRows, setCourseRows] = useState([]);
   const [liveCounts, setLiveCounts] = useState({});
   const [loading, setLoading] = useState(true);
-
-  const [streak, setStreak] = useState(1);
-  const [lastVisitText, setLastVisitText] = useState('Today');
 
   const theme = useTheme();
   const navigate = useNavigate();
@@ -25,72 +22,57 @@ function MyCourses() {
       return;
     }
 
-    updateDailyStreak();
-    fetchMyCourses();
+    fetchMyCoursesWithProgress();
     // eslint-disable-next-line
   }, [token, navigate]);
 
-  const getTodayKey = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
-
-  const getYesterdayKey = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 1);
-    return date.toISOString().split('T')[0];
-  };
-
-  const updateDailyStreak = () => {
-    const today = getTodayKey();
-    const yesterday = getYesterdayKey();
-
-    const savedLastVisit = localStorage.getItem('rehanverse_last_visit');
-    const savedStreak = Number(localStorage.getItem('rehanverse_learning_streak') || 0);
-
-    if (!savedLastVisit) {
-      localStorage.setItem('rehanverse_last_visit', today);
-      localStorage.setItem('rehanverse_learning_streak', '1');
-      setStreak(1);
-      setLastVisitText('First day');
-      return;
-    }
-
-    if (savedLastVisit === today) {
-      setStreak(savedStreak || 1);
-      setLastVisitText('Today');
-      return;
-    }
-
-    if (savedLastVisit === yesterday) {
-      const newStreak = (savedStreak || 1) + 1;
-      localStorage.setItem('rehanverse_last_visit', today);
-      localStorage.setItem('rehanverse_learning_streak', String(newStreak));
-      setStreak(newStreak);
-      setLastVisitText('Yesterday');
-      return;
-    }
-
-    localStorage.setItem('rehanverse_last_visit', today);
-    localStorage.setItem('rehanverse_learning_streak', '1');
-    setStreak(1);
-    setLastVisitText('Restarted today');
-  };
-
-  const fetchMyCourses = async () => {
+  const fetchMyCoursesWithProgress = async () => {
     try {
       setLoading(true);
 
-      const res = await axios.get(`${API}/api/enroll/my/courses`, {
+      // ✅ Real progress API
+      const res = await axios.get(`${API}/api/progress/my-courses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const courseData = Array.isArray(res.data) ? res.data : [];
+      const rows = Array.isArray(res.data) ? res.data : [];
 
-      setCourses(courseData);
-      fetchLiveCounts(courseData);
+      setCourseRows(rows);
+
+      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
+      fetchLiveCounts(onlyCourses);
     } catch (err) {
-      console.log('MY COURSES FETCH ERROR:', err);
+      console.log('MY COURSES REAL PROGRESS FETCH ERROR:', err);
+
+      // fallback: old enrolled courses route, but progress stays zero
+      try {
+        const fallbackRes = await axios.get(`${API}/api/enroll/my/courses`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const oldCourses = Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
+
+        const fallbackRows = oldCourses.map((course) => ({
+          course,
+          progress: {
+            progressPercent: 0,
+            completedItems: 0,
+            totalItems: (course.videos?.length || 0) + (course.pdfs?.length || 0),
+            openedVideosCount: 0,
+            openedPdfsCount: 0,
+            streakCount: 0,
+            lastStudyDate: '',
+            lastOpenedAt: null,
+            lastOpenedType: '',
+            lastOpenedTitle: '',
+          },
+        }));
+
+        setCourseRows(fallbackRows);
+        fetchLiveCounts(oldCourses);
+      } catch (fallbackErr) {
+        console.log('MY COURSES FALLBACK ERROR:', fallbackErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -124,9 +106,55 @@ function MyCourses() {
     }
   };
 
+  const formatLastOpened = (dateValue) => {
+    if (!dateValue) return 'Not started yet';
+
+    const date = new Date(dateValue);
+
+    return date.toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  };
+
+  const getLastOpenedLabel = (progress) => {
+    if (!progress?.lastOpenedAt) return 'Open a video or PDF to start tracking';
+
+    const typeLabel =
+      progress.lastOpenedType === 'video'
+        ? 'Video'
+        : progress.lastOpenedType === 'pdf'
+        ? 'PDF'
+        : 'Course';
+
+    return `${typeLabel}: ${progress.lastOpenedTitle || 'Course Content'}`;
+  };
+
+  const courses = courseRows.map((item) => item.course).filter(Boolean);
+
   const totalVideos = courses.reduce((sum, course) => sum + (course.videos?.length || 0), 0);
   const totalPdfs = courses.reduce((sum, course) => sum + (course.pdfs?.length || 0), 0);
   const totalLiveClasses = Object.values(liveCounts).reduce((sum, count) => sum + count, 0);
+
+  const totalCompletedItems = courseRows.reduce(
+    (sum, item) => sum + Number(item.progress?.completedItems || 0),
+    0
+  );
+
+  const totalTrackableItems = courseRows.reduce(
+    (sum, item) => sum + Number(item.progress?.totalItems || 0),
+    0
+  );
+
+  const bestStreak = courseRows.reduce(
+    (max, item) => Math.max(max, Number(item.progress?.streakCount || 0)),
+    0
+  );
+
+  const latestProgress = courseRows
+    .map((item) => item.progress)
+    .filter((progress) => progress?.lastOpenedAt)
+    .sort((a, b) => new Date(b.lastOpenedAt) - new Date(a.lastOpenedAt))[0];
 
   const stats = [
     {
@@ -136,13 +164,13 @@ function MyCourses() {
     },
     {
       icon: '🔥',
-      label: 'Daily Streak',
-      value: `${streak} day${streak > 1 ? 's' : ''}`,
+      label: 'Best Real Streak',
+      value: `${bestStreak} day${bestStreak > 1 ? 's' : ''}`,
     },
     {
-      icon: '🎥',
-      label: 'Total Videos',
-      value: totalVideos,
+      icon: '✅',
+      label: 'Completed Items',
+      value: `${totalCompletedItems}/${totalTrackableItems}`,
     },
     {
       icon: '📄',
@@ -188,7 +216,7 @@ function MyCourses() {
               </h2>
 
               <p style={{ ...styles.heroText, color: theme.muted }}>
-                Your enrolled courses, learning stats, live classes, notes, and daily streak — all in one place.
+                Real progress, last opened content, live classes, and course-wise learning streak — all tracked from actual study activity.
               </p>
             </div>
 
@@ -207,15 +235,17 @@ function MyCourses() {
 
               <div>
                 <p style={{ ...styles.streakLabel, color: theme.muted }}>
-                  Learning Streak
+                  Real Study Streak
                 </p>
 
                 <h3 style={{ ...styles.streakValue, color: theme.primary }}>
-                  {streak} Day{streak > 1 ? 's' : ''}
+                  {bestStreak} Day{bestStreak > 1 ? 's' : ''}
                 </h3>
 
                 <p style={{ ...styles.streakSub, color: theme.textSecondary }}>
-                  Last checked: {lastVisitText}
+                  {latestProgress
+                    ? `Last studied: ${formatLastOpened(latestProgress.lastOpenedAt)}`
+                    : 'Start a video or PDF to begin'}
                 </p>
               </div>
             </motion.div>
@@ -265,7 +295,7 @@ function MyCourses() {
           >
             <span>🎯</span>
             <span>
-              Tip: Daily streak maintain karne ke liye roz ek baar dashboard open karo aur course continue karo.
+              Real tracking: streak aur progress tabhi update hoga jab tum video ya PDF open karoge. Dashboard open karne se streak fake nahi badhega.
             </span>
           </div>
         </Reveal>
@@ -329,7 +359,7 @@ function MyCourses() {
                     🚀 Continue Learning
                   </h3>
                   <p style={{ ...styles.sectionSubtitle, color: theme.muted }}>
-                    Your active enrolled courses
+                    Your active enrolled courses with real progress
                   </p>
                 </div>
 
@@ -349,15 +379,14 @@ function MyCourses() {
             </Reveal>
 
             <div style={styles.courseGrid}>
-              {courses.map((course, index) => {
+              {courseRows.map((row, index) => {
+                const course = row.course;
+                const progress = row.progress || {};
                 const liveCount = liveCounts[course._id] || 0;
-                const progressValue = Math.min(
-                  95,
-                  Math.max(
-                    18,
-                    ((course.videos?.length || 0) + (course.pdfs?.length || 0) + liveCount) * 8
-                  )
-                );
+
+                const progressValue = Number(progress.progressPercent || 0);
+                const completedItems = Number(progress.completedItems || 0);
+                const totalItems = Number(progress.totalItems || 0);
 
                 return (
                   <Reveal key={course._id} delay={index * 0.04}>
@@ -416,7 +445,7 @@ function MyCourses() {
                               color: theme.muted,
                             }}
                           >
-                            🎥 {course.videos?.length || 0} Videos
+                            🎥 {progress.openedVideosCount || 0}/{course.videos?.length || 0} Videos opened
                           </div>
 
                           <div
@@ -427,7 +456,7 @@ function MyCourses() {
                               color: theme.muted,
                             }}
                           >
-                            📄 {course.pdfs?.length || 0} PDFs
+                            📄 {progress.openedPdfsCount || 0}/{course.pdfs?.length || 0} PDFs opened
                           </div>
 
                           <div
@@ -449,10 +478,34 @@ function MyCourses() {
                           </div>
                         </div>
 
+                        <div
+                          style={{
+                            ...styles.lastOpenedBox,
+                            background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                            border: `1px solid ${theme.border}`,
+                          }}
+                        >
+                          <p style={{ ...styles.lastOpenedLabel, color: theme.muted }}>
+                            Last opened
+                          </p>
+
+                          <p style={{ ...styles.lastOpenedTitle, color: theme.text }}>
+                            {getLastOpenedLabel(progress)}
+                          </p>
+
+                          <p style={{ ...styles.lastOpenedTime, color: theme.muted }}>
+                            {formatLastOpened(progress.lastOpenedAt)}
+                          </p>
+                        </div>
+
                         <div style={styles.progressArea}>
                           <div style={styles.progressTop}>
-                            <span style={{ color: theme.muted }}>Learning progress</span>
-                            <strong style={{ color: theme.primary }}>{progressValue}%</strong>
+                            <span style={{ color: theme.muted }}>
+                              Real learning progress
+                            </span>
+                            <strong style={{ color: theme.primary }}>
+                              {progressValue}%
+                            </strong>
                           </div>
 
                           <div
@@ -471,6 +524,10 @@ function MyCourses() {
                               }}
                             />
                           </div>
+
+                          <p style={{ ...styles.progressSmall, color: theme.muted }}>
+                            {completedItems}/{totalItems} items opened • Course streak: {progress.streakCount || 0} day{Number(progress.streakCount || 0) > 1 ? 's' : ''}
+                          </p>
                         </div>
 
                         <div style={styles.bottomRow}>
@@ -479,7 +536,7 @@ function MyCourses() {
                               Status
                             </p>
                             <strong style={{ color: theme.success }}>
-                              Active
+                              {progressValue >= 100 ? 'Completed' : progressValue > 0 ? 'In Progress' : 'Not Started'}
                             </strong>
                           </div>
 
@@ -520,7 +577,7 @@ function MyCourses() {
                     📌 Your Learning Summary
                   </h3>
                   <p style={{ margin: 0, lineHeight: 1.7 }}>
-                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, and {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''} available.
+                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, and {totalCompletedItems}/{totalTrackableItems} real study items opened.
                   </p>
                 </div>
 
@@ -731,7 +788,7 @@ const styles = {
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '520px',
+    minHeight: '620px',
   },
   thumbnailWrap: {
     height: '200px',
@@ -791,13 +848,36 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '10px',
-    marginBottom: '18px',
+    marginBottom: '14px',
   },
   metaPill: {
     padding: '9px 10px',
     borderRadius: '13px',
     fontSize: '12px',
     fontWeight: 850,
+  },
+  lastOpenedBox: {
+    padding: '12px 13px',
+    borderRadius: '15px',
+    marginBottom: '16px',
+  },
+  lastOpenedLabel: {
+    margin: '0 0 5px',
+    fontSize: '11px',
+    fontWeight: 900,
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+  },
+  lastOpenedTitle: {
+    margin: '0 0 5px',
+    fontSize: '13px',
+    fontWeight: 950,
+    lineHeight: 1.45,
+  },
+  lastOpenedTime: {
+    margin: 0,
+    fontSize: '12px',
+    fontWeight: 800,
   },
   progressArea: {
     marginBottom: '18px',
@@ -819,6 +899,12 @@ const styles = {
   progressFill: {
     height: '100%',
     borderRadius: '999px',
+  },
+  progressSmall: {
+    margin: '8px 0 0',
+    fontSize: '12px',
+    fontWeight: 800,
+    lineHeight: 1.45,
   },
   bottomRow: {
     marginTop: 'auto',
