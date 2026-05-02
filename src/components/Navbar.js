@@ -58,19 +58,27 @@ function Navbar() {
     color: isActive(path) ? theme.primary : theme.text,
     background: isActive(path)
       ? theme.isDark
-        ? 'rgba(167, 139, 250, 0.13)'
-        : 'rgba(124, 58, 237, 0.10)'
+        ? 'rgba(167, 139, 250, 0.10)'
+        : 'rgba(124, 58, 237, 0.08)'
       : 'transparent',
-    border: isActive(path)
-      ? `1px solid ${theme.border}`
-      : '1px solid transparent',
-    boxShadow: isActive(path) ? `0 0 18px ${theme.primary}33` : 'none',
+    border: isActive(path) ? `1px solid ${theme.border}` : '1px solid transparent',
+    boxShadow: isActive(path) ? `0 0 12px ${theme.primary}24` : 'none',
     fontWeight: special ? 900 : 800,
   });
 
+  const NavMotion = ({ children }) => (
+    <motion.div
+      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.985 }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
+  );
+
   const NavItems = () => (
     <>
-      <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+      <NavMotion>
         <Link
           to="/courses"
           onClick={() => setMenuOpen(false)}
@@ -78,10 +86,10 @@ function Navbar() {
         >
           Courses
         </Link>
-      </motion.div>
+      </NavMotion>
 
       {user && user.role === 'admin' && (
-        <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+        <NavMotion>
           <Link
             to="/admin"
             onClick={() => setMenuOpen(false)}
@@ -89,7 +97,7 @@ function Navbar() {
           >
             ⚙️ Admin
           </Link>
-        </motion.div>
+        </NavMotion>
       )}
 
       <div
@@ -97,9 +105,9 @@ function Navbar() {
           ...styles.themeWrap,
           background: theme.card,
           border: `1px solid ${theme.border}`,
-          boxShadow: theme.glow || theme.shadow,
-          backdropFilter: theme.glass,
-          WebkitBackdropFilter: theme.glass,
+          boxShadow: `0 0 12px ${theme.primary}18`,
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
         }}
       >
         <span style={styles.themeIcon}>🎨</span>
@@ -121,7 +129,7 @@ function Navbar() {
       </div>
 
       {user && (
-        <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+        <NavMotion>
           <Link
             to="/my-courses"
             onClick={() => setMenuOpen(false)}
@@ -129,7 +137,7 @@ function Navbar() {
           >
             🎒 My Courses
           </Link>
-        </motion.div>
+        </NavMotion>
       )}
 
       {user ? (
@@ -138,17 +146,17 @@ function Navbar() {
             <NotificationBell theme={theme} />
           </div>
 
-          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+          <NavMotion>
             <Link
               to="/profile"
               onClick={() => setMenuOpen(false)}
               style={{
                 ...styles.profilePill,
                 background: theme.isDark
-                  ? 'rgba(255,255,255,0.045)'
+                  ? 'rgba(255,255,255,0.04)'
                   : 'rgba(255,255,255,0.75)',
                 border: `1px solid ${theme.border}`,
-                boxShadow: isActive('/profile') ? `0 0 20px ${theme.primary}35` : 'none',
+                boxShadow: isActive('/profile') ? `0 0 14px ${theme.primary}25` : 'none',
               }}
             >
               {user.photo ? (
@@ -158,7 +166,7 @@ function Navbar() {
                   style={{
                     ...styles.avatar,
                     border: `2px solid ${theme.primary}`,
-                    boxShadow: `0 0 16px ${theme.primary}45`,
+                    boxShadow: `0 0 10px ${theme.primary}30`,
                   }}
                 />
               ) : (
@@ -167,7 +175,7 @@ function Navbar() {
                     ...styles.avatarFallback,
                     background: theme.primary,
                     color: theme.buttonText,
-                    boxShadow: `0 0 16px ${theme.primary}45`,
+                    boxShadow: `0 0 10px ${theme.primary}30`,
                   }}
                 >
                   {user.name?.charAt(0).toUpperCase() || 'U'}
@@ -188,17 +196,18 @@ function Navbar() {
                 {user.name || 'User'}
               </span>
             </Link>
-          </motion.div>
+          </NavMotion>
 
           <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.015, y: -1 }}
+            whileTap={{ scale: 0.985 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
             onClick={logout}
             style={{
               ...styles.btn,
               background: theme.primary,
               color: theme.buttonText,
-              boxShadow: `0 0 22px ${theme.primary}50`,
+              boxShadow: `0 0 16px ${theme.primary}35`,
             }}
           >
             Logout
@@ -206,7 +215,7 @@ function Navbar() {
         </>
       ) : (
         <>
-          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+          <NavMotion>
             <Link
               to="/login"
               onClick={() => setMenuOpen(false)}
@@ -214,17 +223,18 @@ function Navbar() {
             >
               Login
             </Link>
-          </motion.div>
+          </NavMotion>
 
           <Link to="/signup" onClick={() => setMenuOpen(false)}>
             <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.015, y: -1 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
               style={{
                 ...styles.btn,
                 background: theme.primary,
                 color: theme.buttonText,
-                boxShadow: `0 0 22px ${theme.primary}50`,
+                boxShadow: `0 0 16px ${theme.primary}35`,
               }}
             >
               Sign Up
@@ -242,14 +252,18 @@ function Navbar() {
         background: theme.navbar,
         borderBottom: `1px solid ${theme.border}`,
         boxShadow: theme.shadow,
-        backdropFilter: theme.glass,
-        WebkitBackdropFilter: theme.glass,
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
       }}
     >
       <div style={styles.navGlow} />
 
-      <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
-        <Link to="/" style={{ ...styles.logo, color: theme.primary }}>
+      <motion.div
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.985 }}
+        transition={{ duration: 0.16, ease: 'easeOut' }}
+      >
+        <Link to="/" onClick={() => setMenuOpen(false)} style={{ ...styles.logo, color: theme.primary }}>
           <span style={styles.logoIcon}>🎓</span>
           <span>REHANVERSE</span>
         </Link>
@@ -263,7 +277,8 @@ function Navbar() {
 
       {isMobile && (
         <motion.button
-          whileTap={{ scale: 0.94 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ duration: 0.14, ease: 'easeOut' }}
           onClick={() => setMenuOpen((prev) => !prev)}
           style={{
             ...styles.menuBtn,
@@ -279,17 +294,17 @@ function Navbar() {
       <AnimatePresence>
         {isMobile && menuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -14, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -14, scale: 0.98 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               ...styles.mobileMenu,
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadowHover || theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
             }}
           >
             <NavItems />
@@ -315,7 +330,7 @@ const styles = {
     position: 'absolute',
     inset: 0,
     background:
-      'radial-gradient(circle at 20% 0%, rgba(167,139,250,0.13), transparent 34%), radial-gradient(circle at 80% 0%, rgba(59,130,246,0.10), transparent 30%)',
+      'radial-gradient(circle at 20% 0%, rgba(167,139,250,0.09), transparent 34%), radial-gradient(circle at 80% 0%, rgba(59,130,246,0.07), transparent 30%)',
     pointerEvents: 'none',
     zIndex: -1,
   },
@@ -327,11 +342,11 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    textShadow: '0 0 18px rgba(167,139,250,0.25)',
+    textShadow: '0 0 12px rgba(167,139,250,0.18)',
   },
   logoIcon: {
     fontSize: '22px',
-    filter: 'drop-shadow(0 0 10px rgba(167,139,250,0.5))',
+    filter: 'drop-shadow(0 0 7px rgba(167,139,250,0.35))',
   },
   links: {
     display: 'flex',
@@ -345,7 +360,7 @@ const styles = {
     fontSize: '15px',
     padding: '10px 12px',
     borderRadius: '14px',
-    transition: '0.2s ease',
+    transition: '0.16s ease',
     display: 'inline-flex',
     alignItems: 'center',
     gap: '7px',

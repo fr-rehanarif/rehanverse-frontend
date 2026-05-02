@@ -16,7 +16,7 @@ function Home() {
   })();
 
   const fadeUp = {
-    hidden: { opacity: 0, y: 24 },
+    hidden: { opacity: 0, y: 18 },
     visible: { opacity: 1, y: 0 },
   };
 
@@ -82,21 +82,9 @@ function Home() {
       }}
     >
       <div style={styles.bgGrid} />
-      <motion.div
-        style={styles.bgGlowOne}
-        animate={{ x: [0, 35, 0], y: [0, 20, 0] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        style={styles.bgGlowTwo}
-        animate={{ x: [0, -30, 0], y: [0, 28, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        style={styles.bgGlowThree}
-        animate={{ opacity: [0.18, 0.34, 0.18], scale: [1, 1.08, 1] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      <div style={styles.bgGlowOne} />
+      <div style={styles.bgGlowTwo} />
+      <div style={styles.bgGlowThree} />
 
       {/* HERO */}
       <section style={styles.sectionHero}>
@@ -105,21 +93,22 @@ function Home() {
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
             style={{
               ...styles.heroCard,
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadowHover,
               backdropFilter: theme.glass,
+              WebkitBackdropFilter: theme.glass,
               borderRadius: theme.radius,
             }}
           >
             <motion.div
               style={styles.heroBadge}
-              initial={{ opacity: 0, y: -12 }}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.45 }}
+              transition={{ delay: 0.1, duration: 0.35, ease: 'easeOut' }}
             >
               <span>⚡ Built for students</span>
               <span style={styles.badgeDot}>•</span>
@@ -127,9 +116,9 @@ function Home() {
             </motion.div>
 
             <motion.h1
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.985 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.55 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
               style={{ ...styles.title, color: theme.primary }}
             >
               🎓 REHANVERSE
@@ -146,13 +135,14 @@ function Home() {
             <div style={styles.buttons}>
               <Link to="/courses" style={{ textDecoration: 'none' }}>
                 <motion.button
-                  whileHover={{ scale: 1.06, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.025, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.16 }}
                   style={{
                     ...styles.btnPrimary,
                     background: theme.primary,
                     color: theme.buttonText,
-                    boxShadow: `0 0 30px ${theme.primary}70`,
+                    boxShadow: `0 0 24px ${theme.primary}55`,
                   }}
                 >
                   Browse Courses 🚀
@@ -161,8 +151,9 @@ function Home() {
 
               <Link to={user ? '/my-courses' : '/signup'} style={{ textDecoration: 'none' }}>
                 <motion.button
-                  whileHover={{ scale: 1.06, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.025, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.16 }}
                   style={{
                     ...styles.btnSecondary,
                     color: theme.primary,
@@ -184,9 +175,9 @@ function Home() {
                     border: `1px solid ${theme.border}`,
                     background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                   }}
-                  initial={{ opacity: 0, y: 14 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 + index * 0.08 }}
+                  transition={{ delay: 0.18 + index * 0.06, duration: 0.32, ease: 'easeOut' }}
                 >
                   <strong style={{ color: theme.primary }}>{item.number}</strong>
                   <span style={{ color: theme.muted }}>{item.label}</span>
@@ -201,12 +192,12 @@ function Home() {
       <section style={styles.section}>
         <div style={styles.quickGrid}>
           {quickActions.map((item, index) => (
-            <Reveal delay={index * 0.08} key={item.title}>
+            <Reveal delay={index * 0.06} key={item.title}>
               <Link to={item.link} style={{ textDecoration: 'none' }}>
                 <motion.div
-                  whileHover={{ y: -8, scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ type: 'spring', stiffness: 230 }}
+                  whileHover={{ y: -4 }}
+                  whileTap={{ scale: 0.99 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
                   style={{
                     ...styles.quickCard,
                     background: theme.card,
@@ -236,10 +227,10 @@ function Home() {
 
         <div style={styles.grid3}>
           {features.map((item, index) => (
-            <Reveal delay={index * 0.08} key={item.title}>
+            <Reveal delay={index * 0.06} key={item.title}>
               <motion.div
-                whileHover={{ y: -8, scale: 1.02 }}
-                transition={{ type: 'spring', stiffness: 220 }}
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
                 style={{
                   ...styles.infoCard,
                   background: theme.card,
@@ -273,13 +264,13 @@ function Home() {
       <section style={styles.section}>
         <Reveal>
           <motion.div
-            whileHover={{ scale: 1.01 }}
-            transition={{ duration: 0.25 }}
+            whileHover={{ y: -3 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               ...styles.bigCard,
               background: theme.card,
               border: `1px solid ${theme.border}`,
-              boxShadow: `0 0 42px ${theme.primary}24`,
+              boxShadow: `0 0 32px ${theme.primary}20`,
             }}
           >
             <div style={styles.whyLayout}>
@@ -330,7 +321,8 @@ function Home() {
       <section style={styles.section}>
         <Reveal>
           <motion.div
-            whileHover={{ scale: 1.01 }}
+            whileHover={{ y: -3 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               ...styles.bigCard,
               background: theme.card,
@@ -348,13 +340,14 @@ function Home() {
 
             <Link to={user ? '/courses' : '/signup'} style={{ textDecoration: 'none' }}>
               <motion.button
-                whileHover={{ scale: 1.07, y: -2 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.025, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.16 }}
                 style={{
                   ...styles.btnPrimary,
                   background: theme.primary,
                   color: theme.buttonText,
-                  boxShadow: `0 0 30px ${theme.primary}66`,
+                  boxShadow: `0 0 24px ${theme.primary}55`,
                 }}
               >
                 {user ? 'Explore Courses' : 'Create Your Account'}
@@ -366,18 +359,8 @@ function Home() {
         {/* IMPORTANT NOTICE */}
         <Reveal delay={0.1}>
           <motion.div
-            animate={{
-              boxShadow: [
-                '0 0 18px rgba(239, 68, 68, 0.20)',
-                '0 0 34px rgba(239, 68, 68, 0.34)',
-                '0 0 18px rgba(239, 68, 68, 0.20)',
-              ],
-            }}
-            transition={{
-              duration: 2.4,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
+            whileHover={{ y: -3 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               ...styles.noticeCard,
               background: theme.isDark
@@ -385,6 +368,7 @@ function Home() {
                 : 'linear-gradient(135deg, #fff1f2, #ffffff)',
               border: `1px solid ${theme.isDark ? 'rgba(248, 113, 113, 0.55)' : '#fca5a5'}`,
               color: theme.isDark ? '#fecaca' : '#7f1d1d',
+              boxShadow: '0 0 22px rgba(239, 68, 68, 0.18)',
             }}
           >
             <div style={styles.noticeTop}>
@@ -435,7 +419,7 @@ const styles = {
     position: 'absolute',
     inset: 0,
     backgroundImage:
-      'linear-gradient(rgba(167,139,250,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(167,139,250,0.045) 1px, transparent 1px)',
+      'linear-gradient(rgba(167,139,250,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(167,139,250,0.035) 1px, transparent 1px)',
     backgroundSize: '44px 44px',
     maskImage: 'linear-gradient(to bottom, black, transparent 88%)',
     pointerEvents: 'none',
@@ -445,34 +429,37 @@ const styles = {
     position: 'absolute',
     top: '90px',
     left: '-120px',
-    width: '310px',
-    height: '310px',
+    width: '300px',
+    height: '300px',
     borderRadius: '50%',
-    background: 'rgba(124, 58, 237, 0.28)',
+    background: 'rgba(124, 58, 237, 0.22)',
     filter: 'blur(95px)',
     zIndex: 0,
+    pointerEvents: 'none',
   },
   bgGlowTwo: {
     position: 'absolute',
     top: '650px',
     right: '-140px',
-    width: '350px',
-    height: '350px',
+    width: '330px',
+    height: '330px',
     borderRadius: '50%',
-    background: 'rgba(59, 130, 246, 0.20)',
+    background: 'rgba(59, 130, 246, 0.16)',
     filter: 'blur(100px)',
     zIndex: 0,
+    pointerEvents: 'none',
   },
   bgGlowThree: {
     position: 'absolute',
     top: '260px',
     left: '42%',
-    width: '240px',
-    height: '240px',
+    width: '220px',
+    height: '220px',
     borderRadius: '50%',
-    background: 'rgba(236, 72, 153, 0.16)',
+    background: 'rgba(236, 72, 153, 0.12)',
     filter: 'blur(105px)',
     zIndex: 0,
+    pointerEvents: 'none',
   },
   sectionHero: {
     maxWidth: '1200px',
@@ -517,7 +504,7 @@ const styles = {
     marginBottom: '14px',
     marginTop: 0,
     letterSpacing: '0.5px',
-    textShadow: '0 0 26px rgba(167, 139, 250, 0.25)',
+    textShadow: '0 0 22px rgba(167, 139, 250, 0.22)',
   },
   subtitle: {
     fontSize: '22px',
