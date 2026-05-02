@@ -26,33 +26,45 @@ function MyCourses() {
     // eslint-disable-next-line
   }, [token, navigate]);
 
+  const getWithTimeout = (url, config = {}, timeoutMs = 8000) => {
+    return Promise.race([
+      axios.get(url, config),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+      ),
+    ]);
+  };
+
   const fetchMyCoursesWithProgress = async () => {
     try {
       setLoading(true);
 
-      // ✅ Real progress API
-      const res = await axios.get(`${API}/api/progress/my-courses`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      let rows = [];
 
-      const rows = Array.isArray(res.data) ? res.data : [];
-
-      setCourseRows(rows);
-
-      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
-      fetchLiveCounts(onlyCourses);
-    } catch (err) {
-      console.log('MY COURSES REAL PROGRESS FETCH ERROR:', err);
-
-      // fallback: old enrolled courses route, but progress stays zero
       try {
-        const fallbackRes = await axios.get(`${API}/api/enroll/my/courses`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await getWithTimeout(
+          `${API}/api/progress/my-courses`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+          8000
+        );
+
+        rows = Array.isArray(res.data) ? res.data : [];
+      } catch (progressErr) {
+        console.log('PROGRESS API FAILED, USING FALLBACK:', progressErr.message);
+
+        const fallbackRes = await getWithTimeout(
+          `${API}/api/enroll/my/courses`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+          8000
+        );
 
         const oldCourses = Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
 
-        const fallbackRows = oldCourses.map((course) => ({
+        rows = oldCourses.map((course) => ({
           course,
           progress: {
             progressPercent: 0,
@@ -74,12 +86,17 @@ function MyCourses() {
             lastOpenedTitle: '',
           },
         }));
-
-        setCourseRows(fallbackRows);
-        fetchLiveCounts(oldCourses);
-      } catch (fallbackErr) {
-        console.log('MY COURSES FALLBACK ERROR:', fallbackErr);
       }
+
+      setCourseRows(rows);
+
+      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
+
+      // ✅ live count background mein chalega, page loading stuck nahi karega
+      fetchLiveCounts(onlyCourses);
+    } catch (err) {
+      console.log('MY COURSES FINAL ERROR:', err);
+      setCourseRows([]);
     } finally {
       setLoading(false);
     }
@@ -92,16 +109,17 @@ function MyCourses() {
       await Promise.all(
         courseList.map(async (course) => {
           try {
-            const res = await axios.get(
+            const res = await getWithTimeout(
               `${API}/api/live-classes/course/${course._id}`,
               {
                 headers: { Authorization: `Bearer ${token}` },
-              }
+              },
+              5000
             );
 
             counts[course._id] = res.data?.length || 0;
           } catch (err) {
-            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err);
+            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err.message || err);
             counts[course._id] = 0;
           }
         })
