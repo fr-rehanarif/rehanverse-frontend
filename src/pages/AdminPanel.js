@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import API from '../api';
 import SecurityLogsPanel from '../components/SecurityLogsPanel';
@@ -72,7 +73,6 @@ function AdminPanel() {
     fetchCoupons();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   const showConfirmToast = ({ title, message, confirmText = 'Yes, Delete', onConfirm }) => {
     const toastId = toast(
@@ -613,41 +613,59 @@ function AdminPanel() {
 
   const inputStyle = {
     width: '100%',
-    padding: '11px',
+    padding: '13px 14px',
     marginBottom: '14px',
-    borderRadius: '12px',
+    borderRadius: '14px',
     fontSize: '14px',
     outline: 'none',
-    background: theme.bgSecondary,
+    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
     color: theme.text,
     border: `1px solid ${theme.border}`,
     boxSizing: 'border-box',
+    fontWeight: '700',
   };
 
   const tabStyle = (tabName) => ({
-    padding: '10px 24px',
-    borderRadius: '12px',
+    padding: '11px 18px',
+    borderRadius: '15px',
     border: `1px solid ${activeTab === tabName ? theme.primary : theme.border}`,
     cursor: 'pointer',
-    fontWeight: '600',
-    background: activeTab === tabName ? theme.primary : theme.card,
+    fontWeight: '900',
+    background:
+      activeTab === tabName
+        ? theme.primary
+        : theme.isDark
+        ? 'rgba(255,255,255,0.035)'
+        : 'rgba(255,255,255,0.72)',
     color: activeTab === tabName ? theme.buttonText : theme.text,
-    boxShadow: activeTab === tabName ? theme.shadow : 'none',
+    boxShadow: activeTab === tabName ? `0 0 18px ${theme.primary}35` : 'none',
+    transition: '0.16s ease',
   });
+
+  const panelStyle = {
+    background: theme.card,
+    border: `1px solid ${theme.border}`,
+    borderRadius: theme.radius,
+    padding: '32px',
+    marginBottom: '32px',
+    boxShadow: theme.shadow,
+    backdropFilter: theme.glass,
+    WebkitBackdropFilter: theme.glass,
+  };
+
+  const smallCardStyle = {
+    background: theme.card,
+    border: `1px solid ${theme.border}`,
+    borderRadius: '18px',
+    padding: '20px',
+    boxShadow: theme.shadow,
+    backdropFilter: theme.glass,
+    WebkitBackdropFilter: theme.glass,
+  };
 
   const renderCouponSection = () => (
     <div>
-      <div
-        style={{
-          background: theme.card,
-          border: `1px solid ${theme.border}`,
-          borderRadius: theme.radius,
-          padding: '32px',
-          marginBottom: '32px',
-          boxShadow: theme.shadow,
-          backdropFilter: theme.glass,
-        }}
-      >
+      <div style={panelStyle}>
         <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
           🎟️ Create Coupon Code
         </h3>
@@ -763,6 +781,7 @@ function AdminPanel() {
             color: theme.text,
             marginBottom: '18px',
             cursor: 'pointer',
+            fontWeight: 800,
           }}
         >
           <input
@@ -786,10 +805,10 @@ function AdminPanel() {
             background: 'linear-gradient(135deg, #22c55e, #15803d)',
             color: '#fff',
             border: 'none',
-            borderRadius: '12px',
+            borderRadius: '14px',
             fontSize: '16px',
             cursor: 'pointer',
-            fontWeight: '800',
+            fontWeight: '900',
             boxShadow: theme.shadow,
           }}
         >
@@ -808,8 +827,9 @@ function AdminPanel() {
               padding: '18px',
               background: theme.card,
               border: `1px solid ${theme.border}`,
-              borderRadius: '14px',
+              borderRadius: '16px',
               color: theme.muted,
+              fontWeight: 800,
             }}
           >
             Abhi koi coupon nahi bana.
@@ -824,11 +844,7 @@ function AdminPanel() {
                 <div
                   key={coupon._id}
                   style={{
-                    background: theme.card,
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: '16px',
-                    padding: '20px',
-                    boxShadow: theme.shadow,
+                    ...smallCardStyle,
                     display: 'flex',
                     justifyContent: 'space-between',
                     gap: '16px',
@@ -854,7 +870,7 @@ function AdminPanel() {
                           padding: '5px 10px',
                           borderRadius: '999px',
                           fontSize: '12px',
-                          fontWeight: '800',
+                          fontWeight: '900',
                           background: coupon.isActive
                             ? 'rgba(34,197,94,0.15)'
                             : 'rgba(239,68,68,0.15)',
@@ -871,7 +887,7 @@ function AdminPanel() {
                             padding: '5px 10px',
                             borderRadius: '999px',
                             fontSize: '12px',
-                            fontWeight: '800',
+                            fontWeight: '900',
                             background: 'rgba(239,68,68,0.15)',
                             color: '#fca5a5',
                             border: `1px solid ${theme.border}`,
@@ -933,9 +949,9 @@ function AdminPanel() {
                         background: coupon.isActive ? theme.warning : theme.success,
                         color: theme.buttonText,
                         border: 'none',
-                        borderRadius: '10px',
+                        borderRadius: '12px',
                         cursor: 'pointer',
-                        fontWeight: '700',
+                        fontWeight: '800',
                       }}
                     >
                       {coupon.isActive ? 'Disable' : 'Enable'}
@@ -948,9 +964,9 @@ function AdminPanel() {
                         background: theme.danger,
                         color: theme.buttonText,
                         border: 'none',
-                        borderRadius: '10px',
+                        borderRadius: '12px',
                         cursor: 'pointer',
-                        fontWeight: '700',
+                        fontWeight: '800',
                       }}
                     >
                       Delete
@@ -970,20 +986,80 @@ function AdminPanel() {
       style={{
         background: theme.bg,
         minHeight: '100vh',
-        padding: '40px 20px',
-        transition: 'all 0.3s ease',
+        color: theme.text,
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-        <h2 style={{ color: theme.primary, marginBottom: '4px' }}>⚙️ Admin Panel</h2>
-        <p style={{ color: theme.muted, marginBottom: '24px' }}>Welcome, {user?.name}!</p>
+      <div style={adminStyles.bgGrid} />
+      <div style={adminStyles.glowOne} />
+      <div style={adminStyles.glowTwo} />
+
+      <div
+        style={{
+          maxWidth: '1160px',
+          margin: '0 auto',
+          padding: '40px 20px',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          style={{
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius,
+            padding: '28px',
+            marginBottom: '24px',
+            boxShadow: theme.shadow,
+            backdropFilter: theme.glass,
+            WebkitBackdropFilter: theme.glass,
+          }}
+        >
+          <p
+            style={{
+              color: theme.primary,
+              margin: '0 0 8px',
+              fontWeight: 950,
+              fontSize: '13px',
+              letterSpacing: '0.5px',
+            }}
+          >
+            ⚙️ ADMIN CONTROL CENTER
+          </p>
+
+          <h2
+            style={{
+              color: theme.text,
+              margin: '0 0 8px',
+              fontSize: 'clamp(30px, 4vw, 46px)',
+              fontWeight: 950,
+              letterSpacing: '-0.8px',
+            }}
+          >
+            Admin Panel
+          </h2>
+
+          <p style={{ color: theme.muted, margin: 0, fontWeight: 750 }}>
+            Welcome, {user?.name}! Manage courses, payments, coupons, users, live classes and activity logs.
+          </p>
+        </motion.div>
 
         {msg && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
             style={{
-              padding: '12px 16px',
-              borderRadius: '12px',
+              padding: '13px 16px',
+              borderRadius: '16px',
               marginBottom: '20px',
+              fontWeight: 900,
+              boxShadow: theme.shadow,
+              backdropFilter: theme.glass,
+              WebkitBackdropFilter: theme.glass,
               background: msg.includes('✅')
                 ? theme.mode === 'dark'
                   ? 'rgba(34, 197, 94, 0.12)'
@@ -1004,7 +1080,7 @@ function AdminPanel() {
             }}
           >
             {msg}
-          </div>
+          </motion.div>
         )}
 
         <AdminDashboardStats
@@ -1014,7 +1090,21 @@ function AdminPanel() {
           payments={payments}
         />
 
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '32px', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '10px',
+            marginBottom: '32px',
+            flexWrap: 'wrap',
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '22px',
+            padding: '14px',
+            boxShadow: theme.shadow,
+            backdropFilter: theme.glass,
+            WebkitBackdropFilter: theme.glass,
+          }}
+        >
           <button onClick={() => setActiveTab('courses')} style={tabStyle('courses')}>
             📚 Courses ({courses.length})
           </button>
@@ -1046,17 +1136,7 @@ function AdminPanel() {
 
         {activeTab === 'courses' && (
           <div>
-            <div
-              style={{
-                background: theme.card,
-                border: `1px solid ${theme.border}`,
-                borderRadius: theme.radius,
-                padding: '32px',
-                marginBottom: '40px',
-                boxShadow: theme.shadow,
-                backdropFilter: theme.glass,
-              }}
-            >
+            <div style={panelStyle}>
               <div
                 style={{
                   display: 'flex',
@@ -1079,8 +1159,9 @@ function AdminPanel() {
                       background: 'transparent',
                       color: theme.muted,
                       border: `1px solid ${theme.border}`,
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       cursor: 'pointer',
+                      fontWeight: 800,
                     }}
                   >
                     ✕ Cancel
@@ -1097,9 +1178,10 @@ function AdminPanel() {
                     border: `1px solid ${
                       theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.35)' : '#fcd34d'
                     }`,
-                    borderRadius: '12px',
+                    borderRadius: '14px',
                     marginBottom: '16px',
                     fontSize: '13px',
+                    fontWeight: 800,
                     color: theme.mode === 'dark' ? '#fcd34d' : '#92400e',
                   }}
                 >
@@ -1137,7 +1219,7 @@ function AdminPanel() {
                   flexWrap: 'wrap',
                 }}
               >
-                <label style={{ color: theme.text }}>
+                <label style={{ color: theme.text, fontWeight: 800 }}>
                   <input
                     type="checkbox"
                     checked={form.isFree}
@@ -1162,14 +1244,14 @@ function AdminPanel() {
 
               <div
                 style={{
-                  background: theme.bgSecondary,
-                  borderRadius: '14px',
+                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  borderRadius: '18px',
                   padding: '16px',
                   marginBottom: '14px',
                   border: `1px solid ${theme.border}`,
                 }}
               >
-                <p style={{ color: theme.text, fontWeight: '600', marginBottom: '10px' }}>
+                <p style={{ color: theme.text, fontWeight: '900', marginBottom: '10px' }}>
                   📹 Videos
                 </p>
 
@@ -1195,10 +1277,11 @@ function AdminPanel() {
                       background: theme.primary,
                       color: theme.buttonText,
                       border: 'none',
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
                       minHeight: '44px',
+                      fontWeight: 900,
                     }}
                   >
                     + Add
@@ -1214,12 +1297,14 @@ function AdminPanel() {
                       alignItems: 'center',
                       padding: '10px 12px',
                       background: theme.cardSolid,
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       marginBottom: '6px',
                       border: `1px solid ${theme.border}`,
                     }}
                   >
-                    <span style={{ color: theme.text, fontSize: '13px' }}>📹 {v.title}</span>
+                    <span style={{ color: theme.text, fontSize: '13px', fontWeight: 800 }}>
+                      📹 {v.title}
+                    </span>
                     <button
                       onClick={() => setVideos(videos.filter((_, idx) => idx !== i))}
                       style={{
@@ -1228,6 +1313,7 @@ function AdminPanel() {
                         color: theme.danger,
                         cursor: 'pointer',
                         fontSize: '16px',
+                        fontWeight: 900,
                       }}
                     >
                       ✕
@@ -1236,20 +1322,22 @@ function AdminPanel() {
                 ))}
 
                 {videos.length === 0 && (
-                  <p style={{ color: theme.muted, fontSize: '12px' }}>Abhi koi video nahi</p>
+                  <p style={{ color: theme.muted, fontSize: '12px', fontWeight: 800 }}>
+                    Abhi koi video nahi
+                  </p>
                 )}
               </div>
 
               <div
                 style={{
-                  background: theme.bgSecondary,
-                  borderRadius: '14px',
+                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  borderRadius: '18px',
                   padding: '16px',
                   marginBottom: '20px',
                   border: `1px solid ${theme.border}`,
                 }}
               >
-                <p style={{ color: theme.text, fontWeight: '600', marginBottom: '10px' }}>
+                <p style={{ color: theme.text, fontWeight: '900', marginBottom: '10px' }}>
                   📄 PDFs / Notes
                 </p>
 
@@ -1276,10 +1364,11 @@ function AdminPanel() {
                       background: theme.primary,
                       color: theme.buttonText,
                       border: 'none',
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
                       minHeight: '44px',
+                      fontWeight: 900,
                     }}
                   >
                     Upload PDF
@@ -1295,12 +1384,12 @@ function AdminPanel() {
                       alignItems: 'center',
                       padding: '10px 12px',
                       background: theme.cardSolid,
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       marginBottom: '6px',
                       border: `1px solid ${theme.border}`,
                     }}
                   >
-                    <span style={{ color: theme.text, fontSize: '13px' }}>
+                    <span style={{ color: theme.text, fontSize: '13px', fontWeight: 800 }}>
                       📄 {p.title} {p.filename ? '✅' : '⚠️ old link'}
                     </span>
                     <button
@@ -1311,6 +1400,7 @@ function AdminPanel() {
                         color: theme.danger,
                         cursor: 'pointer',
                         fontSize: '16px',
+                        fontWeight: 900,
                       }}
                     >
                       ✕
@@ -1319,7 +1409,9 @@ function AdminPanel() {
                 ))}
 
                 {pdfs.length === 0 && (
-                  <p style={{ color: theme.muted, fontSize: '12px' }}>Abhi koi PDF nahi</p>
+                  <p style={{ color: theme.muted, fontSize: '12px', fontWeight: 800 }}>
+                    Abhi koi PDF nahi
+                  </p>
                 )}
               </div>
 
@@ -1331,10 +1423,10 @@ function AdminPanel() {
                   background: editingId ? theme.success : theme.primary,
                   color: theme.buttonText,
                   border: 'none',
-                  borderRadius: '12px',
+                  borderRadius: '14px',
                   fontSize: '16px',
                   cursor: 'pointer',
-                  fontWeight: '600',
+                  fontWeight: '900',
                   boxShadow: theme.shadow,
                 }}
               >
@@ -1362,7 +1454,7 @@ function AdminPanel() {
                       border: `1px solid ${
                         editingId === course._id ? theme.success : theme.border
                       }`,
-                      borderRadius: '16px',
+                      borderRadius: '18px',
                       padding: '20px',
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -1371,13 +1463,14 @@ function AdminPanel() {
                       flexWrap: 'wrap',
                       boxShadow: theme.shadow,
                       backdropFilter: theme.glass,
+                      WebkitBackdropFilter: theme.glass,
                     }}
                   >
                     <div>
                       <h4 style={{ color: theme.text, marginBottom: '4px', marginTop: 0 }}>
                         {course.title}
                       </h4>
-                      <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
+                      <p style={{ color: theme.muted, fontSize: '13px', margin: 0, fontWeight: 800 }}>
                         {course.isFree ? '🆓 Free' : `💰 ₹${course.price}`} &nbsp;|&nbsp;
                         📹 {course.videos?.length || 0} videos &nbsp;|&nbsp;
                         📄 {course.pdfs?.length || 0} PDFs
@@ -1394,44 +1487,21 @@ function AdminPanel() {
                     >
                       <button
                         onClick={() => fetchEnrolledUsers(course._id)}
-                        style={{
-                          padding: '8px 16px',
-                          background: theme.accent,
-                          color: theme.buttonText,
-                          border: 'none',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          fontWeight: '500',
-                        }}
+                        style={adminStyles.blueBtn(theme)}
                       >
                         👥 {expandedCourse === course._id ? 'Hide' : 'Students'}
                       </button>
 
                       <button
                         onClick={() => startEdit(course)}
-                        style={{
-                          padding: '8px 16px',
-                          background: theme.warning,
-                          color: theme.buttonText,
-                          border: 'none',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          fontWeight: '500',
-                        }}
+                        style={adminStyles.warningBtn(theme)}
                       >
                         ✏️ Edit
                       </button>
 
                       <button
                         onClick={() => deleteCourse(course._id)}
-                        style={{
-                          padding: '8px 16px',
-                          background: theme.danger,
-                          color: theme.buttonText,
-                          border: 'none',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                        }}
+                        style={adminStyles.dangerBtn(theme)}
                       >
                         🗑️ Delete
                       </button>
@@ -1441,9 +1511,9 @@ function AdminPanel() {
                   {expandedCourse === course._id && (
                     <div
                       style={{
-                        background: theme.bgSecondary,
+                        background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                         border: `1px solid ${theme.border}`,
-                        borderRadius: '0 0 14px 14px',
+                        borderRadius: '0 0 16px 16px',
                         padding: '16px',
                         marginTop: '-4px',
                       }}
@@ -1451,7 +1521,7 @@ function AdminPanel() {
                       <p
                         style={{
                           color: theme.text,
-                          fontWeight: '600',
+                          fontWeight: '900',
                           marginBottom: '12px',
                           fontSize: '14px',
                         }}
@@ -1472,14 +1542,14 @@ function AdminPanel() {
                               justifyContent: 'space-between',
                               padding: '8px 12px',
                               background: theme.card,
-                              borderRadius: '10px',
+                              borderRadius: '12px',
                               marginBottom: '6px',
                               border: `1px solid ${theme.border}`,
                               gap: '12px',
                               flexWrap: 'wrap',
                             }}
                           >
-                            <span style={{ color: theme.text, fontSize: '13px' }}>
+                            <span style={{ color: theme.text, fontSize: '13px', fontWeight: 800 }}>
                               👤 {u.name}
                             </span>
                             <span style={{ color: theme.muted, fontSize: '13px' }}>
@@ -1523,6 +1593,7 @@ function AdminPanel() {
                       position: 'relative',
                       boxShadow: theme.shadow,
                       backdropFilter: theme.glass,
+                      WebkitBackdropFilter: theme.glass,
                     }}
                   >
                     <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
@@ -1531,7 +1602,7 @@ function AdminPanel() {
                           padding: '4px 10px',
                           borderRadius: '20px',
                           fontSize: '11px',
-                          fontWeight: '700',
+                          fontWeight: '900',
                           background:
                             u.role === 'admin'
                               ? theme.mode === 'dark'
@@ -1586,7 +1657,7 @@ function AdminPanel() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: theme.buttonText,
-                            fontWeight: '700',
+                            fontWeight: '900',
                             fontSize: '22px',
                             flexShrink: 0,
                           }}
@@ -1601,7 +1672,7 @@ function AdminPanel() {
                             color: theme.text,
                             margin: 0,
                             fontSize: '16px',
-                            fontWeight: '800',
+                            fontWeight: '900',
                           }}
                         >
                           {u.name}
@@ -1635,7 +1706,7 @@ function AdminPanel() {
                           style={{
                             color: theme.text,
                             fontSize: '13px',
-                            fontWeight: '700',
+                            fontWeight: '900',
                             margin: '8px 0 8px 0',
                           }}
                         >
@@ -1656,7 +1727,7 @@ function AdminPanel() {
                                   color: theme.primary,
                                   borderRadius: '8px',
                                   fontSize: '12px',
-                                  fontWeight: '600',
+                                  fontWeight: '800',
                                 }}
                               >
                                 {c.title || c}
@@ -1680,10 +1751,10 @@ function AdminPanel() {
                           background: theme.danger,
                           color: theme.buttonText,
                           border: 'none',
-                          borderRadius: '10px',
+                          borderRadius: '12px',
                           cursor: 'pointer',
                           fontSize: '13px',
-                          fontWeight: '600',
+                          fontWeight: '900',
                           marginTop: '16px',
                         }}
                       >
@@ -1711,17 +1782,7 @@ function AdminPanel() {
                   const screenshotUrl = getPaymentScreenshot(payment);
 
                   return (
-                    <div
-                      key={payment._id}
-                      style={{
-                        background: theme.card,
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: theme.radius,
-                        padding: '20px',
-                        boxShadow: theme.shadow,
-                        backdropFilter: theme.glass,
-                      }}
-                    >
+                    <div key={payment._id} style={smallCardStyle}>
                       <h4 style={{ color: theme.text, marginTop: 0 }}>
                         {payment.course?.title || 'Course deleted'}
                       </h4>
@@ -1746,7 +1807,7 @@ function AdminPanel() {
                                 : payment.status === 'rejected'
                                 ? theme.danger
                                 : theme.warning,
-                            fontWeight: '800',
+                            fontWeight: '900',
                             textTransform: 'uppercase',
                           }}
                         >
@@ -1762,15 +1823,15 @@ function AdminPanel() {
                           style={{
                             marginTop: '12px',
                             padding: '12px',
-                            background: theme.bgSecondary,
+                            background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                             border: `1px solid ${theme.border}`,
-                            borderRadius: '12px',
+                            borderRadius: '14px',
                           }}
                         >
                           <p
                             style={{
                               color: theme.text,
-                              fontWeight: '800',
+                              fontWeight: '900',
                               margin: '0 0 8px',
                             }}
                           >
@@ -1811,15 +1872,15 @@ function AdminPanel() {
                         style={{
                           marginTop: '16px',
                           padding: '14px',
-                          background: theme.bgSecondary,
+                          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                           border: `1px solid ${theme.border}`,
-                          borderRadius: '14px',
+                          borderRadius: '16px',
                         }}
                       >
                         <p
                           style={{
                             color: theme.text,
-                            fontWeight: '800',
+                            fontWeight: '900',
                             marginTop: 0,
                             marginBottom: '10px',
                           }}
@@ -1856,7 +1917,7 @@ function AdminPanel() {
                                   display: 'none',
                                   color: theme.danger,
                                   fontSize: '13px',
-                                  fontWeight: '700',
+                                  fontWeight: '800',
                                   marginTop: '8px',
                                 }}
                               >
@@ -1872,9 +1933,9 @@ function AdminPanel() {
                                 background: theme.primary,
                                 color: theme.buttonText,
                                 border: 'none',
-                                borderRadius: '10px',
+                                borderRadius: '12px',
                                 cursor: 'pointer',
-                                fontWeight: '700',
+                                fontWeight: '900',
                               }}
                             >
                               🔍 Open Screenshot
@@ -1896,7 +1957,7 @@ function AdminPanel() {
                             <p
                               style={{
                                 color: theme.danger,
-                                fontWeight: '800',
+                                fontWeight: '900',
                                 marginBottom: '8px',
                               }}
                             >
@@ -1917,33 +1978,17 @@ function AdminPanel() {
                       </div>
 
                       {payment.status === 'pending' && (
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => approvePayment(payment._id)}
-                            style={{
-                              padding: '10px 18px',
-                              background: theme.success,
-                              color: theme.buttonText,
-                              border: 'none',
-                              borderRadius: '10px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                            }}
+                            style={adminStyles.successBtn(theme)}
                           >
                             ✅ Approve
                           </button>
 
                           <button
                             onClick={() => rejectPayment(payment._id)}
-                            style={{
-                              padding: '10px 18px',
-                              background: theme.danger,
-                              color: theme.buttonText,
-                              border: 'none',
-                              borderRadius: '10px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                            }}
+                            style={adminStyles.dangerBtn(theme)}
                           >
                             ❌ Reject
                           </button>
@@ -1961,17 +2006,7 @@ function AdminPanel() {
 
         {activeTab === 'live' && (
           <div>
-            <div
-              style={{
-                background: theme.card,
-                border: `1px solid ${theme.border}`,
-                borderRadius: theme.radius,
-                padding: '32px',
-                marginBottom: '32px',
-                boxShadow: theme.shadow,
-                backdropFilter: theme.glass,
-              }}
-            >
+            <div style={panelStyle}>
               <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
                 🔴 Add Live Class
               </h3>
@@ -2048,10 +2083,10 @@ function AdminPanel() {
                   background: 'linear-gradient(135deg, #ef4444, #7f1d1d)',
                   color: '#fff',
                   border: 'none',
-                  borderRadius: '12px',
+                  borderRadius: '14px',
                   fontSize: '16px',
                   cursor: 'pointer',
-                  fontWeight: '800',
+                  fontWeight: '900',
                   boxShadow: theme.shadow,
                 }}
               >
@@ -2072,8 +2107,9 @@ function AdminPanel() {
                     padding: '18px',
                     background: theme.card,
                     border: `1px solid ${theme.border}`,
-                    borderRadius: '14px',
+                    borderRadius: '16px',
                     color: theme.muted,
+                    fontWeight: 800,
                   }}
                 >
                   Abhi is course mein koi live class nahi hai.
@@ -2087,11 +2123,7 @@ function AdminPanel() {
                       <div
                         key={live._id}
                         style={{
-                          background: theme.card,
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: '16px',
-                          padding: '20px',
-                          boxShadow: theme.shadow,
+                          ...smallCardStyle,
                           display: 'flex',
                           justifyContent: 'space-between',
                           gap: '16px',
@@ -2115,7 +2147,7 @@ function AdminPanel() {
                                 padding: '5px 10px',
                                 borderRadius: '999px',
                                 fontSize: '12px',
-                                fontWeight: '800',
+                                fontWeight: '900',
                                 background:
                                   status === 'Live Now'
                                     ? 'rgba(239,68,68,0.15)'
@@ -2175,30 +2207,14 @@ function AdminPanel() {
                         >
                           <button
                             onClick={() => window.open(live.liveUrl, '_blank')}
-                            style={{
-                              padding: '9px 14px',
-                              background: theme.primary,
-                              color: theme.buttonText,
-                              border: 'none',
-                              borderRadius: '10px',
-                              cursor: 'pointer',
-                              fontWeight: '700',
-                            }}
+                            style={adminStyles.blueBtn(theme)}
                           >
                             Open
                           </button>
 
                           <button
                             onClick={() => deleteLiveClass(live._id)}
-                            style={{
-                              padding: '9px 14px',
-                              background: theme.danger,
-                              color: theme.buttonText,
-                              border: 'none',
-                              borderRadius: '10px',
-                              cursor: 'pointer',
-                              fontWeight: '700',
-                            }}
+                            style={adminStyles.dangerBtn(theme)}
                           >
                             Delete
                           </button>
@@ -2219,5 +2235,78 @@ function AdminPanel() {
     </div>
   );
 }
+
+const adminStyles = {
+  bgGrid: {
+    position: 'absolute',
+    inset: 0,
+    backgroundImage:
+      'linear-gradient(rgba(167,139,250,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(167,139,250,0.035) 1px, transparent 1px)',
+    backgroundSize: '44px 44px',
+    maskImage: 'linear-gradient(to bottom, black, transparent 88%)',
+    pointerEvents: 'none',
+    zIndex: 0,
+  },
+  glowOne: {
+    position: 'absolute',
+    top: '90px',
+    left: '-130px',
+    width: '300px',
+    height: '300px',
+    borderRadius: '50%',
+    background: 'rgba(124, 58, 237, 0.18)',
+    filter: 'blur(95px)',
+    zIndex: 0,
+    pointerEvents: 'none',
+  },
+  glowTwo: {
+    position: 'absolute',
+    top: '650px',
+    right: '-140px',
+    width: '340px',
+    height: '340px',
+    borderRadius: '50%',
+    background: 'rgba(59, 130, 246, 0.14)',
+    filter: 'blur(100px)',
+    zIndex: 0,
+    pointerEvents: 'none',
+  },
+  blueBtn: (theme) => ({
+    padding: '9px 14px',
+    background: theme.primary,
+    color: theme.buttonText,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+  }),
+  warningBtn: (theme) => ({
+    padding: '9px 14px',
+    background: theme.warning,
+    color: theme.buttonText,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+  }),
+  dangerBtn: (theme) => ({
+    padding: '9px 14px',
+    background: theme.danger,
+    color: theme.buttonText,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+  }),
+  successBtn: (theme) => ({
+    padding: '9px 14px',
+    background: theme.success,
+    color: theme.buttonText,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: '900',
+  }),
+};
 
 export default AdminPanel;
