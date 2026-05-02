@@ -3,33 +3,479 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
-import { motion } from 'framer-motion';
 import Reviews from '../components/Reviews';
 import CheckoutModal from '../components/CheckoutModal';
 import Footer from '../components/Footer';
+import { motion } from 'framer-motion';
+import { Document, Page, pdfjs } from 'react-pdf';
+import logActivity from '../utils/logActivity';
 import LiveClassesBox from '../components/LiveClassesBox';
+
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
+
+function SecurePDFViewer({ pdf, theme, courseTitle }) {
+  const [numPages, setNumPages] = useState(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfError, setPdfError] = useState('');
+  const [zoom, setZoom] = useState(1);
+
+  const baseWidth = Math.min(window.innerWidth - 100, 850);
+  const pageWidth = baseWidth * zoom;
+
+  const zoomIn = () => {
+    setZoom((prev) => Math.min(1.8, Number((prev + 0.1).toFixed(1))));
+  };
+
+  const zoomOut = () => {
+    setZoom((prev) => Math.max(0.8, Number((prev - 0.1).toFixed(1))));
+  };
+
+  const resetZoom = () => {
+    setZoom(1);
+  };
+
+  useEffect(() => {
+    if (pdf?.title) {
+      logActivity(
+        `Opened PDF: ${pdf.title} | Course: ${courseTitle || 'Unknown Course'}`,
+        'CourseDetail'
+      );
+    }
+  }, [pdf?.title, courseTitle]);
+
+  useEffect(() => {
+    const loadPdf = async () => {
+      try {
+        setPdfError('');
+        setPdfBlobUrl(null);
+        setNumPages(null);
+        setZoom(1);
+
+        if (!pdf?.url) {
+          setPdfError('PDF URL missing');
+          return;
+        }
+
+        const res = await fetch(`${API}/api/pdf/view`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({ pdfUrl: pdf.url }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`PDF fetch failed: ${res.status}`);
+        }
+
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setPdfBlobUrl(blobUrl);
+      } catch (err) {
+        console.log('PDF LOAD ERROR:', err);
+        setPdfError('PDF load failed. URL/policy check karo.');
+      }
+    };
+
+    loadPdf();
+
+    return () => {
+      setPdfBlobUrl((oldUrl) => {
+        if (oldUrl) URL.revokeObjectURL(oldUrl);
+        return null;
+      });
+    };
+  }, [pdf?.url]);
+
+  useEffect(() => {
+    const blockKeys = (e) => {
+      const key = e.key.toLowerCase();
+
+      if ((e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) || key === 'f12') {
+        e.preventDefault();
+
+        logActivity(
+          `Blocked shortcut attempt: CTRL + ${key.toUpperCase()} | PDF: ${
+            pdf?.title || 'Unknown PDF'
+          }`,
+          'SecurePDFViewer'
+        );
+      }
+
+      if (e.ctrlKey && (key === '+' || key === '=')) {
+        e.preventDefault();
+        zoomIn();
+      }
+
+      if (e.ctrlKey && key === '-') {
+        e.preventDefault();
+        zoomOut();
+      }
+
+      if (e.ctrlKey && key === '0') {
+        e.preventDefault();
+        resetZoom();
+      }
+    };
+
+    window.addEventListener('keydown', blockKeys);
+    return () => window.removeEventListener('keydown', blockKeys);
+    // eslint-disable-next-line
+  }, [pdf?.title]);
+
+  const block = (e) => {
+    e.preventDefault();
+
+    logActivity(
+      `Blocked right-click/copy attempt | PDF: ${pdf?.title || 'Unknown PDF'}`,
+      'SecurePDFViewer'
+    );
+  };
+
+  return (
+    <div
+      onContextMenu={block}
+      onCopy={block}
+      onCut={block}
+      onDragStart={block}
+      style={{
+        position: 'relative',
+        height: '640px',
+        overflowY: 'auto',
+        overflowX: 'auto',
+        borderRadius: '22px',
+        border: `1px solid ${theme.border}`,
+        background: theme.isDark ? 'rgba(2,6,23,0.55)' : 'rgba(255,255,255,0.72)',
+        padding: '16px',
+        userSelect: 'none',
+        boxShadow: theme.shadow,
+      }}
+    >
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+          background: theme.card,
+          color: theme.text,
+          padding: '12px 14px',
+          borderRadius: '16px',
+          marginBottom: '14px',
+          border: `1px solid ${theme.border}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '12px',
+          flexWrap: 'wrap',
+          backdropFilter: theme.glass,
+          WebkitBackdropFilter: theme.glass,
+        }}
+      >
+        <strong>📄 {pdf?.title || 'PDF'}</strong>
+
+        <div style={styles.pdfControls}>
+          <button
+            onClick={zoomOut}
+            disabled={zoom <= 0.8}
+            style={{
+              ...styles.pdfBtn,
+              border: `1px solid ${theme.border}`,
+              background: zoom <= 0.8 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
+              color: theme.text,
+              cursor: zoom <= 0.8 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            −
+          </button>
+
+          <span style={{ ...styles.zoomText, color: theme.primary }}>
+            {Math.round(zoom * 100)}%
+          </span>
+
+          <button
+            onClick={zoomIn}
+            disabled={zoom >= 1.8}
+            style={{
+              ...styles.pdfBtn,
+              border: `1px solid ${theme.border}`,
+              background: zoom >= 1.8 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
+              color: theme.text,
+              cursor: zoom >= 1.8 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            +
+          </button>
+
+          <button
+            onClick={resetZoom}
+            style={{
+              ...styles.fitBtn,
+              background: theme.primary,
+              color: theme.buttonText,
+            }}
+          >
+            Fit Width
+          </button>
+
+          <span style={{ color: theme.muted, fontSize: '13px', fontWeight: 800 }}>
+            View only • Protected
+          </span>
+        </div>
+      </div>
+
+      <div style={styles.pdfWatermark}>REHANVERSE • Protected Content</div>
+
+      {pdfError ? (
+        <p style={{ color: '#fca5a5', textAlign: 'center', fontWeight: 800 }}>{pdfError}</p>
+      ) : !pdfBlobUrl ? (
+        <p style={{ color: theme.muted, textAlign: 'center', fontWeight: 800 }}>
+          Loading PDF...
+        </p>
+      ) : (
+        <Document
+          file={pdfBlobUrl}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          error={
+            <p style={{ color: '#fca5a5', textAlign: 'center' }}>
+              PDF render failed.
+            </p>
+          }
+        >
+          {Array.from(new Array(numPages || 0), (_, index) => (
+            <div
+              key={index}
+              style={{
+                marginBottom: '18px',
+                display: 'flex',
+                justifyContent: 'center',
+                position: 'relative',
+                zIndex: 5,
+              }}
+            >
+              <Page
+                pageNumber={index + 1}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                width={pageWidth}
+              />
+            </div>
+          ))}
+        </Document>
+      )}
+    </div>
+  );
+}
+
+function LockedCoursePreview({ course, theme, onUnlock }) {
+  const videosCount = course.videos?.length || 0;
+  const pdfsCount = course.pdfs?.length || 0;
+
+  const previewCards = [
+    { icon: '🎥', count: videosCount, label: 'Video Lectures' },
+    { icon: '📄', count: pdfsCount, label: 'Premium PDFs' },
+    { icon: '🔴', count: 'Live', label: 'Class Access' },
+  ];
+
+  return (
+    <div
+      style={{
+        padding: '24px',
+        borderRadius: '24px',
+        background: theme.isDark ? 'rgba(2,6,23,0.35)' : 'rgba(255,255,255,0.68)',
+        border: `1px solid ${theme.border}`,
+      }}
+    >
+      <div style={{ textAlign: 'center', marginBottom: '26px' }}>
+        <div style={styles.lockedBadge}>🔥 Premium Locked Preview • Launch Access</div>
+
+        <h2 style={{ ...styles.lockedTitle, color: theme.text }}>
+          🔒 Preview Locked — Full Course Waiting Inside
+        </h2>
+
+        <p style={{ ...styles.lockedText, color: theme.muted }}>
+          Tum abhi preview dekh rahe ho. Full access ke baad videos, premium PDFs,
+          live classes aur complete unit-wise material unlock hoga — sab kuch ek jagah.
+        </p>
+
+        <div style={styles.lockedTags}>
+          <span style={styles.greenTag}>✅ Saves Study Time</span>
+          <span style={styles.blueTag}>📚 Organized Notes</span>
+          <span style={styles.yellowTag}>⚡ Exam Focused</span>
+        </div>
+      </div>
+
+      <div style={styles.previewGrid}>
+        {previewCards.map((item, index) => (
+          <motion.div
+            key={index}
+            whileHover={{ y: -3 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            style={{
+              ...styles.previewCard,
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              boxShadow: theme.shadow,
+            }}
+          >
+            <div style={{ fontSize: '26px', marginBottom: '8px' }}>{item.icon}</div>
+
+            <h3 style={{ margin: 0, color: theme.primary, fontSize: '28px' }}>
+              {item.count}
+            </h3>
+
+            <p style={{ margin: '6px 0 0', color: theme.muted, fontWeight: 800, fontSize: '13px' }}>
+              {item.label}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          ...styles.unlockBox,
+          background: theme.isDark
+            ? 'linear-gradient(135deg, rgba(139,92,246,0.16), rgba(59,130,246,0.10))'
+            : 'linear-gradient(135deg, rgba(237,233,254,0.85), rgba(219,234,254,0.85))',
+          border: `1px solid ${theme.border}`,
+        }}
+      >
+        <h3 style={{ marginTop: 0, color: theme.text }}>🚀 What You’ll Unlock</h3>
+
+        <div style={{ ...styles.unlockGrid, color: theme.textSecondary }}>
+          <span>✅ Complete course content</span>
+          <span>✅ Premium protected notes</span>
+          <span>✅ Videos + PDFs in one place</span>
+          <span>✅ Live class access</span>
+          <span>✅ Structured unit-wise learning</span>
+          <span>✅ Lifetime course access</span>
+        </div>
+      </div>
+
+      <div style={styles.compareGrid}>
+        <div
+          style={{
+            ...styles.compareCard,
+            background: theme.isDark ? 'rgba(239,68,68,0.10)' : 'rgba(254,226,226,0.8)',
+            border: theme.isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #fecaca',
+          }}
+        >
+          <strong style={{ color: theme.text }}>❌ Without This Course</strong>
+          <p style={{ ...styles.compareText, color: theme.muted }}>
+            Random PDFs, incomplete topics, scattered YouTube videos, aur exam time confusion.
+          </p>
+        </div>
+
+        <div
+          style={{
+            ...styles.compareCard,
+            background: theme.isDark ? 'rgba(34,197,94,0.11)' : 'rgba(220,252,231,0.85)',
+            border: theme.isDark ? '1px solid rgba(34,197,94,0.28)' : '1px solid #bbf7d0',
+          }}
+        >
+          <strong style={{ color: theme.isDark ? '#86efac' : '#166534' }}>
+            ✅ With REHANVERSE
+          </strong>
+          <p style={{ ...styles.compareText, color: theme.muted }}>
+            Proper structure, premium PDFs, videos, live access, aur clean dashboard me complete material.
+          </p>
+        </div>
+      </div>
+
+      <div style={styles.lockedListsGrid}>
+        <LockedList title="🎥 Videos Preview" items={course.videos} type="video" theme={theme} />
+        <LockedList title="📄 PDFs Preview" items={course.pdfs} type="pdf" theme={theme} />
+      </div>
+
+      <div style={styles.finalUnlock}>
+        <div style={styles.launchBadge}>🔥 Launch Access • Limited Time</div>
+
+        <h2 style={styles.finalUnlockTitle}>
+          Stop searching random notes. Unlock everything in one place.
+        </h2>
+
+        <p style={styles.finalUnlockText}>
+          Unit-wise PDFs, videos, live class access aur protected premium notes ek hi jagah
+          milenge — clean, organized aur ready-to-study.
+        </p>
+
+        <div style={styles.lockedTags}>
+          <span style={styles.greenTag}>✅ Less Confusion</span>
+          <span style={styles.blueTag}>📚 Unit-wise Material</span>
+          <span style={styles.yellowTag}>⚡ Start Prepared Today</span>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.018, y: -1 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+          onClick={onUnlock}
+          style={styles.unlockBtn}
+        >
+          🚀 Unlock Full Course Now
+        </motion.button>
+
+        <div style={styles.unlockSmallText}>
+          🔐 Videos, PDFs and live classes unlock only after enrollment/payment approval.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LockedList({ title, items, type, theme }) {
+  return (
+    <div
+      style={{
+        ...styles.lockedList,
+        background: theme.card,
+        border: `1px solid ${theme.border}`,
+      }}
+    >
+      <h3 style={{ marginTop: 0, color: theme.text }}>{title}</h3>
+
+      {items?.length > 0 ? (
+        items.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              ...styles.lockedItem,
+              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+              border: `1px solid ${theme.border}`,
+              color: theme.text,
+            }}
+          >
+            <span style={{ fontWeight: 800 }}>
+              🔒 {item.title || `${type === 'video' ? 'Video' : 'PDF'} ${i + 1}`}
+            </span>
+
+            <span style={styles.lockedSmall}>Locked</span>
+          </div>
+        ))
+      ) : (
+        <p style={{ color: theme.muted }}>No {type === 'video' ? 'videos' : 'PDFs'} listed.</p>
+      )}
+    </div>
+  );
+}
 
 function CourseDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const theme = useTheme();
+  const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
   const [course, setCourse] = useState(null);
-  const [isEnrolled, setIsEnrolled] = useState(false);
   const [activeTab, setActiveTab] = useState('videos');
   const [activeVideo, setActiveVideo] = useState(null);
   const [activePdf, setActivePdf] = useState(null);
+  const [isEnrolled, setIsEnrolled] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [enrolling, setEnrolling] = useState(false);
-
-  const [courseProgress, setCourseProgress] = useState({
-    progressPercent: 0,
-    completedVideoUrls: [],
-    completedPdfUrls: [],
-  });
+  const [lockedMsg, setLockedMsg] = useState('');
+  const [loadingFreeEnroll, setLoadingFreeEnroll] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -37,241 +483,188 @@ function CourseDetail() {
       return;
     }
 
-    fetchCourseDetail();
-    // eslint-disable-next-line
-  }, [id, token]);
-
-  const authHeader = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-
-  const fetchCourseDetail = async () => {
-    try {
-      setLoading(true);
-
-      const courseRes = await axios.get(`${API}/api/courses/${id}`);
-      const courseData = courseRes.data;
-
-      setCourse(courseData);
-
-      if (courseData.videos?.length > 0) {
-        setActiveVideo(courseData.videos[0]);
-      }
-
-      if (courseData.pdfs?.length > 0) {
-        setActivePdf(courseData.pdfs[0]);
-      }
-
+    const fetchData = async () => {
       try {
-        const enrolledRes = await axios.get(`${API}/api/enroll/my/courses`, authHeader);
+        const courseRes = await axios.get(`${API}/api/courses/${id}`);
+        setCourse(courseRes.data);
 
-        const owned = enrolledRes.data.some(
-          (c) => c._id?.toString() === id?.toString()
+        logActivity(
+          `Opened Course Detail Page | Course: ${courseRes.data.title}`,
+          'CourseDetail'
         );
 
-        setIsEnrolled(owned);
+        if (courseRes.data.videos?.length > 0) {
+          setActiveVideo(courseRes.data.videos[0]);
 
-        if (owned) {
-          fetchCourseProgress();
-          if (courseData.videos?.length > 0) {
-            trackProgress({
-              type: 'video',
-              title: courseData.videos[0].title,
-              url: courseData.videos[0].url,
-              action: 'open',
-            });
-          }
+          logActivity(
+            `Auto loaded first video: ${courseRes.data.videos[0].title} | Course: ${courseRes.data.title}`,
+            'CourseDetail'
+          );
         }
-      } catch (enrollErr) {
-        console.log('ENROLLMENT CHECK ERROR:', enrollErr.response?.data || enrollErr.message);
+
+        if (courseRes.data.pdfs?.length > 0) {
+          setActivePdf(courseRes.data.pdfs[0]);
+        }
+
+        const enrolledRes = await axios.get(`${API}/api/enroll/my/courses`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const enrolled = enrolledRes.data.some(
+          (c) => c._id?.toString() === id.toString()
+        );
+
+        setIsEnrolled(enrolled);
+
+        logActivity(
+          enrolled
+            ? `Enrollment check: User is enrolled | Course: ${courseRes.data.title}`
+            : `Enrollment check: User is not enrolled | Course: ${courseRes.data.title}`,
+          'CourseDetail'
+        );
+      } catch (err) {
+        console.log('Course detail error:', err);
+
+        logActivity(
+          `Course detail error or unauthorized access attempt | Course ID: ${id}`,
+          'CourseDetail'
+        );
+
+        navigate('/my-courses');
       }
-    } catch (err) {
-      console.log('COURSE DETAIL FETCH ERROR:', err.response?.data || err.message);
-      setMsg('⚠️ Course load nahi ho pa raha. Backend ya course ID check karo.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  const fetchCourseProgress = async () => {
-    try {
-      const res = await axios.get(`${API}/api/progress/course/${id}`, authHeader);
-
-      setCourseProgress({
-        progressPercent: res.data.progressPercent || 0,
-        completedVideoUrls: res.data.completedVideoUrls || [],
-        completedPdfUrls: res.data.completedPdfUrls || [],
-      });
-    } catch (err) {
-      console.log('COURSE PROGRESS FETCH ERROR:', err.response?.data || err.message);
-    }
-  };
-
-  const trackProgress = async ({ type, title, url, action = 'open' }) => {
-    try {
-      if (!id || !type) return;
-
-      const res = await axios.post(
-        `${API}/api/progress/track`,
-        {
-          courseId: id,
-          type,
-          title: title || '',
-          url: url || '',
-          action,
-        },
-        authHeader
-      );
-
-      if (action === 'complete') {
-        setMsg(`✅ ${title || 'Content'} marked as done`);
-        setTimeout(() => setMsg(''), 2500);
-        await fetchCourseProgress();
-      }
-
-      return res.data;
-    } catch (err) {
-      console.log('PROGRESS TRACK ERROR:', err.response?.data || err.message);
-      if (action === 'complete') {
-        setMsg('⚠️ Mark as done failed. Try again.');
-        setTimeout(() => setMsg(''), 2500);
-      }
-    }
-  };
+    fetchData();
+  }, [id, token, navigate]);
 
   const getEmbedUrl = (url) => {
-    if (!url) return '';
+    if (!url) return null;
 
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    const ytMatch = url.match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/
+    );
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
 
     const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-    if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    if (driveMatch) {
+      return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    }
 
     return url;
   };
 
-  const isVideoDone = (video) => {
-    if (!video?.url) return false;
-    return courseProgress.completedVideoUrls.includes(video.url);
-  };
+  const isFreeCourse = course
+    ? course.isFree || Number(course.price || 0) === 0
+    : false;
 
-  const isPdfDone = (pdf) => {
-    if (!pdf?.url) return false;
-    return courseProgress.completedPdfUrls.includes(pdf.url);
-  };
+  const locked = course ? Number(course.price || 0) > 0 && !isEnrolled : false;
 
-  const handleVideoClick = async (video) => {
-    if (isLocked) {
-      setMsg('🔒 Enroll/payment approval ke baad video unlock hoga.');
-      setTimeout(() => setMsg(''), 2500);
-      return;
-    }
+  const openCheckout = (source = 'CourseDetail') => {
+    logActivity(
+      `Opened checkout modal from ${source} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
+      'CourseDetail'
+    );
 
-    setActiveTab('videos');
-    setActiveVideo(video);
-
-    await trackProgress({
-      type: 'video',
-      title: video?.title || 'Video',
-      url: video?.url || '',
-      action: 'open',
-    });
-  };
-
-  const handlePdfClick = async (pdf) => {
-    if (isLocked) {
-      setMsg('🔒 Enroll/payment approval ke baad PDF unlock hoga.');
-      setTimeout(() => setMsg(''), 2500);
-      return;
-    }
-
-    setActiveTab('pdfs');
-    setActivePdf(pdf);
-
-    await trackProgress({
-      type: 'pdf',
-      title: pdf?.title || 'PDF',
-      url: pdf?.url || '',
-      action: 'open',
-    });
-  };
-
-  const markVideoDone = async () => {
-    if (!activeVideo || isVideoDone(activeVideo)) return;
-
-    await trackProgress({
-      type: 'video',
-      title: activeVideo?.title || 'Video',
-      url: activeVideo?.url || '',
-      action: 'complete',
-    });
-  };
-
-  const markPdfDone = async () => {
-    if (!activePdf || isPdfDone(activePdf)) return;
-
-    await trackProgress({
-      type: 'pdf',
-      title: activePdf?.title || 'PDF',
-      url: activePdf?.url || '',
-      action: 'complete',
-    });
+    setShowCheckout(true);
   };
 
   const handleFreeEnroll = async () => {
-    if (!course || enrolling) return;
+    if (!course || loadingFreeEnroll) return;
 
     try {
-      setEnrolling(true);
+      setLoadingFreeEnroll(true);
 
-      const res = await axios.post(`${API}/api/enroll/${course._id}`, {}, authHeader);
+      const res = await axios.post(
+        `${API}/api/enroll/${course._id}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      logActivity(
+        `Free course enrolled successfully: ${course.title}`,
+        'CourseDetail'
+      );
 
       setIsEnrolled(true);
-      setMsg(`✅ ${res.data.message || 'Course enrolled successfully'}`);
-
-      if (course.videos?.length > 0) {
-        await trackProgress({
-          type: 'video',
-          title: course.videos[0].title,
-          url: course.videos[0].url,
-          action: 'open',
-        });
-      }
-
-      fetchCourseProgress();
-      setTimeout(() => setMsg(''), 2500);
+      setLockedMsg(`✅ ${res.data.message || 'Course enrolled successfully'}`);
+      setTimeout(() => setLockedMsg(''), 3000);
     } catch (err) {
-      setMsg('⚠️ ' + (err.response?.data?.message || 'Enrollment failed'));
-      setTimeout(() => setMsg(''), 2500);
+      setLockedMsg('⚠️ ' + (err.response?.data?.message || 'Enrollment failed'));
+      setTimeout(() => setLockedMsg(''), 3000);
     } finally {
-      setEnrolling(false);
+      setLoadingFreeEnroll(false);
     }
   };
 
-  const handleCheckoutSuccess = () => {
-    setShowCheckout(false);
-    setMsg('✅ Payment request submitted. Approval ke baad course unlock hoga.');
-    setTimeout(() => setMsg(''), 3000);
+  const showLockedMessage = (contentTitle = 'content') => {
+    setLockedMsg(`🔒 ${contentTitle} enrollment ke baad unlock hoga.`);
+
+    logActivity(
+      `Locked content clicked: ${contentTitle} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
+      'CourseDetail'
+    );
+
+    setTimeout(() => setLockedMsg(''), 3000);
   };
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          background: theme.bg,
-          minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
-          color: theme.text,
-        }}
-      >
-        <h2>Loading course...</h2>
-      </div>
+  const handleVideoClick = (video) => {
+    if (locked) {
+      showLockedMessage(video?.title || 'Video');
+      return;
+    }
+
+    setActiveVideo(video);
+
+    logActivity(
+      `Clicked video: ${video.title} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
+      'CourseDetail'
     );
-  }
+  };
+
+  const handlePdfClick = (pdf) => {
+    if (locked) {
+      showLockedMessage(pdf?.title || 'PDF');
+      return;
+    }
+
+    setActivePdf(pdf);
+
+    logActivity(
+      `Clicked PDF: ${pdf.title} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
+      'CourseDetail'
+    );
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+
+    logActivity(
+      `Switched tab to: ${tab} | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
+      'CourseDetail'
+    );
+  };
+
+  const handleCheckoutSuccess = () => {
+    logActivity(
+      `Checkout success | Redirecting to My Courses | Course: ${
+        course?.title || 'Unknown Course'
+      }`,
+      'CourseDetail'
+    );
+
+    setShowCheckout(false);
+    window.location.href = '/my-courses';
+  };
 
   if (!course) {
     return (
@@ -279,33 +672,19 @@ function CourseDetail() {
         style={{
           background: theme.bg,
           minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
           color: theme.text,
-          padding: '20px',
-          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <div>
-          <h2>Course not found</h2>
-          <p style={{ color: theme.muted }}>{msg || 'Course load nahi ho paaya.'}</p>
-          <button
-            onClick={() => navigate('/my-courses')}
-            style={{
-              ...styles.primaryBtn,
-              background: theme.primary,
-              color: theme.buttonText,
-            }}
-          >
-            Back to My Courses
-          </button>
-        </div>
+        <p style={{ color: theme.muted, fontSize: '18px', fontWeight: 900 }}>
+          ⏳ Loading course...
+        </p>
       </div>
     );
   }
 
-  const isFreeCourse = course.isFree || Number(course.price || 0) === 0;
-  const isLocked = !isEnrolled && !isFreeCourse;
   const totalVideos = course.videos?.length || 0;
   const totalPdfs = course.pdfs?.length || 0;
 
@@ -327,7 +706,7 @@ function CourseDetail() {
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{
             ...styles.hero,
             background: theme.card,
@@ -340,91 +719,124 @@ function CourseDetail() {
         >
           <div>
             <button
-              onClick={() => navigate('/my-courses')}
+              onClick={() => {
+                logActivity(
+                  `Clicked back button from course: ${course.title}`,
+                  'CourseDetail'
+                );
+                navigate(isEnrolled ? '/my-courses' : '/courses');
+              }}
               style={{
                 ...styles.backBtn,
-                background: theme.bgSecondary,
-                color: theme.text,
                 border: `1px solid ${theme.border}`,
+                background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
+                color: theme.text,
               }}
             >
               ← Back
             </button>
 
-            <div style={styles.tags}>
-              <span style={{ ...styles.tag, color: isEnrolled ? theme.success : theme.primary }}>
-                {isEnrolled ? '✅ Enrolled' : isFreeCourse ? '🆓 Free Course' : '🔒 Premium Course'}
+            <div style={styles.heroTags}>
+              <span
+                style={{
+                  ...styles.heroTag,
+                  background: isEnrolled ? 'rgba(34,197,94,0.15)' : locked ? 'rgba(249,115,22,0.15)' : 'rgba(59,130,246,0.15)',
+                  color: isEnrolled ? theme.success : locked ? '#f97316' : theme.primary,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                {isEnrolled ? '✅ Enrolled' : locked ? '🔒 Premium Course' : '🆓 Free Course'}
               </span>
 
-              <span style={{ ...styles.tag, color: theme.muted }}>
+              <span
+                style={{
+                  ...styles.heroTag,
+                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  color: theme.muted,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
                 🎥 {totalVideos} Videos
               </span>
 
-              <span style={{ ...styles.tag, color: theme.muted }}>
+              <span
+                style={{
+                  ...styles.heroTag,
+                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  color: theme.muted,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
                 📄 {totalPdfs} PDFs
               </span>
-
-              {isEnrolled && (
-                <span style={{ ...styles.tag, color: theme.success }}>
-                  📈 {courseProgress.progressPercent || 0}% Done
-                </span>
-              )}
             </div>
 
-            <h1 style={{ ...styles.title, color: theme.text }}>
+            <h1 style={{ ...styles.heroTitle, color: theme.text }}>
               {course.title}
             </h1>
 
-            <p style={{ ...styles.desc, color: theme.muted }}>
-              {course.description}
+            <p style={{ ...styles.heroText, color: theme.muted }}>
+              {course.description || 'Access structured content, videos, PDFs and course resources in one clean learning page.'}
             </p>
           </div>
 
           <div
             style={{
               ...styles.priceCard,
-              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
+              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.74)',
               border: `1px solid ${theme.border}`,
             }}
           >
-            <p style={{ margin: 0, color: theme.muted, fontWeight: 900 }}>
+            <p style={{ ...styles.priceLabel, color: theme.muted }}>
               Course Access
             </p>
 
             <h2
               style={{
-                margin: '8px 0',
-                fontSize: '34px',
+                ...styles.priceValue,
                 color: isFreeCourse ? theme.success : '#f97316',
               }}
             >
               {isFreeCourse ? 'Free' : `₹${course.price}`}
             </h2>
 
+            <p style={{ color: theme.textSecondary, lineHeight: 1.6, fontWeight: 800 }}>
+              {isEnrolled
+                ? 'You already own this course.'
+                : isFreeCourse
+                ? 'Enroll free and start learning.'
+                : 'Unlock after payment approval.'}
+            </p>
+
             {isEnrolled ? (
-              <p style={{ color: theme.muted, fontWeight: 800 }}>
-                You already own this course.
-              </p>
+              <button
+                onClick={() => navigate('/my-courses')}
+                style={{
+                  ...styles.mainActionBtn,
+                  background: theme.success,
+                  color: '#fff',
+                }}
+              >
+                🎒 Go to My Courses
+              </button>
             ) : isFreeCourse ? (
               <button
                 onClick={handleFreeEnroll}
-                disabled={enrolling}
+                disabled={loadingFreeEnroll}
                 style={{
-                  ...styles.primaryBtn,
-                  width: '100%',
-                  background: theme.success,
+                  ...styles.mainActionBtn,
+                  background: loadingFreeEnroll ? theme.muted : 'linear-gradient(135deg, #22c55e, #16a34a)',
                   color: '#fff',
-                  opacity: enrolling ? 0.7 : 1,
+                  cursor: loadingFreeEnroll ? 'not-allowed' : 'pointer',
                 }}
               >
-                {enrolling ? 'Enrolling...' : 'Enroll Free 🚀'}
+                {loadingFreeEnroll ? 'Enrolling...' : 'Enroll for Free 🚀'}
               </button>
             ) : (
               <button
-                onClick={() => setShowCheckout(true)}
+                onClick={() => openCheckout('hero unlock card')}
                 style={{
-                  ...styles.primaryBtn,
-                  width: '100%',
+                  ...styles.mainActionBtn,
                   background: 'linear-gradient(135deg, #f97316, #ea580c)',
                   color: '#fff',
                 }}
@@ -435,147 +847,145 @@ function CourseDetail() {
           </div>
         </motion.div>
 
-        {msg && (
-          <div
+        {lockedMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
             style={{
-              ...styles.msg,
-              background: msg.includes('✅')
+              ...styles.lockedMsg,
+              background: lockedMsg.includes('✅')
                 ? theme.isDark
-                  ? 'rgba(34,197,94,0.13)'
+                  ? 'rgba(34,197,94,0.14)'
                   : '#dcfce7'
                 : theme.isDark
-                ? 'rgba(251,191,36,0.13)'
+                ? 'rgba(251,191,36,0.14)'
                 : '#fef3c7',
-              color: msg.includes('✅')
+              color: lockedMsg.includes('✅')
                 ? theme.isDark
                   ? '#86efac'
                   : '#166534'
                 : theme.isDark
                 ? '#fbbf24'
                 : '#92400e',
-              border: `1px solid ${theme.border}`,
+              border: lockedMsg.includes('✅')
+                ? theme.isDark
+                  ? '1px solid rgba(34,197,94,0.28)'
+                  : '1px solid #bbf7d0'
+                : theme.isDark
+                ? '1px solid rgba(251,191,36,0.28)'
+                : '1px solid #fde68a',
             }}
           >
-            {msg}
-          </div>
+            {lockedMsg}
+          </motion.div>
         )}
 
-        <div style={styles.layout}>
-          <section
-            style={{
-              ...styles.playerCard,
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              boxShadow: theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
-            }}
-          >
-            {isLocked ? (
-              <div style={styles.lockedBox}>
-                <h2 style={{ color: theme.text }}>🔒 Course Locked</h2>
-                <p style={{ color: theme.muted, lineHeight: 1.7 }}>
-                  Payment approval ke baad videos, PDFs aur live classes unlock ho jayenge.
+        <div style={styles.mainLayout}>
+          <div style={styles.contentArea}>
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              style={{
+                ...styles.playerCard,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                boxShadow: theme.shadow,
+                backdropFilter: theme.glass,
+                WebkitBackdropFilter: theme.glass,
+              }}
+            >
+              {locked ? (
+                <LockedCoursePreview
+                  course={course}
+                  theme={theme}
+                  onUnlock={() => openCheckout('locked preview')}
+                />
+              ) : (
+                <>
+                  {activeTab === 'videos' && activeVideo && (
+                    <div>
+                      <iframe
+                        src={getEmbedUrl(activeVideo.url)}
+                        width="100%"
+                        height="430px"
+                        title={activeVideo.title}
+                        style={{
+                          border: 'none',
+                          borderRadius: '18px',
+                          background: '#000',
+                        }}
+                        allowFullScreen
+                      />
+
+                      <h3 style={{ marginTop: '16px', color: theme.text }}>
+                        ▶️ {activeVideo.title}
+                      </h3>
+                    </div>
+                  )}
+
+                  {activeTab === 'videos' && !activeVideo && (
+                    <p style={{ color: theme.muted, fontWeight: 800 }}>No videos available.</p>
+                  )}
+
+                  {activeTab === 'pdfs' && (
+                    <div>
+                      {activePdf ? (
+                        <SecurePDFViewer
+                          pdf={activePdf}
+                          theme={theme}
+                          courseTitle={course.title}
+                        />
+                      ) : (
+                        <p style={{ color: theme.muted, fontWeight: 800 }}>No PDFs available.</p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
+
+            <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
+
+            {course.price > 0 && isEnrolled && (
+              <div style={styles.approvedBox}>
+                ✅ Payment approved. You are enrolled in this course.
+              </div>
+            )}
+
+            {course.price > 0 && !isEnrolled && (
+              <div
+                style={{
+                  ...styles.bottomUnlockCard,
+                  background: theme.card,
+                  border: `1px solid ${theme.border}`,
+                  boxShadow: theme.shadow,
+                }}
+              >
+                <h3 style={{ marginTop: 0, color: theme.text }}>
+                  🔐 Unlock This Course
+                </h3>
+
+                <p style={{ color: theme.muted, lineHeight: '1.7', marginBottom: '18px' }}>
+                  Apply coupon code, scan QR, upload payment screenshot, or enroll directly if your coupon makes this course free.
                 </p>
 
-                <button
-                  onClick={() => setShowCheckout(true)}
-                  style={{
-                    ...styles.primaryBtn,
-                    background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
-                    color: '#fff',
-                  }}
+                <motion.button
+                  whileHover={{ scale: 1.018, y: -1 }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  onClick={() => openCheckout('bottom unlock card')}
+                  style={styles.unlockBtn}
                 >
-                  Unlock Now 🚀
-                </button>
+                  🚀 Unlock Full Course Now
+                </motion.button>
               </div>
-            ) : (
-              <>
-                {activeTab === 'videos' && (
-                  <div>
-                    {activeVideo ? (
-                      <>
-                        <iframe
-                          src={getEmbedUrl(activeVideo.url)}
-                          title={activeVideo.title}
-                          width="100%"
-                          height="430"
-                          allowFullScreen
-                          style={{
-                            border: 'none',
-                            borderRadius: '18px',
-                            background: '#000',
-                          }}
-                        />
-
-                        <h3 style={{ color: theme.text, marginTop: '16px' }}>
-                          ▶️ {activeVideo.title}
-                        </h3>
-
-                        <button
-                          onClick={markVideoDone}
-                          disabled={isVideoDone(activeVideo)}
-                          style={{
-                            ...styles.doneBtn,
-                            background: isVideoDone(activeVideo)
-                              ? 'linear-gradient(135deg, #16a34a, #15803d)'
-                              : theme.success,
-                            opacity: isVideoDone(activeVideo) ? 0.75 : 1,
-                            cursor: isVideoDone(activeVideo) ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          {isVideoDone(activeVideo) ? '✅ Video Done' : '✅ Mark Video as Done'}
-                        </button>
-                      </>
-                    ) : (
-                      <p style={{ color: theme.muted }}>No videos available.</p>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'pdfs' && (
-                  <div>
-                    {activePdf ? (
-                      <>
-                        <iframe
-                          src={activePdf.url}
-                          title={activePdf.title}
-                          width="100%"
-                          height="640"
-                          style={{
-                            border: 'none',
-                            borderRadius: '18px',
-                            background: '#fff',
-                          }}
-                        />
-
-                        <h3 style={{ color: theme.text, marginTop: '16px' }}>
-                          📄 {activePdf.title}
-                        </h3>
-
-                        <button
-                          onClick={markPdfDone}
-                          disabled={isPdfDone(activePdf)}
-                          style={{
-                            ...styles.doneBtn,
-                            background: isPdfDone(activePdf)
-                              ? 'linear-gradient(135deg, #16a34a, #15803d)'
-                              : theme.success,
-                            opacity: isPdfDone(activePdf) ? 0.75 : 1,
-                            cursor: isPdfDone(activePdf) ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          {isPdfDone(activePdf) ? '✅ PDF Done' : '✅ Mark PDF as Done'}
-                        </button>
-                      </>
-                    ) : (
-                      <p style={{ color: theme.muted }}>No PDFs available.</p>
-                    )}
-                  </div>
-                )}
-              </>
             )}
-          </section>
+
+            <div style={{ marginTop: '30px' }}>
+              <Reviews courseId={id} />
+            </div>
+          </div>
 
           <aside
             style={{
@@ -587,30 +997,26 @@ function CourseDetail() {
               WebkitBackdropFilter: theme.glass,
             }}
           >
-            <h3 style={{ marginTop: 0, color: theme.text }}>
+            <h3 style={{ marginTop: 0, marginBottom: '16px', color: theme.text }}>
               Course Content
             </h3>
 
-            {isEnrolled && (
+            {locked && (
               <div
                 style={{
-                  ...styles.progressBox,
-                  background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
-                  border: `1px solid ${theme.border}`,
-                  color: theme.text,
+                  ...styles.previewOnlyBox,
+                  background: 'linear-gradient(135deg, rgba(251,191,36,0.14), rgba(239,68,68,0.10))',
+                  border: '1px solid rgba(251,191,36,0.30)',
+                  color: theme.muted,
                 }}
               >
-                📈 Progress: {courseProgress.progressPercent || 0}%
-                <br />
-                <span style={{ color: theme.muted }}>
-                  Open = streak, Done = progress
-                </span>
+                🔒 Preview only. Unlock karne ke baad actual videos, PDFs aur live classes open honge.
               </div>
             )}
 
             <div style={styles.tabRow}>
               <button
-                onClick={() => setActiveTab('videos')}
+                onClick={() => handleTabChange('videos')}
                 style={{
                   ...styles.tabBtn,
                   background: activeTab === 'videos' ? theme.primary : theme.bgSecondary,
@@ -622,7 +1028,7 @@ function CourseDetail() {
               </button>
 
               <button
-                onClick={() => setActiveTab('pdfs')}
+                onClick={() => handleTabChange('pdfs')}
                 style={{
                   ...styles.tabBtn,
                   background: activeTab === 'pdfs' ? theme.primary : theme.bgSecondary,
@@ -638,11 +1044,10 @@ function CourseDetail() {
               <ContentList
                 items={course.videos}
                 type="video"
+                locked={locked}
                 activeTitle={activeVideo?.title}
-                completedUrls={courseProgress.completedVideoUrls}
-                locked={isLocked}
-                theme={theme}
                 onClick={handleVideoClick}
+                theme={theme}
               />
             )}
 
@@ -650,27 +1055,41 @@ function CourseDetail() {
               <ContentList
                 items={course.pdfs}
                 type="pdf"
+                locked={locked}
                 activeTitle={activePdf?.title}
-                completedUrls={courseProgress.completedPdfUrls}
-                locked={isLocked}
-                theme={theme}
                 onClick={handlePdfClick}
+                theme={theme}
               />
             )}
+
+            {locked && (
+              <motion.button
+                whileHover={{ scale: 1.018, y: -1 }}
+                whileTap={{ scale: 0.985 }}
+                transition={{ duration: 0.16, ease: 'easeOut' }}
+                onClick={() => openCheckout('sidebar locked preview')}
+                style={{
+                  ...styles.sidebarUnlockBtn,
+                  background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+                }}
+              >
+                🚀 Unlock Course Now
+              </motion.button>
+            )}
           </aside>
-        </div>
-
-        <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
-
-        <div style={{ marginTop: '30px' }}>
-          <Reviews courseId={id} />
         </div>
       </main>
 
       {showCheckout && (
         <CheckoutModal
           course={course}
-          onClose={() => setShowCheckout(false)}
+          onClose={() => {
+            logActivity(
+              `Closed checkout modal | Course: ${course.title}`,
+              'CourseDetail'
+            );
+            setShowCheckout(false);
+          }}
           onSuccess={handleCheckoutSuccess}
         />
       )}
@@ -680,51 +1099,33 @@ function CourseDetail() {
   );
 }
 
-function ContentList({ items, type, activeTitle, completedUrls = [], locked, theme, onClick }) {
+function ContentList({ items, type, locked, activeTitle, onClick, theme }) {
   if (!items?.length) {
-    return (
-      <p style={{ color: theme.muted }}>
-        No {type === 'video' ? 'videos' : 'PDFs'} available.
-      </p>
-    );
+    return <p style={{ color: theme.muted }}>No {type === 'video' ? 'videos' : 'PDFs'} available.</p>;
   }
 
   return (
     <div>
-      {items.map((item, index) => {
+      {items.map((item, i) => {
         const active = !locked && activeTitle === item.title;
-        const done = item?.url && completedUrls.includes(item.url);
 
         return (
           <div
-            key={index}
+            key={i}
             onClick={() => onClick(item)}
             style={{
               ...styles.contentItem,
-              background: active
-                ? theme.primary
-                : done
-                ? theme.isDark
-                  ? 'rgba(34,197,94,0.13)'
-                  : '#dcfce7'
-                : theme.isDark
-                ? 'rgba(255,255,255,0.035)'
-                : 'rgba(255,255,255,0.72)',
+              cursor: 'pointer',
+              background: active ? theme.primary : theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
               color: active ? '#fff' : theme.text,
-              border: `1px solid ${done ? 'rgba(34,197,94,0.35)' : theme.border}`,
+              border: `1px solid ${theme.border}`,
             }}
           >
             <span>
-              {locked ? '🔒' : type === 'video' ? '▶️' : '📄'} {item.title || `${type} ${index + 1}`}
+              {locked ? '🔒' : type === 'video' ? '▶️' : '📄'} {item.title}
             </span>
 
-            {locked ? (
-              <small style={{ color: '#fbbf24', fontWeight: 900 }}>Locked</small>
-            ) : done ? (
-              <small style={{ color: '#22c55e', fontWeight: 900 }}>Done</small>
-            ) : (
-              <small style={{ color: theme.muted, fontWeight: 900 }}>Open</small>
-            )}
+            {locked && <span style={styles.lockedSmall}>Locked</span>}
           </div>
         );
       })}
@@ -745,30 +1146,32 @@ const styles = {
   },
   glowOne: {
     position: 'absolute',
-    top: '100px',
-    left: '-140px',
-    width: '320px',
-    height: '320px',
+    top: '90px',
+    left: '-130px',
+    width: '300px',
+    height: '300px',
     borderRadius: '50%',
-    background: 'rgba(124,58,237,0.18)',
+    background: 'rgba(124, 58, 237, 0.18)',
     filter: 'blur(95px)',
+    zIndex: 0,
     pointerEvents: 'none',
   },
   glowTwo: {
     position: 'absolute',
-    top: '720px',
-    right: '-150px',
+    top: '650px',
+    right: '-140px',
     width: '340px',
     height: '340px',
     borderRadius: '50%',
-    background: 'rgba(59,130,246,0.14)',
+    background: 'rgba(59, 130, 246, 0.14)',
     filter: 'blur(100px)',
+    zIndex: 0,
     pointerEvents: 'none',
   },
   page: {
     maxWidth: '1240px',
     margin: '0 auto',
-    padding: '34px 20px',
+    padding: '32px 20px 46px',
     position: 'relative',
     zIndex: 1,
   },
@@ -787,74 +1190,75 @@ const styles = {
     fontWeight: 900,
     marginBottom: '16px',
   },
-  tags: {
+  heroTags: {
     display: 'flex',
     gap: '10px',
     flexWrap: 'wrap',
     marginBottom: '14px',
   },
-  tag: {
+  heroTag: {
     padding: '8px 12px',
     borderRadius: '999px',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
     fontSize: '12px',
     fontWeight: 950,
   },
-  title: {
+  heroTitle: {
     margin: '0 0 12px',
     fontSize: 'clamp(30px, 4vw, 48px)',
     lineHeight: 1.08,
     fontWeight: 950,
+    letterSpacing: '-0.8px',
   },
-  desc: {
+  heroText: {
     margin: 0,
     lineHeight: 1.75,
     fontSize: '15px',
+    maxWidth: '720px',
   },
   priceCard: {
     padding: '22px',
     borderRadius: '24px',
   },
-  primaryBtn: {
-    padding: '13px 18px',
-    border: 'none',
-    borderRadius: '15px',
-    cursor: 'pointer',
-    fontWeight: 950,
-    fontSize: '15px',
+  priceLabel: {
+    margin: '0 0 6px',
+    fontSize: '13px',
+    fontWeight: 900,
+    textTransform: 'uppercase',
   },
-  msg: {
+  priceValue: {
+    margin: '0 0 10px',
+    fontSize: '34px',
+    fontWeight: 950,
+  },
+  mainActionBtn: {
+    width: '100%',
+    padding: '13px 16px',
+    borderRadius: '15px',
+    border: 'none',
+    fontWeight: 950,
+    cursor: 'pointer',
+    fontSize: '15px',
+    marginTop: '10px',
+  },
+  lockedMsg: {
     marginBottom: '18px',
     padding: '13px 16px',
     borderRadius: '16px',
     fontWeight: 900,
   },
-  layout: {
+  mainLayout: {
     display: 'grid',
     gridTemplateColumns: '1fr 330px',
     gap: '22px',
     alignItems: 'start',
   },
+  contentArea: {
+    minWidth: 0,
+  },
   playerCard: {
     borderRadius: '24px',
     padding: '18px',
-    minWidth: 0,
-  },
-  lockedBox: {
-    minHeight: '420px',
-    display: 'grid',
-    placeItems: 'center',
-    textAlign: 'center',
-    padding: '30px',
-  },
-  doneBtn: {
-    marginTop: '10px',
-    padding: '12px 16px',
-    borderRadius: '14px',
-    border: 'none',
-    color: '#fff',
-    fontWeight: 950,
+    marginBottom: '22px',
   },
   sidebar: {
     borderRadius: '24px',
@@ -862,12 +1266,13 @@ const styles = {
     position: 'sticky',
     top: '92px',
   },
-  progressBox: {
+  previewOnlyBox: {
     padding: '12px',
     borderRadius: '14px',
     marginBottom: '14px',
-    lineHeight: 1.6,
-    fontWeight: 900,
+    fontSize: '13px',
+    lineHeight: '1.55',
+    fontWeight: 800,
   },
   tabRow: {
     display: 'flex',
@@ -890,7 +1295,246 @@ const styles = {
     justifyContent: 'space-between',
     gap: '8px',
     alignItems: 'center',
+  },
+  lockedSmall: {
+    color: '#fbbf24',
+    fontSize: '11px',
+    fontWeight: 950,
+  },
+  sidebarUnlockBtn: {
+    marginTop: '14px',
+    width: '100%',
+    padding: '13px 16px',
+    borderRadius: '15px',
+    border: 'none',
+    color: '#fff',
     cursor: 'pointer',
+    fontWeight: 950,
+    boxShadow: '0 12px 28px rgba(34,197,94,0.22)',
+  },
+  approvedBox: {
+    marginTop: '24px',
+    padding: '16px',
+    borderRadius: '16px',
+    background: '#052e16',
+    color: '#bbf7d0',
+    fontWeight: 900,
+    border: '1px solid #166534',
+  },
+  bottomUnlockCard: {
+    marginTop: '24px',
+    padding: '22px',
+    borderRadius: '24px',
+    textAlign: 'center',
+  },
+  pdfControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  pdfBtn: {
+    padding: '7px 10px',
+    borderRadius: '10px',
+    fontWeight: 950,
+  },
+  zoomText: {
+    minWidth: '52px',
+    textAlign: 'center',
+    fontSize: '13px',
+    fontWeight: 950,
+  },
+  fitBtn: {
+    padding: '7px 12px',
+    borderRadius: '10px',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: 900,
+    fontSize: '12px',
+  },
+  pdfWatermark: {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 20,
+    pointerEvents: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: 'rotate(-25deg)',
+    fontSize: '22px',
+    fontWeight: 900,
+    color: 'rgba(239,68,68,0.16)',
+    textAlign: 'center',
+    padding: '20px',
+  },
+  lockedBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 14px',
+    borderRadius: '999px',
+    background: 'linear-gradient(135deg, rgba(239,68,68,0.18), rgba(251,191,36,0.16))',
+    border: '1px solid rgba(251,191,36,0.35)',
+    color: '#fbbf24',
+    fontWeight: 950,
+    fontSize: '13px',
+    marginBottom: '14px',
+  },
+  lockedTitle: {
+    margin: '0 0 10px',
+    fontSize: '30px',
+    lineHeight: 1.2,
+    fontWeight: 950,
+  },
+  lockedText: {
+    lineHeight: 1.8,
+    maxWidth: '820px',
+    margin: '0 auto',
+    fontSize: '15px',
+  },
+  lockedTags: {
+    marginTop: '18px',
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  greenTag: {
+    padding: '8px 12px',
+    borderRadius: '999px',
+    background: 'rgba(34,197,94,0.14)',
+    color: '#86efac',
+    border: '1px solid rgba(34,197,94,0.25)',
+    fontSize: '12px',
+    fontWeight: 950,
+  },
+  blueTag: {
+    padding: '8px 12px',
+    borderRadius: '999px',
+    background: 'rgba(59,130,246,0.14)',
+    color: '#93c5fd',
+    border: '1px solid rgba(59,130,246,0.25)',
+    fontSize: '12px',
+    fontWeight: 950,
+  },
+  yellowTag: {
+    padding: '8px 12px',
+    borderRadius: '999px',
+    background: 'rgba(251,191,36,0.14)',
+    color: '#fbbf24',
+    border: '1px solid rgba(251,191,36,0.25)',
+    fontSize: '12px',
+    fontWeight: 950,
+  },
+  previewGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    gap: '14px',
+    marginBottom: '24px',
+  },
+  previewCard: {
+    padding: '18px',
+    borderRadius: '18px',
+    textAlign: 'center',
+  },
+  unlockBox: {
+    padding: '18px',
+    borderRadius: '20px',
+    marginBottom: '22px',
+  },
+  unlockGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '10px',
+    fontWeight: 800,
+    fontSize: '14px',
+  },
+  compareGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '14px',
+    marginBottom: '24px',
+  },
+  compareCard: {
+    padding: '16px',
+    borderRadius: '18px',
+  },
+  compareText: {
+    margin: '8px 0 0',
+    lineHeight: 1.6,
+    fontSize: '13px',
+    fontWeight: 700,
+  },
+  lockedListsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: '18px',
+    marginBottom: '24px',
+  },
+  lockedList: {
+    padding: '18px',
+    borderRadius: '20px',
+  },
+  lockedItem: {
+    padding: '12px 14px',
+    borderRadius: '14px',
+    marginBottom: '10px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '10px',
+    alignItems: 'center',
+  },
+  finalUnlock: {
+    textAlign: 'center',
+    padding: '30px',
+    borderRadius: '24px',
+    background: 'linear-gradient(135deg, rgba(34,197,94,0.20), rgba(59,130,246,0.18), rgba(139,92,246,0.16))',
+    border: '1px solid rgba(34,197,94,0.40)',
+    boxShadow: '0 18px 50px rgba(34,197,94,0.14)',
+  },
+  launchBadge: {
+    display: 'inline-flex',
+    padding: '7px 14px',
+    borderRadius: '999px',
+    background: 'rgba(239,68,68,0.16)',
+    color: '#fca5a5',
+    fontSize: '12px',
+    fontWeight: 950,
+    marginBottom: '14px',
+    border: '1px solid rgba(239,68,68,0.28)',
+  },
+  finalUnlockTitle: {
+    margin: '0 0 10px',
+    color: '#fff',
+    fontSize: '26px',
+    lineHeight: 1.25,
+    fontWeight: 950,
+  },
+  finalUnlockText: {
+    color: '#dbeafe',
+    lineHeight: 1.75,
+    maxWidth: '780px',
+    margin: '0 auto 18px',
+    fontSize: '15px',
+    fontWeight: 700,
+  },
+  unlockBtn: {
+    padding: '15px 28px',
+    borderRadius: '18px',
+    border: 'none',
+    background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+    color: 'white',
+    fontWeight: 950,
+    cursor: 'pointer',
+    fontSize: '16px',
+    boxShadow: '0 16px 42px rgba(34,197,94,0.26)',
+    marginTop: '20px',
+  },
+  unlockSmallText: {
+    marginTop: '10px',
+    color: '#d1d5db',
+    fontSize: '12px',
+    fontWeight: 800,
   },
 };
 
