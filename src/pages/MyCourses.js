@@ -595,7 +595,7 @@ function MyCourses() {
                             whileHover={{ scale: 1.018, y: -1 }}
                             whileTap={{ scale: 0.985 }}
                             transition={{ duration: 0.16, ease: 'easeOut' }}
-                            onClick={() => navigate(`/course/${course._id}`)}
+                            onClick={() => navigate(`/courses/${course._id}`)}
                             style={{
                               ...styles.continueBtn,
                               background: theme.primary,
