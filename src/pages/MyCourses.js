@@ -56,10 +56,17 @@ function MyCourses() {
           course,
           progress: {
             progressPercent: 0,
+
+            openedItems: 0,
             completedItems: 0,
             totalItems: (course.videos?.length || 0) + (course.pdfs?.length || 0),
+
             openedVideosCount: 0,
             openedPdfsCount: 0,
+
+            completedVideosCount: 0,
+            completedPdfsCount: 0,
+
             streakCount: 0,
             lastStudyDate: '',
             lastOpenedAt: null,
@@ -132,12 +139,28 @@ function MyCourses() {
 
   const courses = courseRows.map((item) => item.course).filter(Boolean);
 
-  const totalVideos = courses.reduce((sum, course) => sum + (course.videos?.length || 0), 0);
-  const totalPdfs = courses.reduce((sum, course) => sum + (course.pdfs?.length || 0), 0);
-  const totalLiveClasses = Object.values(liveCounts).reduce((sum, count) => sum + count, 0);
+  const totalVideos = courses.reduce(
+    (sum, course) => sum + (course.videos?.length || 0),
+    0
+  );
+
+  const totalPdfs = courses.reduce(
+    (sum, course) => sum + (course.pdfs?.length || 0),
+    0
+  );
+
+  const totalLiveClasses = Object.values(liveCounts).reduce(
+    (sum, count) => sum + count,
+    0
+  );
 
   const totalCompletedItems = courseRows.reduce(
     (sum, item) => sum + Number(item.progress?.completedItems || 0),
+    0
+  );
+
+  const totalOpenedItems = courseRows.reduce(
+    (sum, item) => sum + Number(item.progress?.openedItems || 0),
     0
   );
 
@@ -173,9 +196,9 @@ function MyCourses() {
       value: `${totalCompletedItems}/${totalTrackableItems}`,
     },
     {
-      icon: '📄',
-      label: 'Total PDFs',
-      value: totalPdfs,
+      icon: '👀',
+      label: 'Opened Items',
+      value: `${totalOpenedItems}/${totalTrackableItems}`,
     },
   ];
 
@@ -216,7 +239,7 @@ function MyCourses() {
               </h2>
 
               <p style={{ ...styles.heroText, color: theme.muted }}>
-                Real progress, last opened content, live classes, and course-wise learning streak — all tracked from actual study activity.
+                Real progress yahan sirf “Mark as Done” se badhega. Open karne se last opened aur streak update hota hai.
               </p>
             </div>
 
@@ -245,7 +268,7 @@ function MyCourses() {
                 <p style={{ ...styles.streakSub, color: theme.textSecondary }}>
                   {latestProgress
                     ? `Last studied: ${formatLastOpened(latestProgress.lastOpenedAt)}`
-                    : 'Start a video or PDF to begin'}
+                    : 'Open a video or PDF to begin'}
                 </p>
               </div>
             </motion.div>
@@ -295,7 +318,7 @@ function MyCourses() {
           >
             <span>🎯</span>
             <span>
-              Real tracking: streak aur progress tabhi update hoga jab tum video ya PDF open karoge. Dashboard open karne se streak fake nahi badhega.
+              Honest tracking: video/PDF open karne se last opened + streak update hoga. Progress percentage sirf “Mark as Done” button dabane se badhega.
             </span>
           </div>
         </Reveal>
@@ -358,8 +381,9 @@ function MyCourses() {
                   <h3 style={{ ...styles.sectionTitle, color: theme.text }}>
                     🚀 Continue Learning
                   </h3>
+
                   <p style={{ ...styles.sectionSubtitle, color: theme.muted }}>
-                    Your active enrolled courses with real progress
+                    Your enrolled courses with real manual progress
                   </p>
                 </div>
 
@@ -386,6 +410,7 @@ function MyCourses() {
 
                 const progressValue = Number(progress.progressPercent || 0);
                 const completedItems = Number(progress.completedItems || 0);
+                const openedItems = Number(progress.openedItems || 0);
                 const totalItems = Number(progress.totalItems || 0);
 
                 return (
@@ -445,7 +470,7 @@ function MyCourses() {
                               color: theme.muted,
                             }}
                           >
-                            🎥 {progress.openedVideosCount || 0}/{course.videos?.length || 0} Videos opened
+                            🎥 {progress.completedVideosCount || 0}/{course.videos?.length || 0} Videos done
                           </div>
 
                           <div
@@ -456,7 +481,7 @@ function MyCourses() {
                               color: theme.muted,
                             }}
                           >
-                            📄 {progress.openedPdfsCount || 0}/{course.pdfs?.length || 0} PDFs opened
+                            📄 {progress.completedPdfsCount || 0}/{course.pdfs?.length || 0} PDFs done
                           </div>
 
                           <div
@@ -503,6 +528,7 @@ function MyCourses() {
                             <span style={{ color: theme.muted }}>
                               Real learning progress
                             </span>
+
                             <strong style={{ color: theme.primary }}>
                               {progressValue}%
                             </strong>
@@ -526,7 +552,7 @@ function MyCourses() {
                           </div>
 
                           <p style={{ ...styles.progressSmall, color: theme.muted }}>
-                            {completedItems}/{totalItems} items opened • Course streak: {progress.streakCount || 0} day{Number(progress.streakCount || 0) > 1 ? 's' : ''}
+                            {completedItems}/{totalItems} items completed • {openedItems}/{totalItems} opened • Course streak: {progress.streakCount || 0} day{Number(progress.streakCount || 0) > 1 ? 's' : ''}
                           </p>
                         </div>
 
@@ -535,8 +561,15 @@ function MyCourses() {
                             <p style={{ ...styles.smallLabel, color: theme.muted }}>
                               Status
                             </p>
+
                             <strong style={{ color: theme.success }}>
-                              {progressValue >= 100 ? 'Completed' : progressValue > 0 ? 'In Progress' : 'Not Started'}
+                              {progressValue >= 100
+                                ? 'Completed'
+                                : progressValue > 0
+                                ? 'In Progress'
+                                : openedItems > 0
+                                ? 'Started'
+                                : 'Not Started'}
                             </strong>
                           </div>
 
@@ -576,8 +609,9 @@ function MyCourses() {
                   <h3 style={{ color: theme.text, margin: '0 0 8px' }}>
                     📌 Your Learning Summary
                   </h3>
+
                   <p style={{ margin: 0, lineHeight: 1.7 }}>
-                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, and {totalCompletedItems}/{totalTrackableItems} real study items opened.
+                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, {totalOpenedItems}/{totalTrackableItems} opened, and {totalCompletedItems}/{totalTrackableItems} manually completed.
                   </p>
                 </div>
 
