@@ -1,504 +1,20 @@
-import API from '../api';
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
-import Reviews from '../components/Reviews';
-import CheckoutModal from '../components/CheckoutModal';
-import Footer from '../components/Footer';
 import { motion } from 'framer-motion';
-import { Document, Page, pdfjs } from 'react-pdf';
-import logActivity from '../utils/logActivity';
-import LiveClassesBox from '../components/LiveClassesBox';
+import Reveal from '../components/Reveal';
+import Footer from '../components/Footer';
+import API from '../api';
 
-import 'react-pdf/dist/Page/TextLayer.css';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
+function MyCourses() {
+  const [courseRows, setCourseRows] = useState([]);
+  const [liveCounts, setLiveCounts] = useState({});
+  const [loading, setLoading] = useState(true);
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
-
-function SecurePDFViewer({ pdf, theme, courseTitle }) {
-  const [numPages, setNumPages] = useState(null);
-  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
-  const [pdfError, setPdfError] = useState('');
-  const [zoom, setZoom] = useState(1);
-
-  const baseWidth = Math.min(window.innerWidth - 100, 850);
-  const pageWidth = baseWidth * zoom;
-
-  const zoomIn = () => {
-    setZoom((prev) => Math.min(1.8, Number((prev + 0.1).toFixed(1))));
-  };
-
-  const zoomOut = () => {
-    setZoom((prev) => Math.max(0.8, Number((prev - 0.1).toFixed(1))));
-  };
-
-  const resetZoom = () => {
-    setZoom(1);
-  };
-
-  useEffect(() => {
-    if (pdf?.title) {
-      logActivity(
-        `Opened PDF: ${pdf.title} | Course: ${courseTitle || 'Unknown Course'}`,
-        'CourseDetail'
-      );
-    }
-  }, [pdf?.title, courseTitle]);
-
-  useEffect(() => {
-    const loadPdf = async () => {
-      try {
-        setPdfError('');
-        setPdfBlobUrl(null);
-        setNumPages(null);
-        setZoom(1);
-
-        if (!pdf?.url) {
-          setPdfError('PDF URL missing');
-          return;
-        }
-
-        const res = await fetch(`${API}/api/pdf/view`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({ pdfUrl: pdf.url }),
-        });
-
-        if (!res.ok) {
-          throw new Error(`PDF fetch failed: ${res.status}`);
-        }
-
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        setPdfBlobUrl(blobUrl);
-      } catch (err) {
-        console.log('PDF LOAD ERROR:', err);
-        setPdfError('PDF load failed. URL/policy check karo.');
-      }
-    };
-
-    loadPdf();
-
-    return () => {
-      setPdfBlobUrl((oldUrl) => {
-        if (oldUrl) URL.revokeObjectURL(oldUrl);
-        return null;
-      });
-    };
-  }, [pdf?.url]);
-
-  useEffect(() => {
-    const blockKeys = (e) => {
-      const key = e.key.toLowerCase();
-
-      if ((e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) || key === 'f12') {
-        e.preventDefault();
-
-        logActivity(
-          `Blocked shortcut attempt: CTRL + ${key.toUpperCase()} | PDF: ${
-            pdf?.title || 'Unknown PDF'
-          }`,
-          'SecurePDFViewer'
-        );
-      }
-
-      if (e.ctrlKey && (key === '+' || key === '=')) {
-        e.preventDefault();
-        zoomIn();
-      }
-
-      if (e.ctrlKey && key === '-') {
-        e.preventDefault();
-        zoomOut();
-      }
-
-      if (e.ctrlKey && key === '0') {
-        e.preventDefault();
-        resetZoom();
-      }
-    };
-
-    window.addEventListener('keydown', blockKeys);
-    return () => window.removeEventListener('keydown', blockKeys);
-    // eslint-disable-next-line
-  }, [pdf?.title]);
-
-  const block = (e) => {
-    e.preventDefault();
-
-    logActivity(
-      `Blocked right-click/copy attempt | PDF: ${pdf?.title || 'Unknown PDF'}`,
-      'SecurePDFViewer'
-    );
-  };
-
-  return (
-    <div
-      onContextMenu={block}
-      onCopy={block}
-      onCut={block}
-      onDragStart={block}
-      style={{
-        position: 'relative',
-        height: '640px',
-        overflowY: 'auto',
-        overflowX: 'auto',
-        borderRadius: '22px',
-        border: `1px solid ${theme.border}`,
-        background: theme.isDark ? 'rgba(2,6,23,0.55)' : 'rgba(255,255,255,0.72)',
-        padding: '16px',
-        userSelect: 'none',
-        boxShadow: theme.shadow,
-      }}
-    >
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 30,
-          background: theme.card,
-          color: theme.text,
-          padding: '12px 14px',
-          borderRadius: '16px',
-          marginBottom: '14px',
-          border: `1px solid ${theme.border}`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
-          backdropFilter: theme.glass,
-          WebkitBackdropFilter: theme.glass,
-        }}
-      >
-        <strong>📄 {pdf?.title || 'PDF'}</strong>
-
-        <div style={styles.pdfControls}>
-          <button
-            onClick={zoomOut}
-            disabled={zoom <= 0.8}
-            style={{
-              ...styles.pdfBtn,
-              border: `1px solid ${theme.border}`,
-              background: zoom <= 0.8 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
-              color: theme.text,
-              cursor: zoom <= 0.8 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            −
-          </button>
-
-          <span style={{ ...styles.zoomText, color: theme.primary }}>
-            {Math.round(zoom * 100)}%
-          </span>
-
-          <button
-            onClick={zoomIn}
-            disabled={zoom >= 1.8}
-            style={{
-              ...styles.pdfBtn,
-              border: `1px solid ${theme.border}`,
-              background: zoom >= 1.8 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
-              color: theme.text,
-              cursor: zoom >= 1.8 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            +
-          </button>
-
-          <button
-            onClick={resetZoom}
-            style={{
-              ...styles.fitBtn,
-              background: theme.primary,
-              color: theme.buttonText,
-            }}
-          >
-            Fit Width
-          </button>
-
-          <span style={{ color: theme.muted, fontSize: '13px', fontWeight: 800 }}>
-            View only • Protected
-          </span>
-        </div>
-      </div>
-
-      <div style={styles.pdfWatermark}>REHANVERSE • Protected Content</div>
-
-      {pdfError ? (
-        <p style={{ color: '#fca5a5', textAlign: 'center', fontWeight: 800 }}>{pdfError}</p>
-      ) : !pdfBlobUrl ? (
-        <p style={{ color: theme.muted, textAlign: 'center', fontWeight: 800 }}>
-          Loading PDF...
-        </p>
-      ) : (
-        <Document
-          file={pdfBlobUrl}
-          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-          error={
-            <p style={{ color: '#fca5a5', textAlign: 'center' }}>
-              PDF render failed.
-            </p>
-          }
-        >
-          {Array.from(new Array(numPages || 0), (_, index) => (
-            <div
-              key={index}
-              style={{
-                marginBottom: '18px',
-                display: 'flex',
-                justifyContent: 'center',
-                position: 'relative',
-                zIndex: 5,
-              }}
-            >
-              <Page
-                pageNumber={index + 1}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-                width={pageWidth}
-              />
-            </div>
-          ))}
-        </Document>
-      )}
-    </div>
-  );
-}
-
-function LockedCoursePreview({ course, theme, onUnlock }) {
-  const videosCount = course.videos?.length || 0;
-  const pdfsCount = course.pdfs?.length || 0;
-
-  const previewCards = [
-    { icon: '🎥', count: videosCount, label: 'Video Lectures' },
-    { icon: '📄', count: pdfsCount, label: 'Premium PDFs' },
-    { icon: '🔴', count: 'Live', label: 'Class Access' },
-  ];
-
-  return (
-    <div
-      style={{
-        padding: '24px',
-        borderRadius: '24px',
-        background: theme.isDark ? 'rgba(2,6,23,0.35)' : 'rgba(255,255,255,0.68)',
-        border: `1px solid ${theme.border}`,
-      }}
-    >
-      <div style={{ textAlign: 'center', marginBottom: '26px' }}>
-        <div style={styles.lockedBadge}>🔥 Premium Locked Preview • Launch Access</div>
-
-        <h2 style={{ ...styles.lockedTitle, color: theme.text }}>
-          🔒 Preview Locked — Full Course Waiting Inside
-        </h2>
-
-        <p style={{ ...styles.lockedText, color: theme.muted }}>
-          Tum abhi preview dekh rahe ho. Full access ke baad videos, premium PDFs,
-          live classes aur complete unit-wise material unlock hoga — sab kuch ek jagah.
-        </p>
-
-        <div style={styles.lockedTags}>
-          <span style={styles.greenTag}>✅ Saves Study Time</span>
-          <span style={styles.blueTag}>📚 Organized Notes</span>
-          <span style={styles.yellowTag}>⚡ Exam Focused</span>
-        </div>
-      </div>
-
-      <div style={styles.previewGrid}>
-        {previewCards.map((item, index) => (
-          <motion.div
-            key={index}
-            whileHover={{ y: -3 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            style={{
-              ...styles.previewCard,
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              boxShadow: theme.shadow,
-            }}
-          >
-            <div style={{ fontSize: '26px', marginBottom: '8px' }}>{item.icon}</div>
-
-            <h3 style={{ margin: 0, color: theme.primary, fontSize: '28px' }}>
-              {item.count}
-            </h3>
-
-            <p style={{ margin: '6px 0 0', color: theme.muted, fontWeight: 800, fontSize: '13px' }}>
-              {item.label}
-            </p>
-          </motion.div>
-        ))}
-      </div>
-
-      <div
-        style={{
-          ...styles.unlockBox,
-          background: theme.isDark
-            ? 'linear-gradient(135deg, rgba(139,92,246,0.16), rgba(59,130,246,0.10))'
-            : 'linear-gradient(135deg, rgba(237,233,254,0.85), rgba(219,234,254,0.85))',
-          border: `1px solid ${theme.border}`,
-        }}
-      >
-        <h3 style={{ marginTop: 0, color: theme.text }}>🚀 What You’ll Unlock</h3>
-
-        <div style={{ ...styles.unlockGrid, color: theme.textSecondary }}>
-          <span>✅ Complete course content</span>
-          <span>✅ Premium protected notes</span>
-          <span>✅ Videos + PDFs in one place</span>
-          <span>✅ Live class access</span>
-          <span>✅ Structured unit-wise learning</span>
-          <span>✅ Lifetime course access</span>
-        </div>
-      </div>
-
-      <div style={styles.compareGrid}>
-        <div
-          style={{
-            ...styles.compareCard,
-            background: theme.isDark ? 'rgba(239,68,68,0.10)' : 'rgba(254,226,226,0.8)',
-            border: theme.isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #fecaca',
-          }}
-        >
-          <strong style={{ color: theme.text }}>❌ Without This Course</strong>
-          <p style={{ ...styles.compareText, color: theme.muted }}>
-            Random PDFs, incomplete topics, scattered YouTube videos, aur exam time confusion.
-          </p>
-        </div>
-
-        <div
-          style={{
-            ...styles.compareCard,
-            background: theme.isDark ? 'rgba(34,197,94,0.11)' : 'rgba(220,252,231,0.85)',
-            border: theme.isDark ? '1px solid rgba(34,197,94,0.28)' : '1px solid #bbf7d0',
-          }}
-        >
-          <strong style={{ color: theme.isDark ? '#86efac' : '#166534' }}>
-            ✅ With REHANVERSE
-          </strong>
-          <p style={{ ...styles.compareText, color: theme.muted }}>
-            Proper structure, premium PDFs, videos, live access, aur clean dashboard me complete material.
-          </p>
-        </div>
-      </div>
-
-      <div style={styles.lockedListsGrid}>
-        <LockedList title="🎥 Videos Preview" items={course.videos} type="video" theme={theme} />
-        <LockedList title="📄 PDFs Preview" items={course.pdfs} type="pdf" theme={theme} />
-      </div>
-
-      <div style={styles.finalUnlock}>
-        <div style={styles.launchBadge}>🔥 Launch Access • Limited Time</div>
-
-        <h2 style={styles.finalUnlockTitle}>
-          Stop searching random notes. Unlock everything in one place.
-        </h2>
-
-        <p style={styles.finalUnlockText}>
-          Unit-wise PDFs, videos, live class access aur protected premium notes ek hi jagah
-          milenge — clean, organized aur ready-to-study.
-        </p>
-
-        <div style={styles.lockedTags}>
-          <span style={styles.greenTag}>✅ Less Confusion</span>
-          <span style={styles.blueTag}>📚 Unit-wise Material</span>
-          <span style={styles.yellowTag}>⚡ Start Prepared Today</span>
-        </div>
-
-        <motion.button
-          whileHover={{ scale: 1.018, y: -1 }}
-          whileTap={{ scale: 0.985 }}
-          transition={{ duration: 0.16, ease: 'easeOut' }}
-          onClick={onUnlock}
-          style={styles.unlockBtn}
-        >
-          🚀 Unlock Full Course Now
-        </motion.button>
-
-        <div style={styles.unlockSmallText}>
-          🔐 Videos, PDFs and live classes unlock only after enrollment/payment approval.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LockedList({ title, items, type, theme }) {
-  return (
-    <div
-      style={{
-        ...styles.lockedList,
-        background: theme.card,
-        border: `1px solid ${theme.border}`,
-      }}
-    >
-      <h3 style={{ marginTop: 0, color: theme.text }}>{title}</h3>
-
-      {items?.length > 0 ? (
-        items.map((item, i) => (
-          <div
-            key={i}
-            style={{
-              ...styles.lockedItem,
-              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-              border: `1px solid ${theme.border}`,
-              color: theme.text,
-            }}
-          >
-            <span style={{ fontWeight: 800 }}>
-              🔒 {item.title || `${type === 'video' ? 'Video' : 'PDF'} ${i + 1}`}
-            </span>
-
-            <span style={styles.lockedSmall}>Locked</span>
-          </div>
-        ))
-      ) : (
-        <p style={{ color: theme.muted }}>No {type === 'video' ? 'videos' : 'PDFs'} listed.</p>
-      )}
-    </div>
-  );
-}
-
-function CourseDetail() {
-  const { id } = useParams();
   const theme = useTheme();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-
-  const [course, setCourse] = useState(null);
-  const [activeTab, setActiveTab] = useState('videos');
-  const [activeVideo, setActiveVideo] = useState(null);
-  const [activePdf, setActivePdf] = useState(null);
-  const [isEnrolled, setIsEnrolled] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [lockedMsg, setLockedMsg] = useState('');
-  const [loadingFreeEnroll, setLoadingFreeEnroll] = useState(false);
-
-  const trackProgress = async ({ type, title, url }) => {
-    try {
-      if (!token || !id || !type) return;
-
-      await axios.post(
-        `${API}/api/progress/track`,
-        {
-          courseId: id,
-          type,
-          title: title || '',
-          url: url || '',
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      console.log('✅ Progress tracked:', type, title);
-    } catch (err) {
-      console.log('PROGRESS TRACK ERROR:', err.response?.data || err.message);
-    }
-  };
 
   useEffect(() => {
     if (!token) {
@@ -506,256 +22,182 @@ function CourseDetail() {
       return;
     }
 
-    const fetchData = async () => {
+    fetchMyCoursesWithProgress();
+    // eslint-disable-next-line
+  }, [token, navigate]);
+
+  const fetchMyCoursesWithProgress = async () => {
+    try {
+      setLoading(true);
+
+      const res = await axios.get(`${API}/api/progress/my-courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const rows = Array.isArray(res.data) ? res.data : [];
+      setCourseRows(rows);
+
+      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
+      fetchLiveCounts(onlyCourses);
+    } catch (err) {
+      console.log('MY COURSES REAL PROGRESS FETCH ERROR:', err);
+
       try {
-        const courseRes = await axios.get(`${API}/api/courses/${id}`);
-        setCourse(courseRes.data);
-
-        logActivity(
-          `Opened Course Detail Page | Course: ${courseRes.data.title}`,
-          'CourseDetail'
-        );
-
-        if (courseRes.data.videos?.length > 0) {
-          setActiveVideo(courseRes.data.videos[0]);
-
-          logActivity(
-            `Auto loaded first video: ${courseRes.data.videos[0].title} | Course: ${courseRes.data.title}`,
-            'CourseDetail'
-          );
-        }
-
-        if (courseRes.data.pdfs?.length > 0) {
-          setActivePdf(courseRes.data.pdfs[0]);
-        }
-
-        const enrolledRes = await axios.get(`${API}/api/enroll/my/courses`, {
+        const fallbackRes = await axios.get(`${API}/api/enroll/my/courses`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const enrolled = enrolledRes.data.some(
-          (c) => c._id?.toString() === id.toString()
-        );
+        const oldCourses = Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
 
-        setIsEnrolled(enrolled);
+        const fallbackRows = oldCourses.map((course) => ({
+          course,
+          progress: {
+            progressPercent: 0,
+            openedItems: 0,
+            completedItems: 0,
+            totalItems: (course.videos?.length || 0) + (course.pdfs?.length || 0),
+            openedVideosCount: 0,
+            openedPdfsCount: 0,
+            completedVideosCount: 0,
+            completedPdfsCount: 0,
+            streakCount: 0,
+            lastStudyDate: '',
+            lastOpenedAt: null,
+            lastOpenedType: '',
+            lastOpenedTitle: '',
+          },
+        }));
 
-        if (enrolled && courseRes.data.videos?.length > 0) {
-          await trackProgress({
-            type: 'video',
-            title: courseRes.data.videos[0].title,
-            url: courseRes.data.videos[0].url,
-          });
-        }
-
-        logActivity(
-          enrolled
-            ? `Enrollment check: User is enrolled | Course: ${courseRes.data.title}`
-            : `Enrollment check: User is not enrolled | Course: ${courseRes.data.title}`,
-          'CourseDetail'
-        );
-      } catch (err) {
-        console.log('Course detail error:', err);
-
-        logActivity(
-          `Course detail error or unauthorized access attempt | Course ID: ${id}`,
-          'CourseDetail'
-        );
-
-        navigate('/my-courses');
+        setCourseRows(fallbackRows);
+        fetchLiveCounts(oldCourses);
+      } catch (fallbackErr) {
+        console.log('MY COURSES FALLBACK ERROR:', fallbackErr);
       }
-    };
-
-    fetchData();
-    // eslint-disable-next-line
-  }, [id, token, navigate]);
-
-  const getEmbedUrl = (url) => {
-    if (!url) return null;
-
-    const ytMatch = url.match(
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/
-    );
-    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-
-    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-    if (driveMatch) {
-      return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
-    }
-
-    return url;
-  };
-
-  const isFreeCourse = course
-    ? course.isFree || Number(course.price || 0) === 0
-    : false;
-
-  const locked = course ? Number(course.price || 0) > 0 && !isEnrolled : false;
-
-  const openCheckout = (source = 'CourseDetail') => {
-    logActivity(
-      `Opened checkout modal from ${source} | Course: ${
-        course?.title || 'Unknown Course'
-      }`,
-      'CourseDetail'
-    );
-
-    setShowCheckout(true);
-  };
-
-  const handleFreeEnroll = async () => {
-    if (!course || loadingFreeEnroll) return;
-
-    try {
-      setLoadingFreeEnroll(true);
-
-      const res = await axios.post(
-        `${API}/api/enroll/${course._id}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      logActivity(
-        `Free course enrolled successfully: ${course.title}`,
-        'CourseDetail'
-      );
-
-      setIsEnrolled(true);
-
-      if (course.videos?.length > 0) {
-        await trackProgress({
-          type: 'video',
-          title: course.videos[0].title,
-          url: course.videos[0].url,
-        });
-      }
-
-      setLockedMsg(`✅ ${res.data.message || 'Course enrolled successfully'}`);
-      setTimeout(() => setLockedMsg(''), 3000);
-    } catch (err) {
-      setLockedMsg('⚠️ ' + (err.response?.data?.message || 'Enrollment failed'));
-      setTimeout(() => setLockedMsg(''), 3000);
     } finally {
-      setLoadingFreeEnroll(false);
+      setLoading(false);
     }
   };
 
-  const showLockedMessage = (contentTitle = 'content') => {
-    setLockedMsg(`🔒 ${contentTitle} enrollment ke baad unlock hoga.`);
+  const fetchLiveCounts = async (courseList) => {
+    try {
+      const counts = {};
 
-    logActivity(
-      `Locked content clicked: ${contentTitle} | Course: ${
-        course?.title || 'Unknown Course'
-      }`,
-      'CourseDetail'
-    );
+      await Promise.all(
+        courseList.map(async (course) => {
+          try {
+            const res = await axios.get(
+              `${API}/api/live-classes/course/${course._id}`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
 
-    setTimeout(() => setLockedMsg(''), 3000);
+            counts[course._id] = res.data?.length || 0;
+          } catch (err) {
+            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err);
+            counts[course._id] = 0;
+          }
+        })
+      );
+
+      setLiveCounts(counts);
+    } catch (err) {
+      console.log('LIVE COUNTS ERROR:', err);
+    }
   };
 
-  const handleVideoClick = async (video) => {
-    if (locked) {
-      showLockedMessage(video?.title || 'Video');
-      return;
-    }
+  const formatLastOpened = (dateValue) => {
+    if (!dateValue) return 'Not started yet';
 
-    setActiveVideo(video);
+    const date = new Date(dateValue);
 
-    await trackProgress({
-      type: 'video',
-      title: video?.title || 'Video',
-      url: video?.url || '',
+    return date.toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
     });
-
-    logActivity(
-      `Clicked video: ${video.title} | Course: ${
-        course?.title || 'Unknown Course'
-      }`,
-      'CourseDetail'
-    );
   };
 
-  const handlePdfClick = async (pdf) => {
-    if (locked) {
-      showLockedMessage(pdf?.title || 'PDF');
-      return;
-    }
+  const getLastOpenedLabel = (progress) => {
+    if (!progress?.lastOpenedAt) return 'Open a video or PDF to start tracking';
 
-    setActivePdf(pdf);
+    const typeLabel =
+      progress.lastOpenedType === 'video'
+        ? 'Video'
+        : progress.lastOpenedType === 'pdf'
+        ? 'PDF'
+        : 'Course';
 
-    await trackProgress({
-      type: 'pdf',
-      title: pdf?.title || 'PDF',
-      url: pdf?.url || '',
-    });
-
-    logActivity(
-      `Clicked PDF: ${pdf.title} | Course: ${
-        course?.title || 'Unknown Course'
-      }`,
-      'CourseDetail'
-    );
+    return `${typeLabel}: ${progress.lastOpenedTitle || 'Course Content'}`;
   };
 
-  const handleTabChange = async (tab) => {
-    setActiveTab(tab);
-
-    if (tab === 'pdfs' && activePdf && !locked) {
-      await trackProgress({
-        type: 'pdf',
-        title: activePdf.title || 'PDF',
-        url: activePdf.url || '',
-      });
-    }
-
-    if (tab === 'videos' && activeVideo && !locked) {
-      await trackProgress({
-        type: 'video',
-        title: activeVideo.title || 'Video',
-        url: activeVideo.url || '',
-      });
-    }
-
-    logActivity(
-      `Switched tab to: ${tab} | Course: ${
-        course?.title || 'Unknown Course'
-      }`,
-      'CourseDetail'
-    );
+  const openCourse = (courseId) => {
+    navigate(`/courses/${courseId}`);
   };
 
-  const handleCheckoutSuccess = () => {
-    logActivity(
-      `Checkout success | Redirecting to My Courses | Course: ${
-        course?.title || 'Unknown Course'
-      }`,
-      'CourseDetail'
-    );
+  const courses = courseRows.map((item) => item.course).filter(Boolean);
 
-    setShowCheckout(false);
-    window.location.href = '/my-courses';
-  };
+  const totalVideos = courses.reduce(
+    (sum, course) => sum + (course.videos?.length || 0),
+    0
+  );
 
-  if (!course) {
-    return (
-      <div
-        style={{
-          background: theme.bg,
-          minHeight: '100vh',
-          color: theme.text,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <p style={{ color: theme.muted, fontSize: '18px', fontWeight: 900 }}>
-          ⏳ Loading course...
-        </p>
-      </div>
-    );
-  }
+  const totalPdfs = courses.reduce(
+    (sum, course) => sum + (course.pdfs?.length || 0),
+    0
+  );
 
-  const totalVideos = course.videos?.length || 0;
-  const totalPdfs = course.pdfs?.length || 0;
+  const totalLiveClasses = Object.values(liveCounts).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+
+  const totalCompletedItems = courseRows.reduce(
+    (sum, item) => sum + Number(item.progress?.completedItems || 0),
+    0
+  );
+
+  const totalOpenedItems = courseRows.reduce(
+    (sum, item) => sum + Number(item.progress?.openedItems || 0),
+    0
+  );
+
+  const totalTrackableItems = courseRows.reduce(
+    (sum, item) => sum + Number(item.progress?.totalItems || 0),
+    0
+  );
+
+  const bestStreak = courseRows.reduce(
+    (max, item) => Math.max(max, Number(item.progress?.streakCount || 0)),
+    0
+  );
+
+  const latestProgress = courseRows
+    .map((item) => item.progress)
+    .filter((progress) => progress?.lastOpenedAt)
+    .sort((a, b) => new Date(b.lastOpenedAt) - new Date(a.lastOpenedAt))[0];
+
+  const stats = [
+    {
+      icon: '📚',
+      label: 'Enrolled Courses',
+      value: courses.length,
+    },
+    {
+      icon: '🔥',
+      label: 'Best Real Streak',
+      value: `${bestStreak} day${bestStreak > 1 ? 's' : ''}`,
+    },
+    {
+      icon: '✅',
+      label: 'Completed Items',
+      value: `${totalCompletedItems}/${totalTrackableItems}`,
+    },
+    {
+      icon: '👀',
+      label: 'Opened Items',
+      value: `${totalOpenedItems}/${totalTrackableItems}`,
+    },
+  ];
 
   return (
     <div
@@ -772,432 +214,425 @@ function CourseDetail() {
       <div style={styles.glowTwo} />
 
       <main style={styles.page}>
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          style={{
-            ...styles.hero,
-            background: theme.card,
-            border: `1px solid ${theme.border}`,
-            boxShadow: theme.shadow,
-            backdropFilter: theme.glass,
-            WebkitBackdropFilter: theme.glass,
-            borderRadius: theme.radius,
-          }}
-        >
-          <div>
-            <button
-              onClick={() => {
-                logActivity(
-                  `Clicked back button from course: ${course.title}`,
-                  'CourseDetail'
-                );
-                navigate(isEnrolled ? '/my-courses' : '/courses');
-              }}
-              style={{
-                ...styles.backBtn,
-                border: `1px solid ${theme.border}`,
-                background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
-                color: theme.text,
-              }}
-            >
-              ← Back
-            </button>
-
-            <div style={styles.heroTags}>
-              <span
-                style={{
-                  ...styles.heroTag,
-                  background: isEnrolled ? 'rgba(34,197,94,0.15)' : locked ? 'rgba(249,115,22,0.15)' : 'rgba(59,130,246,0.15)',
-                  color: isEnrolled ? theme.success : locked ? '#f97316' : theme.primary,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
-                {isEnrolled ? '✅ Enrolled' : locked ? '🔒 Premium Course' : '🆓 Free Course'}
-              </span>
-
-              <span
-                style={{
-                  ...styles.heroTag,
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  color: theme.muted,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
-                🎥 {totalVideos} Videos
-              </span>
-
-              <span
-                style={{
-                  ...styles.heroTag,
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  color: theme.muted,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
-                📄 {totalPdfs} PDFs
-              </span>
-            </div>
-
-            <h1 style={{ ...styles.heroTitle, color: theme.text }}>
-              {course.title}
-            </h1>
-
-            <p style={{ ...styles.heroText, color: theme.muted }}>
-              {course.description || 'Access structured content, videos, PDFs and course resources in one clean learning page.'}
-            </p>
-          </div>
-
+        <Reveal>
           <div
             style={{
-              ...styles.priceCard,
-              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.74)',
-              border: `1px solid ${theme.border}`,
-            }}
-          >
-            <p style={{ ...styles.priceLabel, color: theme.muted }}>
-              Course Access
-            </p>
-
-            <h2
-              style={{
-                ...styles.priceValue,
-                color: isFreeCourse ? theme.success : '#f97316',
-              }}
-            >
-              {isFreeCourse ? 'Free' : `₹${course.price}`}
-            </h2>
-
-            <p style={{ color: theme.textSecondary, lineHeight: 1.6, fontWeight: 800 }}>
-              {isEnrolled
-                ? 'You already own this course.'
-                : isFreeCourse
-                ? 'Enroll free and start learning.'
-                : 'Unlock after payment approval.'}
-            </p>
-
-            {isEnrolled ? (
-              <button
-                onClick={() => navigate('/my-courses')}
-                style={{
-                  ...styles.mainActionBtn,
-                  background: theme.success,
-                  color: '#fff',
-                }}
-              >
-                🎒 Go to My Courses
-              </button>
-            ) : isFreeCourse ? (
-              <button
-                onClick={handleFreeEnroll}
-                disabled={loadingFreeEnroll}
-                style={{
-                  ...styles.mainActionBtn,
-                  background: loadingFreeEnroll ? theme.muted : 'linear-gradient(135deg, #22c55e, #16a34a)',
-                  color: '#fff',
-                  cursor: loadingFreeEnroll ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loadingFreeEnroll ? 'Enrolling...' : 'Enroll for Free 🚀'}
-              </button>
-            ) : (
-              <button
-                onClick={() => openCheckout('hero unlock card')}
-                style={{
-                  ...styles.mainActionBtn,
-                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
-                  color: '#fff',
-                }}
-              >
-                Unlock Course 🚀
-              </button>
-            )}
-          </div>
-        </motion.div>
-
-        {lockedMsg && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              ...styles.lockedMsg,
-              background: lockedMsg.includes('✅')
-                ? theme.isDark
-                  ? 'rgba(34,197,94,0.14)'
-                  : '#dcfce7'
-                : theme.isDark
-                ? 'rgba(251,191,36,0.14)'
-                : '#fef3c7',
-              color: lockedMsg.includes('✅')
-                ? theme.isDark
-                  ? '#86efac'
-                  : '#166534'
-                : theme.isDark
-                ? '#fbbf24'
-                : '#92400e',
-              border: lockedMsg.includes('✅')
-                ? theme.isDark
-                  ? '1px solid rgba(34,197,94,0.28)'
-                  : '1px solid #bbf7d0'
-                : theme.isDark
-                ? '1px solid rgba(251,191,36,0.28)'
-                : '1px solid #fde68a',
-            }}
-          >
-            {lockedMsg}
-          </motion.div>
-        )}
-
-        <div style={styles.mainLayout}>
-          <div style={styles.contentArea}>
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-              style={{
-                ...styles.playerCard,
-                background: theme.card,
-                border: `1px solid ${theme.border}`,
-                boxShadow: theme.shadow,
-                backdropFilter: theme.glass,
-                WebkitBackdropFilter: theme.glass,
-              }}
-            >
-              {locked ? (
-                <LockedCoursePreview
-                  course={course}
-                  theme={theme}
-                  onUnlock={() => openCheckout('locked preview')}
-                />
-              ) : (
-                <>
-                  {activeTab === 'videos' && activeVideo && (
-                    <div>
-                      <iframe
-                        src={getEmbedUrl(activeVideo.url)}
-                        width="100%"
-                        height="430px"
-                        title={activeVideo.title}
-                        style={{
-                          border: 'none',
-                          borderRadius: '18px',
-                          background: '#000',
-                        }}
-                        allowFullScreen
-                      />
-
-                      <h3 style={{ marginTop: '16px', color: theme.text }}>
-                        ▶️ {activeVideo.title}
-                      </h3>
-                    </div>
-                  )}
-
-                  {activeTab === 'videos' && !activeVideo && (
-                    <p style={{ color: theme.muted, fontWeight: 800 }}>No videos available.</p>
-                  )}
-
-                  {activeTab === 'pdfs' && (
-                    <div>
-                      {activePdf ? (
-                        <SecurePDFViewer
-                          pdf={activePdf}
-                          theme={theme}
-                          courseTitle={course.title}
-                        />
-                      ) : (
-                        <p style={{ color: theme.muted, fontWeight: 800 }}>No PDFs available.</p>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-
-            <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
-
-            {course.price > 0 && isEnrolled && (
-              <div style={styles.approvedBox}>
-                ✅ Payment approved. You are enrolled in this course.
-              </div>
-            )}
-
-            {course.price > 0 && !isEnrolled && (
-              <div
-                style={{
-                  ...styles.bottomUnlockCard,
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  boxShadow: theme.shadow,
-                }}
-              >
-                <h3 style={{ marginTop: 0, color: theme.text }}>
-                  🔐 Unlock This Course
-                </h3>
-
-                <p style={{ color: theme.muted, lineHeight: '1.7', marginBottom: '18px' }}>
-                  Apply coupon code, scan QR, upload payment screenshot, or enroll directly if your coupon makes this course free.
-                </p>
-
-                <motion.button
-                  whileHover={{ scale: 1.018, y: -1 }}
-                  whileTap={{ scale: 0.985 }}
-                  transition={{ duration: 0.16, ease: 'easeOut' }}
-                  onClick={() => openCheckout('bottom unlock card')}
-                  style={styles.unlockBtn}
-                >
-                  🚀 Unlock Full Course Now
-                </motion.button>
-              </div>
-            )}
-
-            <div style={{ marginTop: '30px' }}>
-              <Reviews courseId={id} />
-            </div>
-          </div>
-
-          <aside
-            style={{
-              ...styles.sidebar,
+              ...styles.hero,
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadow,
               backdropFilter: theme.glass,
               WebkitBackdropFilter: theme.glass,
+              borderRadius: theme.radius,
             }}
           >
-            <h3 style={{ marginTop: 0, marginBottom: '16px', color: theme.text }}>
-              Course Content
-            </h3>
+            <div>
+              <p style={{ ...styles.kicker, color: theme.primary }}>
+                🎒 MY LEARNING DASHBOARD
+              </p>
 
-            {locked && (
-              <div
-                style={{
-                  ...styles.previewOnlyBox,
-                  background: 'linear-gradient(135deg, rgba(251,191,36,0.14), rgba(239,68,68,0.10))',
-                  border: '1px solid rgba(251,191,36,0.30)',
-                  color: theme.muted,
-                }}
-              >
-                🔒 Preview only. Unlock karne ke baad actual videos, PDFs aur live classes open honge.
-              </div>
-            )}
+              <h2 style={{ ...styles.heroTitle, color: theme.text }}>
+                Continue where you left off.
+              </h2>
 
-            <div style={styles.tabRow}>
-              <button
-                onClick={() => handleTabChange('videos')}
-                style={{
-                  ...styles.tabBtn,
-                  background: activeTab === 'videos' ? theme.primary : theme.bgSecondary,
-                  color: activeTab === 'videos' ? '#fff' : theme.text,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
-                Videos
-              </button>
-
-              <button
-                onClick={() => handleTabChange('pdfs')}
-                style={{
-                  ...styles.tabBtn,
-                  background: activeTab === 'pdfs' ? theme.primary : theme.bgSecondary,
-                  color: activeTab === 'pdfs' ? '#fff' : theme.text,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
-                PDFs
-              </button>
+              <p style={{ ...styles.heroText, color: theme.muted }}>
+                Real progress yahan sirf “Mark as Done” se badhega. Open karne se last opened aur streak update hota hai.
+              </p>
             </div>
 
-            {activeTab === 'videos' && (
-              <ContentList
-                items={course.videos}
-                type="video"
-                locked={locked}
-                activeTitle={activeVideo?.title}
-                onClick={handleVideoClick}
-                theme={theme}
-              />
-            )}
+            <motion.div
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              style={{
+                ...styles.streakCard,
+                background: theme.isDark
+                  ? 'linear-gradient(135deg, rgba(249,115,22,0.16), rgba(139,92,246,0.12))'
+                  : 'linear-gradient(135deg, rgba(255,237,213,0.95), rgba(237,233,254,0.90))',
+                border: `1px solid ${theme.border}`,
+              }}
+            >
+              <div style={styles.streakIcon}>🔥</div>
 
-            {activeTab === 'pdfs' && (
-              <ContentList
-                items={course.pdfs}
-                type="pdf"
-                locked={locked}
-                activeTitle={activePdf?.title}
-                onClick={handlePdfClick}
-                theme={theme}
-              />
-            )}
+              <div>
+                <p style={{ ...styles.streakLabel, color: theme.muted }}>
+                  Real Study Streak
+                </p>
 
-            {locked && (
+                <h3 style={{ ...styles.streakValue, color: theme.primary }}>
+                  {bestStreak} Day{bestStreak > 1 ? 's' : ''}
+                </h3>
+
+                <p style={{ ...styles.streakSub, color: theme.textSecondary }}>
+                  {latestProgress
+                    ? `Last studied: ${formatLastOpened(latestProgress.lastOpenedAt)}`
+                    : 'Open a video or PDF to begin'}
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <div style={styles.statsGrid}>
+            {stats.map((item) => (
+              <motion.div
+                key={item.label}
+                whileHover={{ y: -3 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                style={{
+                  ...styles.statCard,
+                  background: theme.card,
+                  border: `1px solid ${theme.border}`,
+                  boxShadow: theme.shadow,
+                  backdropFilter: theme.glass,
+                  WebkitBackdropFilter: theme.glass,
+                }}
+              >
+                <span style={styles.statIcon}>{item.icon}</span>
+
+                <div>
+                  <p style={{ ...styles.statLabel, color: theme.muted }}>
+                    {item.label}
+                  </p>
+
+                  <h3 style={{ ...styles.statValue, color: theme.text }}>
+                    {item.value}
+                  </h3>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <div
+            style={{
+              ...styles.noticeStrip,
+              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.76)',
+              border: `1px solid ${theme.border}`,
+              color: theme.textSecondary,
+            }}
+          >
+            <span>🎯</span>
+            <span>
+              Honest tracking: video/PDF open karne se last opened + streak update hoga. Progress percentage sirf “Mark as Done” button dabane se badhega.
+            </span>
+          </div>
+        </Reveal>
+
+        {loading ? (
+          <Reveal>
+            <div
+              style={{
+                ...styles.emptyBox,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                color: theme.muted,
+              }}
+            >
+              Loading your courses...
+            </div>
+          </Reveal>
+        ) : courses.length === 0 ? (
+          <Reveal>
+            <div
+              style={{
+                ...styles.emptyBox,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                boxShadow: theme.shadow,
+                color: theme.muted,
+              }}
+            >
+              <div style={styles.emptyIcon}>📭</div>
+
+              <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: '24px' }}>
+                No courses purchased yet
+              </h3>
+
+              <p style={{ margin: '0 auto 22px', maxWidth: '520px', lineHeight: 1.7 }}>
+                Abhi tumhare account me koi enrolled course nahi hai. Start with a free course or preview paid courses.
+              </p>
+
               <motion.button
                 whileHover={{ scale: 1.018, y: -1 }}
                 whileTap={{ scale: 0.985 }}
                 transition={{ duration: 0.16, ease: 'easeOut' }}
-                onClick={() => openCheckout('sidebar locked preview')}
+                onClick={() => navigate('/courses')}
                 style={{
-                  ...styles.sidebarUnlockBtn,
-                  background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+                  ...styles.primaryBtn,
+                  background: theme.primary,
+                  color: theme.buttonText,
+                  boxShadow: `0 0 20px ${theme.primary}40`,
                 }}
               >
-                🚀 Unlock Course Now
+                Browse Courses 🚀
               </motion.button>
-            )}
-          </aside>
-        </div>
+            </div>
+          </Reveal>
+        ) : (
+          <>
+            <Reveal>
+              <div style={styles.sectionHeader}>
+                <div>
+                  <h3 style={{ ...styles.sectionTitle, color: theme.text }}>
+                    🚀 Continue Learning
+                  </h3>
+
+                  <p style={{ ...styles.sectionSubtitle, color: theme.muted }}>
+                    Your enrolled courses with real manual progress
+                  </p>
+                </div>
+
+                <span
+                  style={{
+                    ...styles.courseCount,
+                    color: theme.primary,
+                    background: theme.isDark
+                      ? 'rgba(139,92,246,0.12)'
+                      : 'rgba(139,92,246,0.10)',
+                    border: `1px solid ${theme.border}`,
+                  }}
+                >
+                  {courses.length} owned
+                </span>
+              </div>
+            </Reveal>
+
+            <div style={styles.courseGrid}>
+              {courseRows.map((row, index) => {
+                const course = row.course;
+                const progress = row.progress || {};
+                const liveCount = liveCounts[course._id] || 0;
+
+                const progressValue = Number(progress.progressPercent || 0);
+                const completedItems = Number(progress.completedItems || 0);
+                const openedItems = Number(progress.openedItems || 0);
+                const totalItems = Number(progress.totalItems || 0);
+
+                return (
+                  <Reveal key={course._id} delay={index * 0.04}>
+                    <motion.div
+                      whileHover={{ y: -4 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      style={{
+                        ...styles.courseCard,
+                        background: theme.card,
+                        border: `1px solid ${theme.border}`,
+                        boxShadow: theme.shadow,
+                        backdropFilter: theme.glass,
+                        WebkitBackdropFilter: theme.glass,
+                      }}
+                    >
+                      <div style={styles.thumbnailWrap}>
+                        {course.thumbnail ? (
+                          <img
+                            src={course.thumbnail}
+                            alt={course.title}
+                            style={styles.thumbnail}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              ...styles.emptyThumb,
+                              background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
+                            }}
+                          >
+                            🎓
+                          </div>
+                        )}
+
+                        <div style={styles.ownedBadge}>✅ Enrolled</div>
+                      </div>
+
+                      <div style={styles.cardBody}>
+                        <h3 style={{ ...styles.cardTitle, color: theme.text }}>
+                          {course.title}
+                        </h3>
+
+                        <p style={{ ...styles.cardDesc, color: theme.muted }}>
+                          {course.description
+                            ? course.description.length > 90
+                              ? `${course.description.slice(0, 90)}...`
+                              : course.description
+                            : 'Continue your learning journey with this course.'}
+                        </p>
+
+                        <div style={styles.metaGrid}>
+                          <div
+                            style={{
+                              ...styles.metaPill,
+                              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                              border: `1px solid ${theme.border}`,
+                              color: theme.muted,
+                            }}
+                          >
+                            🎥 {progress.completedVideosCount || 0}/{course.videos?.length || 0} Videos done
+                          </div>
+
+                          <div
+                            style={{
+                              ...styles.metaPill,
+                              background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                              border: `1px solid ${theme.border}`,
+                              color: theme.muted,
+                            }}
+                          >
+                            📄 {progress.completedPdfsCount || 0}/{course.pdfs?.length || 0} PDFs done
+                          </div>
+
+                          <div
+                            style={{
+                              ...styles.metaPill,
+                              background: liveCount > 0
+                                ? 'rgba(239, 68, 68, 0.12)'
+                                : theme.isDark
+                                ? 'rgba(255,255,255,0.035)'
+                                : 'rgba(255,255,255,0.72)',
+                              border: `1px solid ${
+                                liveCount > 0 ? 'rgba(248,113,113,0.35)' : theme.border
+                              }`,
+                              color: liveCount > 0 ? '#f87171' : theme.muted,
+                              gridColumn: '1 / -1',
+                            }}
+                          >
+                            🔴 {liveCount} Live Classes
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            ...styles.lastOpenedBox,
+                            background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                            border: `1px solid ${theme.border}`,
+                          }}
+                        >
+                          <p style={{ ...styles.lastOpenedLabel, color: theme.muted }}>
+                            Last opened
+                          </p>
+
+                          <p style={{ ...styles.lastOpenedTitle, color: theme.text }}>
+                            {getLastOpenedLabel(progress)}
+                          </p>
+
+                          <p style={{ ...styles.lastOpenedTime, color: theme.muted }}>
+                            {formatLastOpened(progress.lastOpenedAt)}
+                          </p>
+                        </div>
+
+                        <div style={styles.progressArea}>
+                          <div style={styles.progressTop}>
+                            <span style={{ color: theme.muted }}>
+                              Real learning progress
+                            </span>
+
+                            <strong style={{ color: theme.primary }}>
+                              {progressValue}%
+                            </strong>
+                          </div>
+
+                          <div
+                            style={{
+                              ...styles.progressTrack,
+                              background: theme.isDark
+                                ? 'rgba(255,255,255,0.08)'
+                                : 'rgba(15,23,42,0.10)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                ...styles.progressFill,
+                                width: `${progressValue}%`,
+                                background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
+                              }}
+                            />
+                          </div>
+
+                          <p style={{ ...styles.progressSmall, color: theme.muted }}>
+                            {completedItems}/{totalItems} items completed • {openedItems}/{totalItems} opened • Course streak: {progress.streakCount || 0} day{Number(progress.streakCount || 0) > 1 ? 's' : ''}
+                          </p>
+                        </div>
+
+                        <div style={styles.bottomRow}>
+                          <div>
+                            <p style={{ ...styles.smallLabel, color: theme.muted }}>
+                              Status
+                            </p>
+
+                            <strong style={{ color: theme.success }}>
+                              {progressValue >= 100
+                                ? 'Completed'
+                                : progressValue > 0
+                                ? 'In Progress'
+                                : openedItems > 0
+                                ? 'Started'
+                                : 'Not Started'}
+                            </strong>
+                          </div>
+
+                          <motion.button
+                            whileHover={{ scale: 1.018, y: -1 }}
+                            whileTap={{ scale: 0.985 }}
+                            transition={{ duration: 0.16, ease: 'easeOut' }}
+                            onClick={() => openCourse(course._id)}
+                            style={{
+                              ...styles.continueBtn,
+                              background: theme.primary,
+                              color: theme.buttonText,
+                              boxShadow: `0 0 18px ${theme.primary}35`,
+                            }}
+                          >
+                            ▶️ Continue
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </Reveal>
+                );
+              })}
+            </div>
+
+            <Reveal>
+              <div
+                style={{
+                  ...styles.summaryBox,
+                  background: theme.card,
+                  border: `1px solid ${theme.border}`,
+                  boxShadow: theme.shadow,
+                  color: theme.textSecondary,
+                }}
+              >
+                <div>
+                  <h3 style={{ color: theme.text, margin: '0 0 8px' }}>
+                    📌 Your Learning Summary
+                  </h3>
+
+                  <p style={{ margin: 0, lineHeight: 1.7 }}>
+                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, {totalOpenedItems}/{totalTrackableItems} opened, and {totalCompletedItems}/{totalTrackableItems} manually completed.
+                  </p>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.018, y: -1 }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  onClick={() => navigate('/courses')}
+                  style={{
+                    ...styles.secondaryBtn,
+                    border: `1px solid ${theme.border}`,
+                    color: theme.primary,
+                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
+                  }}
+                >
+                  Explore More →
+                </motion.button>
+              </div>
+            </Reveal>
+          </>
+        )}
       </main>
 
-      {showCheckout && (
-        <CheckoutModal
-          course={course}
-          onClose={() => {
-            logActivity(
-              `Closed checkout modal | Course: ${course.title}`,
-              'CourseDetail'
-            );
-            setShowCheckout(false);
-          }}
-          onSuccess={handleCheckoutSuccess}
-        />
-      )}
-
       <Footer />
-    </div>
-  );
-}
-
-function ContentList({ items, type, locked, activeTitle, onClick, theme }) {
-  if (!items?.length) {
-    return <p style={{ color: theme.muted }}>No {type === 'video' ? 'videos' : 'PDFs'} available.</p>;
-  }
-
-  return (
-    <div>
-      {items.map((item, i) => {
-        const active = !locked && activeTitle === item.title;
-
-        return (
-          <div
-            key={i}
-            onClick={() => onClick(item)}
-            style={{
-              ...styles.contentItem,
-              cursor: 'pointer',
-              background: active ? theme.primary : theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-              color: active ? '#fff' : theme.text,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
-            <span>
-              {locked ? '🔒' : type === 'video' ? '▶️' : '📄'} {item.title}
-            </span>
-
-            {locked && <span style={styles.lockedSmall}>Locked</span>}
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -1238,373 +673,326 @@ const styles = {
     pointerEvents: 'none',
   },
   page: {
-    maxWidth: '1240px',
+    maxWidth: '1180px',
     margin: '0 auto',
-    padding: '32px 20px 46px',
+    padding: '40px 20px',
     position: 'relative',
     zIndex: 1,
   },
   hero: {
-    padding: '28px',
-    marginBottom: '22px',
+    padding: '30px',
+    marginBottom: '24px',
     display: 'grid',
-    gridTemplateColumns: '1.35fr 0.65fr',
+    gridTemplateColumns: '1.25fr 0.75fr',
     gap: '24px',
     alignItems: 'center',
   },
-  backBtn: {
-    padding: '10px 14px',
-    borderRadius: '14px',
-    cursor: 'pointer',
-    fontWeight: 900,
-    marginBottom: '16px',
-  },
-  heroTags: {
-    display: 'flex',
-    gap: '10px',
-    flexWrap: 'wrap',
-    marginBottom: '14px',
-  },
-  heroTag: {
-    padding: '8px 12px',
-    borderRadius: '999px',
-    fontSize: '12px',
+  kicker: {
+    margin: '0 0 8px',
     fontWeight: 950,
+    letterSpacing: '0.5px',
+    fontSize: '13px',
   },
   heroTitle: {
-    margin: '0 0 12px',
     fontSize: 'clamp(30px, 4vw, 48px)',
     lineHeight: 1.08,
+    margin: '0 0 12px',
     fontWeight: 950,
     letterSpacing: '-0.8px',
   },
   heroText: {
     margin: 0,
-    lineHeight: 1.75,
+    lineHeight: 1.7,
     fontSize: '15px',
-    maxWidth: '720px',
+    maxWidth: '680px',
   },
-  priceCard: {
+  streakCard: {
     padding: '22px',
     borderRadius: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    minHeight: '150px',
   },
-  priceLabel: {
+  streakIcon: {
+    width: '62px',
+    height: '62px',
+    borderRadius: '20px',
+    display: 'grid',
+    placeItems: 'center',
+    background: 'rgba(249, 115, 22, 0.16)',
+    fontSize: '32px',
+    flex: '0 0 auto',
+  },
+  streakLabel: {
     margin: '0 0 6px',
     fontSize: '13px',
     fontWeight: 900,
     textTransform: 'uppercase',
+    letterSpacing: '0.4px',
   },
-  priceValue: {
-    margin: '0 0 10px',
+  streakValue: {
+    margin: '0 0 6px',
     fontSize: '34px',
     fontWeight: 950,
   },
-  mainActionBtn: {
-    width: '100%',
-    padding: '13px 16px',
-    borderRadius: '15px',
-    border: 'none',
-    fontWeight: 950,
-    cursor: 'pointer',
-    fontSize: '15px',
-    marginTop: '10px',
+  streakSub: {
+    margin: 0,
+    fontSize: '13px',
+    fontWeight: 800,
   },
-  lockedMsg: {
-    marginBottom: '18px',
-    padding: '13px 16px',
-    borderRadius: '16px',
-    fontWeight: 900,
-  },
-  mainLayout: {
+  statsGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 330px',
-    gap: '22px',
-    alignItems: 'start',
-  },
-  contentArea: {
-    minWidth: 0,
-  },
-  playerCard: {
-    borderRadius: '24px',
-    padding: '18px',
-    marginBottom: '22px',
-  },
-  sidebar: {
-    borderRadius: '24px',
-    padding: '18px',
-    position: 'sticky',
-    top: '92px',
-  },
-  previewOnlyBox: {
-    padding: '12px',
-    borderRadius: '14px',
-    marginBottom: '14px',
-    fontSize: '13px',
-    lineHeight: '1.55',
-    fontWeight: 800,
-  },
-  tabRow: {
-    display: 'flex',
-    gap: '10px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+    gap: '16px',
     marginBottom: '18px',
   },
-  tabBtn: {
-    flex: 1,
-    padding: '11px 14px',
-    borderRadius: '13px',
-    cursor: 'pointer',
-    fontWeight: 900,
-  },
-  contentItem: {
-    padding: '12px 14px',
-    borderRadius: '14px',
-    marginBottom: '10px',
-    fontWeight: 800,
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  lockedSmall: {
-    color: '#fbbf24',
-    fontSize: '11px',
-    fontWeight: 950,
-  },
-  sidebarUnlockBtn: {
-    marginTop: '14px',
-    width: '100%',
-    padding: '13px 16px',
-    borderRadius: '15px',
-    border: 'none',
-    color: '#fff',
-    cursor: 'pointer',
-    fontWeight: 950,
-    boxShadow: '0 12px 28px rgba(34,197,94,0.22)',
-  },
-  approvedBox: {
-    marginTop: '24px',
-    padding: '16px',
-    borderRadius: '16px',
-    background: '#052e16',
-    color: '#bbf7d0',
-    fontWeight: 900,
-    border: '1px solid #166534',
-  },
-  bottomUnlockCard: {
-    marginTop: '24px',
-    padding: '22px',
-    borderRadius: '24px',
-    textAlign: 'center',
-  },
-  pdfControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-  pdfBtn: {
-    padding: '7px 10px',
-    borderRadius: '10px',
-    fontWeight: 950,
-  },
-  zoomText: {
-    minWidth: '52px',
-    textAlign: 'center',
-    fontSize: '13px',
-    fontWeight: 950,
-  },
-  fitBtn: {
-    padding: '7px 12px',
-    borderRadius: '10px',
-    border: 'none',
-    cursor: 'pointer',
-    fontWeight: 900,
-    fontSize: '12px',
-  },
-  pdfWatermark: {
-    position: 'absolute',
-    inset: 0,
-    zIndex: 20,
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: 'rotate(-25deg)',
-    fontSize: '22px',
-    fontWeight: 900,
-    color: 'rgba(239,68,68,0.16)',
-    textAlign: 'center',
+  statCard: {
     padding: '20px',
-  },
-  lockedBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '8px 14px',
-    borderRadius: '999px',
-    background: 'linear-gradient(135deg, rgba(239,68,68,0.18), rgba(251,191,36,0.16))',
-    border: '1px solid rgba(251,191,36,0.35)',
-    color: '#fbbf24',
-    fontWeight: 950,
-    fontSize: '13px',
-    marginBottom: '14px',
-  },
-  lockedTitle: {
-    margin: '0 0 10px',
-    fontSize: '30px',
-    lineHeight: 1.2,
-    fontWeight: 950,
-  },
-  lockedText: {
-    lineHeight: 1.8,
-    maxWidth: '820px',
-    margin: '0 auto',
-    fontSize: '15px',
-  },
-  lockedTags: {
-    marginTop: '18px',
+    borderRadius: '22px',
     display: 'flex',
-    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '14px',
+    minHeight: '105px',
+  },
+  statIcon: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '16px',
+    display: 'grid',
+    placeItems: 'center',
+    background: 'rgba(167, 139, 250, 0.12)',
+    fontSize: '24px',
+    flex: '0 0 auto',
+  },
+  statLabel: {
+    margin: '0 0 5px',
+    fontSize: '13px',
+    fontWeight: 900,
+  },
+  statValue: {
+    margin: 0,
+    fontSize: '24px',
+    fontWeight: 950,
+  },
+  noticeStrip: {
+    padding: '14px 16px',
+    borderRadius: '18px',
+    marginBottom: '28px',
+    display: 'flex',
     gap: '10px',
+    alignItems: 'center',
+    fontWeight: 800,
+    lineHeight: 1.5,
+  },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: '14px',
+    marginBottom: '18px',
     flexWrap: 'wrap',
   },
-  greenTag: {
-    padding: '8px 12px',
-    borderRadius: '999px',
-    background: 'rgba(34,197,94,0.14)',
-    color: '#86efac',
-    border: '1px solid rgba(34,197,94,0.25)',
-    fontSize: '12px',
+  sectionTitle: {
+    margin: 0,
+    fontSize: '24px',
     fontWeight: 950,
   },
-  blueTag: {
-    padding: '8px 12px',
-    borderRadius: '999px',
-    background: 'rgba(59,130,246,0.14)',
-    color: '#93c5fd',
-    border: '1px solid rgba(59,130,246,0.25)',
-    fontSize: '12px',
-    fontWeight: 950,
-  },
-  yellowTag: {
-    padding: '8px 12px',
-    borderRadius: '999px',
-    background: 'rgba(251,191,36,0.14)',
-    color: '#fbbf24',
-    border: '1px solid rgba(251,191,36,0.25)',
-    fontSize: '12px',
-    fontWeight: 950,
-  },
-  previewGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-    gap: '14px',
-    marginBottom: '24px',
-  },
-  previewCard: {
-    padding: '18px',
-    borderRadius: '18px',
-    textAlign: 'center',
-  },
-  unlockBox: {
-    padding: '18px',
-    borderRadius: '20px',
-    marginBottom: '22px',
-  },
-  unlockGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '10px',
-    fontWeight: 800,
+  sectionSubtitle: {
+    margin: '6px 0 0',
     fontSize: '14px',
   },
-  compareGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: '14px',
-    marginBottom: '24px',
-  },
-  compareCard: {
-    padding: '16px',
-    borderRadius: '18px',
-  },
-  compareText: {
-    margin: '8px 0 0',
-    lineHeight: 1.6,
+  courseCount: {
+    fontWeight: 900,
+    padding: '8px 13px',
+    borderRadius: '999px',
     fontSize: '13px',
-    fontWeight: 700,
   },
-  lockedListsGrid: {
+  courseGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '18px',
-    marginBottom: '24px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gap: '24px',
+    marginBottom: '30px',
   },
-  lockedList: {
-    padding: '18px',
-    borderRadius: '20px',
+  courseCard: {
+    borderRadius: '24px',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: '620px',
   },
-  lockedItem: {
-    padding: '12px 14px',
-    borderRadius: '14px',
-    marginBottom: '10px',
+  thumbnailWrap: {
+    height: '200px',
+    position: 'relative',
+    overflow: 'hidden',
+    background: '#111827',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
+  },
+  emptyThumb: {
+    width: '100%',
+    height: '100%',
+    display: 'grid',
+    placeItems: 'center',
+    fontSize: '52px',
+  },
+  ownedBadge: {
+    position: 'absolute',
+    top: '14px',
+    right: '14px',
+    background: 'rgba(34,197,94,0.95)',
+    color: '#fff',
+    padding: '7px 11px',
+    borderRadius: '999px',
+    fontSize: '12px',
+    fontWeight: 950,
+    boxShadow: '0 8px 24px rgba(34,197,94,0.22)',
+  },
+  cardBody: {
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+  },
+  cardTitle: {
+    margin: '0 0 9px',
+    fontSize: '18px',
+    fontWeight: 950,
+    lineHeight: 1.3,
+    minHeight: '46px',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  },
+  cardDesc: {
+    fontSize: '13px',
+    margin: '0 0 16px',
+    lineHeight: 1.65,
+    minHeight: '44px',
+  },
+  metaGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+    marginBottom: '14px',
+  },
+  metaPill: {
+    padding: '9px 10px',
+    borderRadius: '13px',
+    fontSize: '12px',
+    fontWeight: 850,
+  },
+  lastOpenedBox: {
+    padding: '12px 13px',
+    borderRadius: '15px',
+    marginBottom: '16px',
+  },
+  lastOpenedLabel: {
+    margin: '0 0 5px',
+    fontSize: '11px',
+    fontWeight: 900,
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+  },
+  lastOpenedTitle: {
+    margin: '0 0 5px',
+    fontSize: '13px',
+    fontWeight: 950,
+    lineHeight: 1.45,
+  },
+  lastOpenedTime: {
+    margin: 0,
+    fontSize: '12px',
+    fontWeight: 800,
+  },
+  progressArea: {
+    marginBottom: '18px',
+  },
+  progressTop: {
     display: 'flex',
     justifyContent: 'space-between',
     gap: '10px',
-    alignItems: 'center',
-  },
-  finalUnlock: {
-    textAlign: 'center',
-    padding: '30px',
-    borderRadius: '24px',
-    background: 'linear-gradient(135deg, rgba(34,197,94,0.20), rgba(59,130,246,0.18), rgba(139,92,246,0.16))',
-    border: '1px solid rgba(34,197,94,0.40)',
-    boxShadow: '0 18px 50px rgba(34,197,94,0.14)',
-  },
-  launchBadge: {
-    display: 'inline-flex',
-    padding: '7px 14px',
-    borderRadius: '999px',
-    background: 'rgba(239,68,68,0.16)',
-    color: '#fca5a5',
+    marginBottom: '8px',
     fontSize: '12px',
-    fontWeight: 950,
-    marginBottom: '14px',
-    border: '1px solid rgba(239,68,68,0.28)',
+    fontWeight: 900,
   },
-  finalUnlockTitle: {
-    margin: '0 0 10px',
-    color: '#fff',
-    fontSize: '26px',
-    lineHeight: 1.25,
-    fontWeight: 950,
+  progressTrack: {
+    width: '100%',
+    height: '9px',
+    borderRadius: '999px',
+    overflow: 'hidden',
   },
-  finalUnlockText: {
-    color: '#dbeafe',
-    lineHeight: 1.75,
-    maxWidth: '780px',
-    margin: '0 auto 18px',
-    fontSize: '15px',
-    fontWeight: 700,
+  progressFill: {
+    height: '100%',
+    borderRadius: '999px',
   },
-  unlockBtn: {
-    padding: '15px 28px',
-    borderRadius: '18px',
-    border: 'none',
-    background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
-    color: 'white',
-    fontWeight: 950,
-    cursor: 'pointer',
-    fontSize: '16px',
-    boxShadow: '0 16px 42px rgba(34,197,94,0.26)',
-    marginTop: '20px',
-  },
-  unlockSmallText: {
-    marginTop: '10px',
-    color: '#d1d5db',
+  progressSmall: {
+    margin: '8px 0 0',
     fontSize: '12px',
     fontWeight: 800,
+    lineHeight: 1.45,
+  },
+  bottomRow: {
+    marginTop: 'auto',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  smallLabel: {
+    margin: '0 0 3px',
+    fontSize: '12px',
+    fontWeight: 800,
+  },
+  continueBtn: {
+    padding: '12px 16px',
+    border: 'none',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 950,
+    minWidth: '130px',
+  },
+  emptyBox: {
+    padding: '38px 24px',
+    borderRadius: '24px',
+    textAlign: 'center',
+    fontWeight: 800,
+    marginTop: '28px',
+  },
+  emptyIcon: {
+    fontSize: '52px',
+    marginBottom: '12px',
+  },
+  primaryBtn: {
+    padding: '13px 24px',
+    border: 'none',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    fontWeight: 950,
+    fontSize: '15px',
+  },
+  summaryBox: {
+    padding: '22px',
+    borderRadius: '24px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '18px',
+    flexWrap: 'wrap',
+  },
+  secondaryBtn: {
+    padding: '12px 18px',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    fontWeight: 950,
+    fontSize: '14px',
   },
 };
 
-export default CourseDetail;
+export default MyCourses;
