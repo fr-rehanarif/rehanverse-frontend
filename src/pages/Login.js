@@ -3,7 +3,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -35,14 +35,20 @@ function Login() {
         password: form.password,
       };
 
-      const res = await axios.post(`${API}/api/auth/login`, payload);
+      const res = await axios.post(`${API}/api/auth/login`, payload, {
+        timeout: 30000,
+      });
 
       setVerifiedEmail(payload.email);
       setOtpSent(true);
       setOtp('');
       setMsg(res.data.message || 'Login OTP sent to your email ✅');
     } catch (err) {
-      setMsg(err.response?.data?.message || 'Login failed. Please try again.');
+      if (err.code === 'ECONNABORTED') {
+        setMsg('Server response slow hai. Please try again.');
+      } else {
+        setMsg(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -70,10 +76,16 @@ function Login() {
       setVerifyLoading(true);
       setMsg('');
 
-      const res = await axios.post(`${API}/api/auth/verify-login`, {
-        email: verifiedEmail,
-        otp: otp.trim(),
-      });
+      const res = await axios.post(
+        `${API}/api/auth/verify-login`,
+        {
+          email: verifiedEmail,
+          otp: otp.trim(),
+        },
+        {
+          timeout: 30000,
+        }
+      );
 
       localStorage.setItem('token', res.data.token);
 
@@ -87,7 +99,11 @@ function Login() {
 
       navigate('/courses');
     } catch (err) {
-      setMsg(err.response?.data?.message || 'OTP verification failed.');
+      if (err.code === 'ECONNABORTED') {
+        setMsg('Server response slow hai. Please try again.');
+      } else {
+        setMsg(err.response?.data?.message || 'OTP verification failed.');
+      }
     } finally {
       setVerifyLoading(false);
     }
@@ -204,203 +220,231 @@ function Login() {
             borderRadius: theme.radius,
           }}
         >
-          <div style={styles.cardHeader}>
-            <div
-              style={{
-                ...styles.iconBox,
-                background: theme.isDark ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.10)',
-                border: `1px solid ${theme.border}`,
-              }}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={otpSent ? 'otp-header' : 'login-header'}
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              style={styles.cardHeader}
             >
-              {otpSent ? '📩' : '🔐'}
-            </div>
+              <div
+                style={{
+                  ...styles.iconBox,
+                  background: theme.isDark ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.10)',
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                {otpSent ? '📩' : '🔐'}
+              </div>
 
-            <h2 style={{ ...styles.title, color: theme.primary }}>
-              {otpSent ? 'Verify Login OTP 📩' : 'Welcome Back 👋'}
-            </h2>
+              <h2 style={{ ...styles.title, color: theme.primary }}>
+                {otpSent ? 'Verify Login OTP 📩' : 'Welcome Back 👋'}
+              </h2>
 
-            <p style={{ ...styles.subtitle, color: theme.muted }}>
-              {otpSent ? 'Enter OTP sent to your email' : 'Login and get back to REHANVERSE'}
-            </p>
-          </div>
+              <p style={{ ...styles.subtitle, color: theme.muted }}>
+                {otpSent ? 'Enter OTP sent to your email' : 'Login and get back to REHANVERSE'}
+              </p>
+            </motion.div>
+          </AnimatePresence>
 
           <div style={styles.formArea}>
-            {!otpSent ? (
-              <>
-                <label style={{ ...styles.label, color: theme.textSecondary }}>Email Address</label>
-                <input
-                  style={{
-                    ...styles.input,
-                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                    color: theme.text,
-                    border: `1px solid ${theme.border}`,
-                  }}
-                  placeholder="Enter your email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  onKeyDown={handleKeyDown}
-                />
-
-                <label style={{ ...styles.label, color: theme.textSecondary }}>Password</label>
-                <div style={styles.passwordWrap}>
+            <AnimatePresence mode="wait">
+              {!otpSent ? (
+                <motion.div
+                  key="login-form"
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -14, scale: 0.97, filter: 'blur(3px)' }}
+                  transition={{ duration: 0.28, ease: 'easeOut' }}
+                >
+                  <label style={{ ...styles.label, color: theme.textSecondary }}>Email Address</label>
                   <input
                     style={{
                       ...styles.input,
-                      ...styles.passwordInput,
                       background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
                       color: theme.text,
                       border: `1px solid ${theme.border}`,
                     }}
-                    placeholder="Enter your password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder="Enter your email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
                     onKeyDown={handleKeyDown}
                   />
 
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    style={{
-                      ...styles.eyeBtn,
-                      color: theme.primary,
-                    }}
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
+                  <label style={{ ...styles.label, color: theme.textSecondary }}>Password</label>
+                  <div style={styles.passwordWrap}>
+                    <input
+                      style={{
+                        ...styles.input,
+                        ...styles.passwordInput,
+                        background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                        color: theme.text,
+                        border: `1px solid ${theme.border}`,
+                      }}
+                      placeholder="Enter your password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      onKeyDown={handleKeyDown}
+                    />
 
-                <motion.button
-                  whileHover={{ scale: loading ? 1 : 1.018, y: loading ? 0 : -1 }}
-                  whileTap={{ scale: loading ? 1 : 0.985 }}
-                  transition={{ duration: 0.16, ease: 'easeOut' }}
-                  style={{
-                    ...styles.btn,
-                    background: loading ? theme.muted : theme.primary,
-                    color: theme.buttonText,
-                    boxShadow: `0 0 20px ${theme.primary}45`,
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                  }}
-                  onClick={handleSubmit}
-                  disabled={loading}
-                >
-                  {loading ? 'Sending OTP...' : 'Send Login OTP ✉️'}
-                </motion.button>
-              </>
-            ) : (
-              <>
-                <div
-                  style={{
-                    ...styles.otpInfoBox,
-                    background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
-                    border: `1px solid ${theme.border}`,
-                    color: theme.textSecondary,
-                  }}
-                >
-                  <div style={{ fontWeight: 950, color: theme.text, marginBottom: '5px' }}>
-                    OTP sent to:
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      style={{
+                        ...styles.eyeBtn,
+                        color: theme.primary,
+                      }}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
                   </div>
-                  <div style={{ wordBreak: 'break-all', fontWeight: 850 }}>
-                    {verifiedEmail}
-                  </div>
-                </div>
 
-                <label style={{ ...styles.label, color: theme.textSecondary }}>Enter OTP</label>
-                <input
-                  style={{
-                    ...styles.input,
-                    ...styles.otpInput,
-                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                    color: theme.text,
-                    border: `1px solid ${theme.border}`,
-                  }}
-                  placeholder="6 digit OTP"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  onKeyDown={handleKeyDown}
-                />
-
-                <motion.button
-                  whileHover={{ scale: verifyLoading ? 1 : 1.018, y: verifyLoading ? 0 : -1 }}
-                  whileTap={{ scale: verifyLoading ? 1 : 0.985 }}
-                  transition={{ duration: 0.16, ease: 'easeOut' }}
-                  style={{
-                    ...styles.btn,
-                    background: verifyLoading ? theme.muted : theme.primary,
-                    color: theme.buttonText,
-                    boxShadow: `0 0 20px ${theme.primary}45`,
-                    cursor: verifyLoading ? 'not-allowed' : 'pointer',
-                  }}
-                  onClick={handleVerifyOtp}
-                  disabled={verifyLoading}
+                  <motion.button
+                    whileHover={{ scale: loading ? 1 : 1.018, y: loading ? 0 : -1 }}
+                    whileTap={{ scale: loading ? 1 : 0.985 }}
+                    transition={{ duration: 0.16, ease: 'easeOut' }}
+                    style={{
+                      ...styles.btn,
+                      background: loading ? theme.muted : theme.primary,
+                      color: theme.buttonText,
+                      boxShadow: `0 0 20px ${theme.primary}45`,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                    }}
+                    onClick={handleSubmit}
+                    disabled={loading}
+                  >
+                    {loading ? 'Sending OTP...' : 'Send Login OTP ✉️'}
+                  </motion.button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="otp-form"
+                  initial={{ opacity: 0, y: 22, scale: 0.96, filter: 'blur(4px)' }}
+                  animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -14, scale: 0.96, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.34, ease: 'easeOut' }}
                 >
-                  {verifyLoading ? 'Verifying...' : 'Verify & Login ✅'}
-                </motion.button>
-
-                <div style={styles.otpActions}>
-                  <button
-                    type="button"
-                    onClick={resendOtp}
-                    disabled={loading || verifyLoading}
+                  <div
                     style={{
-                      ...styles.linkBtn,
-                      color: theme.primary,
-                      opacity: loading || verifyLoading ? 0.6 : 1,
-                      cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
+                      ...styles.otpInfoBox,
+                      background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
+                      border: `1px solid ${theme.border}`,
+                      color: theme.textSecondary,
                     }}
                   >
-                    Resend OTP
-                  </button>
+                    <div style={{ fontWeight: 950, color: theme.text, marginBottom: '5px' }}>
+                      OTP sent to:
+                    </div>
+                    <div style={{ wordBreak: 'break-all', fontWeight: 850 }}>
+                      {verifiedEmail}
+                    </div>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={editLoginDetails}
-                    disabled={loading || verifyLoading}
+                  <label style={{ ...styles.label, color: theme.textSecondary }}>Enter OTP</label>
+                  <input
                     style={{
-                      ...styles.linkBtn,
-                      color: theme.muted,
-                      opacity: loading || verifyLoading ? 0.6 : 1,
-                      cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
+                      ...styles.input,
+                      ...styles.otpInput,
+                      background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                      color: theme.text,
+                      border: `1px solid ${theme.border}`,
                     }}
-                  >
-                    Edit Login
-                  </button>
-                </div>
-              </>
-            )}
+                    placeholder="6 digit OTP"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onKeyDown={handleKeyDown}
+                  />
 
-            {msg && (
-              <motion.p
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  ...styles.msg,
-                  color: isSuccess ? theme.success : theme.danger,
-                  background: isSuccess
-                    ? theme.isDark
-                      ? 'rgba(34, 197, 94, 0.12)'
-                      : '#d1fae5'
-                    : theme.isDark
-                    ? 'rgba(239, 68, 68, 0.12)'
-                    : '#fee2e2',
-                  border: `1px solid ${
-                    isSuccess
+                  <motion.button
+                    whileHover={{ scale: verifyLoading ? 1 : 1.018, y: verifyLoading ? 0 : -1 }}
+                    whileTap={{ scale: verifyLoading ? 1 : 0.985 }}
+                    transition={{ duration: 0.16, ease: 'easeOut' }}
+                    style={{
+                      ...styles.btn,
+                      background: verifyLoading ? theme.muted : theme.primary,
+                      color: theme.buttonText,
+                      boxShadow: `0 0 20px ${theme.primary}45`,
+                      cursor: verifyLoading ? 'not-allowed' : 'pointer',
+                    }}
+                    onClick={handleVerifyOtp}
+                    disabled={verifyLoading}
+                  >
+                    {verifyLoading ? 'Verifying...' : 'Verify & Login ✅'}
+                  </motion.button>
+
+                  <div style={styles.otpActions}>
+                    <button
+                      type="button"
+                      onClick={resendOtp}
+                      disabled={loading || verifyLoading}
+                      style={{
+                        ...styles.linkBtn,
+                        color: theme.primary,
+                        opacity: loading || verifyLoading ? 0.6 : 1,
+                        cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Resend OTP
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={editLoginDetails}
+                      disabled={loading || verifyLoading}
+                      style={{
+                        ...styles.linkBtn,
+                        color: theme.muted,
+                        opacity: loading || verifyLoading ? 0.6 : 1,
+                        cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Edit Login
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence mode="wait">
+              {msg && (
+                <motion.p
+                  key={msg}
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  style={{
+                    ...styles.msg,
+                    color: isSuccess ? theme.success : theme.danger,
+                    background: isSuccess
                       ? theme.isDark
-                        ? 'rgba(34, 197, 94, 0.24)'
-                        : '#a7f3d0'
+                        ? 'rgba(34, 197, 94, 0.12)'
+                        : '#d1fae5'
                       : theme.isDark
-                      ? 'rgba(239, 68, 68, 0.24)'
-                      : '#fecaca'
-                  }`,
-                }}
-              >
-                {msg}
-              </motion.p>
-            )}
+                      ? 'rgba(239, 68, 68, 0.12)'
+                      : '#fee2e2',
+                    border: `1px solid ${
+                      isSuccess
+                        ? theme.isDark
+                          ? 'rgba(34, 197, 94, 0.24)'
+                          : '#a7f3d0'
+                        : theme.isDark
+                        ? 'rgba(239, 68, 68, 0.24)'
+                        : '#fecaca'
+                    }`,
+                  }}
+                >
+                  {msg}
+                </motion.p>
+              )}
+            </AnimatePresence>
 
             <div
               style={{
