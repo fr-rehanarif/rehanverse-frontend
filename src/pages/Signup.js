@@ -7,15 +7,19 @@ import API from '../api';
 
 function Signup() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
   const theme = useTheme();
 
   const handleSubmit = async () => {
-    if (loading) return;
+    if (loading || verifyLoading) return;
 
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
       setMsg('Please fill all fields.');
@@ -31,11 +35,18 @@ function Signup() {
       setLoading(true);
       setMsg('');
 
-      const res = await axios.post(`${API}/api/auth/signup`, form);
+      const payload = {
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      };
 
-      setMsg(res.data.message || 'Account created successfully ✅');
+      const res = await axios.post(`${API}/api/auth/signup`, payload);
 
-      setTimeout(() => navigate('/login'), 1400);
+      setVerifiedEmail(payload.email);
+      setOtpSent(true);
+      setOtp('');
+      setMsg(res.data.message || 'OTP sent to your email ✅');
     } catch (err) {
       setMsg(err.response?.data?.message || 'Signup failed. Please try again.');
     } finally {
@@ -43,9 +54,62 @@ function Signup() {
     }
   };
 
+  const handleVerifyOtp = async () => {
+    if (verifyLoading || loading) return;
+
+    if (!verifiedEmail) {
+      setMsg('Email missing. Please send OTP again.');
+      return;
+    }
+
+    if (!otp.trim()) {
+      setMsg('Please enter OTP.');
+      return;
+    }
+
+    if (otp.trim().length !== 6) {
+      setMsg('OTP must be 6 digits.');
+      return;
+    }
+
+    try {
+      setVerifyLoading(true);
+      setMsg('');
+
+      const res = await axios.post(`${API}/api/auth/verify-signup`, {
+        email: verifiedEmail,
+        otp: otp.trim(),
+      });
+
+      setMsg(res.data.message || 'Account verified successfully ✅');
+
+      setTimeout(() => navigate('/login'), 1400);
+    } catch (err) {
+      setMsg(err.response?.data?.message || 'OTP verification failed.');
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    setOtp('');
+    await handleSubmit();
+  };
+
+  const editEmail = () => {
+    setOtpSent(false);
+    setOtp('');
+    setVerifiedEmail('');
+    setMsg('');
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
-      handleSubmit();
+      if (otpSent) {
+        handleVerifyOtp();
+      } else {
+        handleSubmit();
+      }
     }
   };
 
@@ -53,6 +117,8 @@ function Signup() {
     msg &&
     (msg.toLowerCase().includes('success') ||
       msg.toLowerCase().includes('created') ||
+      msg.toLowerCase().includes('sent') ||
+      msg.toLowerCase().includes('verified') ||
       msg.includes('✅'));
 
   return (
@@ -103,6 +169,7 @@ function Signup() {
               'One account for all courses',
               'Access notes and PDFs easily',
               'Built for focused students',
+              'Email OTP verification for safer access',
             ].map((item) => (
               <div
                 key={item}
@@ -142,100 +209,189 @@ function Signup() {
                 border: `1px solid ${theme.border}`,
               }}
             >
-              ✨
+              {otpSent ? '🔐' : '✨'}
             </div>
 
-            <h2 style={{ ...styles.title, color: theme.primary }}>Create Account 🚀</h2>
+            <h2 style={{ ...styles.title, color: theme.primary }}>
+              {otpSent ? 'Verify Email 🔐' : 'Create Account 🚀'}
+            </h2>
 
             <p style={{ ...styles.subtitle, color: theme.muted }}>
-              Become a part of REHANVERSE
+              {otpSent ? 'Enter OTP sent to your email' : 'Become a part of REHANVERSE'}
             </p>
           </div>
 
           <div style={styles.formArea}>
-            <label style={{ ...styles.label, color: theme.textSecondary }}>Full Name</label>
-            <input
-              style={{
-                ...styles.input,
-                background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                color: theme.text,
-                border: `1px solid ${theme.border}`,
-              }}
-              placeholder="Enter your full name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              onKeyDown={handleKeyDown}
-            />
+            {!otpSent ? (
+              <>
+                <label style={{ ...styles.label, color: theme.textSecondary }}>Full Name</label>
+                <input
+                  style={{
+                    ...styles.input,
+                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                    color: theme.text,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                  placeholder="Enter your full name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onKeyDown={handleKeyDown}
+                />
 
-            <label style={{ ...styles.label, color: theme.textSecondary }}>Email Address</label>
-            <input
-              style={{
-                ...styles.input,
-                background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                color: theme.text,
-                border: `1px solid ${theme.border}`,
-              }}
-              placeholder="Enter your email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              onKeyDown={handleKeyDown}
-            />
+                <label style={{ ...styles.label, color: theme.textSecondary }}>Email Address</label>
+                <input
+                  style={{
+                    ...styles.input,
+                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                    color: theme.text,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                  placeholder="Enter your email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onKeyDown={handleKeyDown}
+                />
 
-            <label style={{ ...styles.label, color: theme.textSecondary }}>Password</label>
-            <div style={styles.passwordWrap}>
-              <input
-                style={{
-                  ...styles.input,
-                  ...styles.passwordInput,
-                  background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                  color: theme.text,
-                  border: `1px solid ${theme.border}`,
-                }}
-                placeholder="Create a password"
-                type={showPassword ? 'text' : 'password'}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                onKeyDown={handleKeyDown}
-              />
+                <label style={{ ...styles.label, color: theme.textSecondary }}>Password</label>
+                <div style={styles.passwordWrap}>
+                  <input
+                    style={{
+                      ...styles.input,
+                      ...styles.passwordInput,
+                      background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                      color: theme.text,
+                      border: `1px solid ${theme.border}`,
+                    }}
+                    placeholder="Create a password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    onKeyDown={handleKeyDown}
+                  />
 
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                style={{
-                  ...styles.eyeBtn,
-                  color: theme.primary,
-                }}
-              >
-                {showPassword ? 'Hide' : 'Show'}
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    style={{
+                      ...styles.eyeBtn,
+                      color: theme.primary,
+                    }}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
 
-            <div
-              style={{
-                ...styles.passwordHint,
-                color: theme.muted,
-              }}
-            >
-              Use at least 6 characters for better security.
-            </div>
+                <div
+                  style={{
+                    ...styles.passwordHint,
+                    color: theme.muted,
+                  }}
+                >
+                  Use at least 6 characters for better security.
+                </div>
 
-            <motion.button
-              whileHover={{ scale: loading ? 1 : 1.018, y: loading ? 0 : -1 }}
-              whileTap={{ scale: loading ? 1 : 0.985 }}
-              transition={{ duration: 0.16, ease: 'easeOut' }}
-              style={{
-                ...styles.btn,
-                background: loading ? theme.muted : theme.primary,
-                color: theme.buttonText,
-                boxShadow: `0 0 20px ${theme.primary}45`,
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? 'Creating account...' : 'Create Account ✨'}
-            </motion.button>
+                <motion.button
+                  whileHover={{ scale: loading ? 1 : 1.018, y: loading ? 0 : -1 }}
+                  whileTap={{ scale: loading ? 1 : 0.985 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  style={{
+                    ...styles.btn,
+                    background: loading ? theme.muted : theme.primary,
+                    color: theme.buttonText,
+                    boxShadow: `0 0 20px ${theme.primary}45`,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                  }}
+                  onClick={handleSubmit}
+                  disabled={loading}
+                >
+                  {loading ? 'Sending OTP...' : 'Send OTP ✉️'}
+                </motion.button>
+              </>
+            ) : (
+              <>
+                <div
+                  style={{
+                    ...styles.otpInfoBox,
+                    background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
+                    border: `1px solid ${theme.border}`,
+                    color: theme.textSecondary,
+                  }}
+                >
+                  <div style={{ fontWeight: 950, color: theme.text, marginBottom: '5px' }}>
+                    OTP sent to:
+                  </div>
+                  <div style={{ wordBreak: 'break-all', fontWeight: 850 }}>
+                    {verifiedEmail}
+                  </div>
+                </div>
+
+                <label style={{ ...styles.label, color: theme.textSecondary }}>Enter OTP</label>
+                <input
+                  style={{
+                    ...styles.input,
+                    ...styles.otpInput,
+                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                    color: theme.text,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                  placeholder="6 digit OTP"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onKeyDown={handleKeyDown}
+                />
+
+                <motion.button
+                  whileHover={{ scale: verifyLoading ? 1 : 1.018, y: verifyLoading ? 0 : -1 }}
+                  whileTap={{ scale: verifyLoading ? 1 : 0.985 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  style={{
+                    ...styles.btn,
+                    background: verifyLoading ? theme.muted : theme.primary,
+                    color: theme.buttonText,
+                    boxShadow: `0 0 20px ${theme.primary}45`,
+                    cursor: verifyLoading ? 'not-allowed' : 'pointer',
+                  }}
+                  onClick={handleVerifyOtp}
+                  disabled={verifyLoading}
+                >
+                  {verifyLoading ? 'Verifying...' : 'Verify & Create Account ✅'}
+                </motion.button>
+
+                <div style={styles.otpActions}>
+                  <button
+                    type="button"
+                    onClick={resendOtp}
+                    disabled={loading || verifyLoading}
+                    style={{
+                      ...styles.linkBtn,
+                      color: theme.primary,
+                      opacity: loading || verifyLoading ? 0.6 : 1,
+                      cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Resend OTP
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={editEmail}
+                    disabled={loading || verifyLoading}
+                    style={{
+                      ...styles.linkBtn,
+                      color: theme.muted,
+                      opacity: loading || verifyLoading ? 0.6 : 1,
+                      cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Edit Details
+                  </button>
+                </div>
+              </>
+            )}
 
             {msg && (
               <motion.p
@@ -275,7 +431,11 @@ function Signup() {
               }}
             >
               <span>🛡️</span>
-              <span>Your account helps protect your course access.</span>
+              <span>
+                {otpSent
+                  ? 'OTP verification helps stop fake email accounts.'
+                  : 'Your account helps protect your course access.'}
+              </span>
             </div>
 
             <p style={{ textAlign: 'center', marginTop: '18px', marginBottom: 0, color: theme.muted }}>
@@ -507,6 +667,33 @@ const styles = {
     fontSize: '13px',
     fontWeight: '800',
     textAlign: 'center',
+  },
+  otpInfoBox: {
+    padding: '13px 14px',
+    borderRadius: '14px',
+    marginBottom: '16px',
+    fontSize: '14px',
+    lineHeight: 1.45,
+  },
+  otpInput: {
+    textAlign: 'center',
+    letterSpacing: '6px',
+    fontSize: '22px',
+    fontWeight: '950',
+  },
+  otpActions: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '16px',
+    flexWrap: 'wrap',
+    marginTop: '14px',
+  },
+  linkBtn: {
+    border: 'none',
+    background: 'transparent',
+    fontWeight: '900',
+    fontSize: '13px',
+    cursor: 'pointer',
   },
 };
 
