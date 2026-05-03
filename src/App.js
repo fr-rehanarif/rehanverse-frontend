@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Courses from './pages/Courses';
 import AdminPanel from './pages/AdminPanel';
+import AssistantChat from './components/AssistantChat';
 import MyCourses from './pages/MyCourses';
 import Payment from './pages/Payment';
 import CourseDetail from './pages/CourseDetail';
@@ -12,8 +13,7 @@ import Navbar from './components/Navbar';
 import { useTheme } from './context/ThemeContext';
 import ActivityDashboard from './pages/ActivityDashboard';
 
-import { useEffect } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './toastTheme.css';
 
@@ -70,48 +70,6 @@ function GlobalSelectFix() {
 function App() {
   const theme = useTheme();
 
-  // ✅ GLOBAL ALERT FIX
-  // App me jahan bhi alert("message") hoga,
-  // ab browser popup ki jagah top-right toast aayega.
-  useEffect(() => {
-    const originalAlert = window.alert;
-
-    window.alert = (message) => {
-      const cleanMessage =
-        typeof message === 'string' ? message : String(message || 'Notification');
-
-      toast.success(
-        <div>
-          <div
-            style={{
-              fontWeight: 800,
-              fontSize: '15px',
-              lineHeight: '1.4',
-            }}
-          >
-            {cleanMessage}
-          </div>
-
-          <button
-            className="rehan-toast-ok-btn"
-            onClick={() => toast.dismiss()}
-          >
-            OK
-          </button>
-        </div>,
-        {
-          autoClose: false,
-          closeOnClick: false,
-          draggable: true,
-        }
-      );
-    };
-
-    return () => {
-      window.alert = originalAlert;
-    };
-  }, []);
-
   const toastTheme =
     theme?.isDark === false || theme?.mode === 'light' || theme?.theme === 'light'
       ? 'light'
@@ -145,12 +103,16 @@ function App() {
           <Route path="/courses/:id" element={<CourseDetail />} />
         </Routes>
 
+        {/* ✅ REHANVERSE Assistant Floating Chat */}
+        <AssistantChat />
+
+        {/* ✅ Top-right notifications support */}
         <ToastContainer
           position="top-right"
-          autoClose={false}
+          autoClose={3000}
           hideProgressBar={false}
           newestOnTop={true}
-          closeOnClick={false}
+          closeOnClick={true}
           pauseOnHover
           draggable
           theme={toastTheme}

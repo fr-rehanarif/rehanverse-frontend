@@ -42,6 +42,12 @@ function AdminPanel() {
   const [liveClasses, setLiveClasses] = useState([]);
   const [coupons, setCoupons] = useState([]);
 
+  // ✅ Assistant Logs states
+  const [assistantLogs, setAssistantLogs] = useState([]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const [assistantSearch, setAssistantSearch] = useState('');
+  const [expandedAssistantLog, setExpandedAssistantLog] = useState(null);
+
   const [couponForm, setCouponForm] = useState({
     code: '',
     discountType: 'free',
@@ -71,6 +77,7 @@ function AdminPanel() {
     fetchUsers();
     fetchPayments();
     fetchCoupons();
+    fetchAssistantLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -171,6 +178,69 @@ function AdminPanel() {
     } catch (err) {
       console.log('COUPON FETCH ERROR:', err);
     }
+  };
+
+  // ✅ Fetch Assistant Logs
+  const fetchAssistantLogs = async () => {
+    try {
+      setAssistantLoading(true);
+
+      const res = await axios.get(`${API}/api/assistant/logs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setAssistantLogs(res.data.logs || []);
+    } catch (err) {
+      console.log('ASSISTANT LOGS FETCH ERROR:', err);
+      toast.error(err.response?.data?.message || '❌ Assistant logs load nahi hue');
+    } finally {
+      setAssistantLoading(false);
+    }
+  };
+
+  // ✅ Delete Assistant Log
+  const deleteAssistantLog = async (id) => {
+    showConfirmToast({
+      title: 'Delete Assistant Log?',
+      message: 'Ye assistant chat log permanently delete karna hai?',
+      confirmText: 'Delete Log',
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API}/api/assistant/logs/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          toast.success('✅ Assistant log deleted!');
+          fetchAssistantLogs();
+        } catch (err) {
+          console.log('DELETE ASSISTANT LOG ERROR:', err);
+          toast.error(err.response?.data?.message || '❌ Assistant log delete failed');
+        }
+      },
+    });
+  };
+
+  const formatAssistantDate = (date) => {
+    if (!date) return 'Not available';
+
+    return new Date(date).toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  };
+
+  const getShortDevice = (deviceInfo = '') => {
+    if (!deviceInfo) return 'Unknown device';
+
+    if (deviceInfo.includes('Edg')) return 'Microsoft Edge';
+    if (deviceInfo.includes('Chrome')) return 'Chrome Browser';
+    if (deviceInfo.includes('Firefox')) return 'Firefox Browser';
+    if (deviceInfo.includes('Safari') && !deviceInfo.includes('Chrome')) return 'Safari Browser';
+    if (deviceInfo.includes('Android')) return 'Android Device';
+    if (deviceInfo.includes('iPhone')) return 'iPhone';
+    if (deviceInfo.includes('Windows')) return 'Windows Device';
+
+    return deviceInfo.slice(0, 60);
   };
 
   const createCoupon = async () => {
@@ -981,6 +1051,341 @@ function AdminPanel() {
     </div>
   );
 
+  const renderAssistantLogsSection = () => {
+    const filteredLogs = assistantLogs.filter((log) => {
+      const q = assistantSearch.trim().toLowerCase();
+
+      if (!q) return true;
+
+      return (
+        log.userName?.toLowerCase().includes(q) ||
+        log.userEmail?.toLowerCase().includes(q) ||
+        log.question?.toLowerCase().includes(q) ||
+        log.answer?.toLowerCase().includes(q) ||
+        log.status?.toLowerCase().includes(q)
+      );
+    });
+
+    return (
+      <div>
+        <div style={panelStyle}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '14px',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              marginBottom: '18px',
+            }}
+          >
+            <div>
+              <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
+                🤖 Assistant Chat Logs
+              </h3>
+
+              <p style={{ color: theme.muted, margin: 0, fontWeight: 750 }}>
+                Yahan dikhega kis user ne assistant se kya pucha aur assistant ne kya reply diya.
+              </p>
+            </div>
+
+            <button
+              onClick={fetchAssistantLogs}
+              style={{
+                padding: '10px 16px',
+                background: theme.primary,
+                color: theme.buttonText,
+                border: 'none',
+                borderRadius: '13px',
+                cursor: 'pointer',
+                fontWeight: 900,
+                boxShadow: theme.shadow,
+              }}
+            >
+              🔄 Refresh
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '12px',
+              marginBottom: '18px',
+            }}
+          >
+            <div
+              style={{
+                background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '16px',
+                padding: '15px',
+              }}
+            >
+              <p style={{ color: theme.muted, margin: '0 0 6px', fontSize: '12px', fontWeight: 900 }}>
+                TOTAL CHATS
+              </p>
+              <h2 style={{ color: theme.text, margin: 0 }}>{assistantLogs.length}</h2>
+            </div>
+
+            <div
+              style={{
+                background: theme.isDark ? 'rgba(34,197,94,0.08)' : '#ecfdf5',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '16px',
+                padding: '15px',
+              }}
+            >
+              <p style={{ color: theme.muted, margin: '0 0 6px', fontSize: '12px', fontWeight: 900 }}>
+                ANSWERED
+              </p>
+              <h2 style={{ color: theme.success, margin: 0 }}>
+                {assistantLogs.filter((l) => l.status === 'answered').length}
+              </h2>
+            </div>
+
+            <div
+              style={{
+                background: theme.isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '16px',
+                padding: '15px',
+              }}
+            >
+              <p style={{ color: theme.muted, margin: '0 0 6px', fontSize: '12px', fontWeight: 900 }}>
+                FAILED
+              </p>
+              <h2 style={{ color: theme.danger, margin: 0 }}>
+                {assistantLogs.filter((l) => l.status === 'failed').length}
+              </h2>
+            </div>
+          </div>
+
+          <input
+            style={{ ...inputStyle, marginBottom: 0 }}
+            placeholder="Search by user, email, question, answer..."
+            value={assistantSearch}
+            onChange={(e) => setAssistantSearch(e.target.value)}
+          />
+        </div>
+
+        {assistantLoading ? (
+          <div
+            style={{
+              ...smallCardStyle,
+              color: theme.muted,
+              fontWeight: 900,
+              textAlign: 'center',
+            }}
+          >
+            ⏳ Assistant logs loading...
+          </div>
+        ) : filteredLogs.length === 0 ? (
+          <div
+            style={{
+              ...smallCardStyle,
+              color: theme.muted,
+              fontWeight: 900,
+              textAlign: 'center',
+            }}
+          >
+            Abhi assistant logs nahi mile.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '16px' }}>
+            {filteredLogs.map((log) => {
+              const isExpanded = expandedAssistantLog === log._id;
+
+              return (
+                <div key={log._id} style={smallCardStyle}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '14px',
+                      flexWrap: 'wrap',
+                      marginBottom: '14px',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: '240px' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          flexWrap: 'wrap',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        <h4 style={{ color: theme.text, margin: 0 }}>
+                          👤 {log.userName || log.user?.name || 'Unknown User'}
+                        </h4>
+
+                        <span
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '999px',
+                            fontSize: '12px',
+                            fontWeight: 900,
+                            background:
+                              log.status === 'answered'
+                                ? 'rgba(34,197,94,0.14)'
+                                : 'rgba(239,68,68,0.14)',
+                            color: log.status === 'answered' ? theme.success : theme.danger,
+                            border: `1px solid ${theme.border}`,
+                          }}
+                        >
+                          {log.status === 'answered' ? 'Answered' : 'Failed'}
+                        </span>
+                      </div>
+
+                      <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                        📧 {log.userEmail || log.user?.email || 'No email'}
+                      </p>
+
+                      <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                        🕒 {formatAssistantDate(log.createdAt)}
+                      </p>
+
+                      <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                        💻 {getShortDevice(log.deviceInfo)}
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'flex-start',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <button
+                        onClick={() => setExpandedAssistantLog(isExpanded ? null : log._id)}
+                        style={adminStyles.blueBtn(theme)}
+                      >
+                        {isExpanded ? 'Hide' : 'View'}
+                      </button>
+
+                      <button
+                        onClick={() => deleteAssistantLog(log._id)}
+                        style={adminStyles.dangerBtn(theme)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.75)',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '15px',
+                      padding: '14px',
+                      marginBottom: isExpanded ? '12px' : 0,
+                    }}
+                  >
+                    <p
+                      style={{
+                        color: theme.primary,
+                        fontWeight: 950,
+                        margin: '0 0 8px',
+                        fontSize: '13px',
+                      }}
+                    >
+                      USER QUESTION
+                    </p>
+
+                    <p
+                      style={{
+                        color: theme.text,
+                        margin: 0,
+                        fontWeight: 800,
+                        lineHeight: 1.5,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {log.question || 'No question found'}
+                    </p>
+                  </div>
+
+                  {isExpanded && (
+                    <>
+                      <div
+                        style={{
+                          background: theme.isDark ? 'rgba(124,58,237,0.08)' : '#f5f3ff',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '15px',
+                          padding: '14px',
+                          marginBottom: '12px',
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: theme.primary,
+                            fontWeight: 950,
+                            margin: '0 0 8px',
+                            fontSize: '13px',
+                          }}
+                        >
+                          ASSISTANT RESPONSE
+                        </p>
+
+                        <p
+                          style={{
+                            color: theme.text,
+                            margin: 0,
+                            lineHeight: 1.6,
+                            whiteSpace: 'pre-wrap',
+                            fontWeight: 750,
+                          }}
+                        >
+                          {log.answer || 'No answer found'}
+                        </p>
+                      </div>
+
+                      <div
+                        style={{
+                          background: theme.isDark ? 'rgba(255,255,255,0.03)' : 'rgba(248,250,252,0.9)',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '15px',
+                          padding: '14px',
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: theme.muted,
+                            fontWeight: 950,
+                            margin: '0 0 8px',
+                            fontSize: '13px',
+                          }}
+                        >
+                          TECH DETAILS
+                        </p>
+
+                        <p style={{ color: theme.muted, margin: '4px 0', fontSize: '12px', wordBreak: 'break-all' }}>
+                          IP: {log.ipAddress || 'Not available'}
+                        </p>
+
+                        <p style={{ color: theme.muted, margin: '4px 0', fontSize: '12px', wordBreak: 'break-all' }}>
+                          Device: {log.deviceInfo || 'Not available'}
+                        </p>
+
+                        <p style={{ color: theme.muted, margin: '4px 0', fontSize: '12px', wordBreak: 'break-all' }}>
+                          Log ID: {log._id}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -1044,7 +1449,7 @@ function AdminPanel() {
           </h2>
 
           <p style={{ color: theme.muted, margin: 0, fontWeight: 750 }}>
-            Welcome, {user?.name}! Manage courses, payments, coupons, users, live classes and activity logs.
+            Welcome, {user?.name}! Manage courses, payments, coupons, users, live classes, activity logs and assistant logs.
           </p>
         </motion.div>
 
@@ -1131,6 +1536,16 @@ function AdminPanel() {
 
           <button onClick={() => setActiveTab('activity')} style={tabStyle('activity')}>
             🕶️ Activity Logs
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('assistant');
+              fetchAssistantLogs();
+            }}
+            style={tabStyle('assistant')}
+          >
+            🤖 Assistant Logs ({assistantLogs.length})
           </button>
         </div>
 
@@ -2231,6 +2646,8 @@ function AdminPanel() {
         {activeTab === 'notifications' && <AdminNotificationSender theme={theme} />}
 
         {activeTab === 'activity' && <SecurityLogsPanel theme={theme} />}
+
+        {activeTab === 'assistant' && renderAssistantLogsSection()}
       </div>
     </div>
   );
