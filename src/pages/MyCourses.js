@@ -11,10 +11,22 @@ function MyCourses() {
   const [courseRows, setCourseRows] = useState([]);
   const [liveCounts, setLiveCounts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   const theme = useTheme();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -234,11 +246,11 @@ function MyCourses() {
       <div style={styles.glowOne} />
       <div style={styles.glowTwo} />
 
-      <main style={styles.page}>
+      <main style={styles.page(isMobile)}>
         <Reveal>
           <div
             style={{
-              ...styles.hero,
+              ...styles.hero(isMobile),
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadow,
@@ -247,16 +259,16 @@ function MyCourses() {
               borderRadius: theme.radius,
             }}
           >
-            <div>
-              <p style={{ ...styles.kicker, color: theme.primary }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ ...styles.kicker(isMobile), color: theme.primary }}>
                 🎒 MY LEARNING DASHBOARD
               </p>
 
-              <h2 style={{ ...styles.heroTitle, color: theme.text }}>
+              <h2 style={{ ...styles.heroTitle(isMobile), color: theme.text }}>
                 Continue where you left off.
               </h2>
 
-              <p style={{ ...styles.heroText, color: theme.muted }}>
+              <p style={{ ...styles.heroText(isMobile), color: theme.muted }}>
                 Real progress yahan sirf “Mark as Done” se badhega. Open karne se last opened aur streak update hota hai.
               </p>
             </div>
@@ -265,25 +277,25 @@ function MyCourses() {
               whileHover={{ y: -3 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
               style={{
-                ...styles.streakCard,
+                ...styles.streakCard(isMobile),
                 background: theme.isDark
                   ? 'linear-gradient(135deg, rgba(249,115,22,0.16), rgba(139,92,246,0.12))'
                   : 'linear-gradient(135deg, rgba(255,237,213,0.95), rgba(237,233,254,0.90))',
                 border: `1px solid ${theme.border}`,
               }}
             >
-              <div style={styles.streakIcon}>🔥</div>
+              <div style={styles.streakIcon(isMobile)}>🔥</div>
 
-              <div>
-                <p style={{ ...styles.streakLabel, color: theme.muted }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...styles.streakLabel(isMobile), color: theme.muted }}>
                   Real Study Streak
                 </p>
 
-                <h3 style={{ ...styles.streakValue, color: theme.primary }}>
+                <h3 style={{ ...styles.streakValue(isMobile), color: theme.primary }}>
                   {bestStreak} Day{bestStreak > 1 ? 's' : ''}
                 </h3>
 
-                <p style={{ ...styles.streakSub, color: theme.textSecondary }}>
+                <p style={{ ...styles.streakSub(isMobile), color: theme.textSecondary }}>
                   {latestProgress
                     ? `Last studied: ${formatLastOpened(latestProgress.lastOpenedAt)}`
                     : 'Open a video or PDF to begin'}
@@ -294,14 +306,14 @@ function MyCourses() {
         </Reveal>
 
         <Reveal>
-          <div style={styles.statsGrid}>
+          <div style={styles.statsGrid(isMobile)}>
             {stats.map((item) => (
               <motion.div
                 key={item.label}
                 whileHover={{ y: -3 }}
                 transition={{ duration: 0.18, ease: 'easeOut' }}
                 style={{
-                  ...styles.statCard,
+                  ...styles.statCard(isMobile),
                   background: theme.card,
                   border: `1px solid ${theme.border}`,
                   boxShadow: theme.shadow,
@@ -309,14 +321,14 @@ function MyCourses() {
                   WebkitBackdropFilter: theme.glass,
                 }}
               >
-                <span style={styles.statIcon}>{item.icon}</span>
+                <span style={styles.statIcon(isMobile)}>{item.icon}</span>
 
-                <div>
-                  <p style={{ ...styles.statLabel, color: theme.muted }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ ...styles.statLabel(isMobile), color: theme.muted }}>
                     {item.label}
                   </p>
 
-                  <h3 style={{ ...styles.statValue, color: theme.text }}>
+                  <h3 style={{ ...styles.statValue(isMobile), color: theme.text }}>
                     {item.value}
                   </h3>
                 </div>
@@ -328,7 +340,7 @@ function MyCourses() {
         <Reveal>
           <div
             style={{
-              ...styles.noticeStrip,
+              ...styles.noticeStrip(isMobile),
               background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.76)',
               border: `1px solid ${theme.border}`,
               color: theme.textSecondary,
@@ -345,7 +357,7 @@ function MyCourses() {
           <Reveal>
             <div
               style={{
-                ...styles.emptyBox,
+                ...styles.emptyBox(isMobile),
                 background: theme.card,
                 border: `1px solid ${theme.border}`,
                 color: theme.muted,
@@ -358,20 +370,20 @@ function MyCourses() {
           <Reveal>
             <div
               style={{
-                ...styles.emptyBox,
+                ...styles.emptyBox(isMobile),
                 background: theme.card,
                 border: `1px solid ${theme.border}`,
                 boxShadow: theme.shadow,
                 color: theme.muted,
               }}
             >
-              <div style={styles.emptyIcon}>📭</div>
+              <div style={styles.emptyIcon(isMobile)}>📭</div>
 
-              <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: '24px' }}>
+              <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: isMobile ? '21px' : '24px' }}>
                 No courses purchased yet
               </h3>
 
-              <p style={{ margin: '0 auto 22px', maxWidth: '520px', lineHeight: 1.7 }}>
+              <p style={{ margin: '0 auto 22px', maxWidth: '520px', lineHeight: 1.7, fontSize: isMobile ? '13.5px' : '14px' }}>
                 Abhi tumhare account me koi enrolled course nahi hai. Start with a free course or preview paid courses.
               </p>
 
@@ -381,7 +393,7 @@ function MyCourses() {
                 transition={{ duration: 0.16, ease: 'easeOut' }}
                 onClick={() => navigate('/courses')}
                 style={{
-                  ...styles.primaryBtn,
+                  ...styles.primaryBtn(isMobile),
                   background: theme.primary,
                   color: theme.buttonText,
                   boxShadow: `0 0 20px ${theme.primary}40`,
@@ -394,20 +406,20 @@ function MyCourses() {
         ) : (
           <>
             <Reveal>
-              <div style={styles.sectionHeader}>
+              <div style={styles.sectionHeader(isMobile)}>
                 <div>
-                  <h3 style={{ ...styles.sectionTitle, color: theme.text }}>
+                  <h3 style={{ ...styles.sectionTitle(isMobile), color: theme.text }}>
                     🚀 Continue Learning
                   </h3>
 
-                  <p style={{ ...styles.sectionSubtitle, color: theme.muted }}>
+                  <p style={{ ...styles.sectionSubtitle(isMobile), color: theme.muted }}>
                     Your enrolled courses with real manual progress
                   </p>
                 </div>
 
                 <span
                   style={{
-                    ...styles.courseCount,
+                    ...styles.courseCount(isMobile),
                     color: theme.primary,
                     background: theme.isDark
                       ? 'rgba(139,92,246,0.12)'
@@ -420,7 +432,7 @@ function MyCourses() {
               </div>
             </Reveal>
 
-            <div style={styles.courseGrid}>
+            <div style={styles.courseGrid(isMobile)}>
               {courseRows.map((row, index) => {
                 const course = row.course;
                 const progress = row.progress || {};
@@ -437,7 +449,7 @@ function MyCourses() {
                       whileHover={{ y: -4 }}
                       transition={{ duration: 0.18, ease: 'easeOut' }}
                       style={{
-                        ...styles.courseCard,
+                        ...styles.courseCard(isMobile),
                         background: theme.card,
                         border: `1px solid ${theme.border}`,
                         boxShadow: theme.shadow,
@@ -445,7 +457,7 @@ function MyCourses() {
                         WebkitBackdropFilter: theme.glass,
                       }}
                     >
-                      <div style={styles.thumbnailWrap}>
+                      <div style={styles.thumbnailWrap(isMobile)}>
                         {course.thumbnail ? (
                           <img
                             src={course.thumbnail}
@@ -463,15 +475,15 @@ function MyCourses() {
                           </div>
                         )}
 
-                        <div style={styles.ownedBadge}>✅ Enrolled</div>
+                        <div style={styles.ownedBadge(isMobile)}>✅ Enrolled</div>
                       </div>
 
-                      <div style={styles.cardBody}>
-                        <h3 style={{ ...styles.cardTitle, color: theme.text }}>
+                      <div style={styles.cardBody(isMobile)}>
+                        <h3 style={{ ...styles.cardTitle(isMobile), color: theme.text }}>
                           {course.title}
                         </h3>
 
-                        <p style={{ ...styles.cardDesc, color: theme.muted }}>
+                        <p style={{ ...styles.cardDesc(isMobile), color: theme.muted }}>
                           {course.description
                             ? course.description.length > 90
                               ? `${course.description.slice(0, 90)}...`
@@ -479,10 +491,10 @@ function MyCourses() {
                             : 'Continue your learning journey with this course.'}
                         </p>
 
-                        <div style={styles.metaGrid}>
+                        <div style={styles.metaGrid(isMobile)}>
                           <div
                             style={{
-                              ...styles.metaPill,
+                              ...styles.metaPill(isMobile),
                               background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                               border: `1px solid ${theme.border}`,
                               color: theme.muted,
@@ -493,7 +505,7 @@ function MyCourses() {
 
                           <div
                             style={{
-                              ...styles.metaPill,
+                              ...styles.metaPill(isMobile),
                               background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                               border: `1px solid ${theme.border}`,
                               color: theme.muted,
@@ -504,7 +516,7 @@ function MyCourses() {
 
                           <div
                             style={{
-                              ...styles.metaPill,
+                              ...styles.metaPill(isMobile),
                               background: liveCount > 0
                                 ? 'rgba(239, 68, 68, 0.12)'
                                 : theme.isDark
@@ -523,7 +535,7 @@ function MyCourses() {
 
                         <div
                           style={{
-                            ...styles.lastOpenedBox,
+                            ...styles.lastOpenedBox(isMobile),
                             background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                             border: `1px solid ${theme.border}`,
                           }}
@@ -532,16 +544,16 @@ function MyCourses() {
                             Last opened
                           </p>
 
-                          <p style={{ ...styles.lastOpenedTitle, color: theme.text }}>
+                          <p style={{ ...styles.lastOpenedTitle(isMobile), color: theme.text }}>
                             {getLastOpenedLabel(progress)}
                           </p>
 
-                          <p style={{ ...styles.lastOpenedTime, color: theme.muted }}>
+                          <p style={{ ...styles.lastOpenedTime(isMobile), color: theme.muted }}>
                             {formatLastOpened(progress.lastOpenedAt)}
                           </p>
                         </div>
 
-                        <div style={styles.progressArea}>
+                        <div style={styles.progressArea(isMobile)}>
                           <div style={styles.progressTop}>
                             <span style={{ color: theme.muted }}>
                               Real learning progress
@@ -569,18 +581,18 @@ function MyCourses() {
                             />
                           </div>
 
-                          <p style={{ ...styles.progressSmall, color: theme.muted }}>
+                          <p style={{ ...styles.progressSmall(isMobile), color: theme.muted }}>
                             {completedItems}/{totalItems} items completed • {openedItems}/{totalItems} opened • Course streak: {progress.streakCount || 0} day{Number(progress.streakCount || 0) > 1 ? 's' : ''}
                           </p>
                         </div>
 
-                        <div style={styles.bottomRow}>
+                        <div style={styles.bottomRow(isMobile)}>
                           <div>
                             <p style={{ ...styles.smallLabel, color: theme.muted }}>
                               Status
                             </p>
 
-                            <strong style={{ color: theme.success }}>
+                            <strong style={{ color: theme.success, fontSize: isMobile ? '14px' : '15px' }}>
                               {progressValue >= 100
                                 ? 'Completed'
                                 : progressValue > 0
@@ -597,7 +609,7 @@ function MyCourses() {
                             transition={{ duration: 0.16, ease: 'easeOut' }}
                             onClick={() => navigate(`/courses/${course._id}`)}
                             style={{
-                              ...styles.continueBtn,
+                              ...styles.continueBtn(isMobile),
                               background: theme.primary,
                               color: theme.buttonText,
                               boxShadow: `0 0 18px ${theme.primary}35`,
@@ -616,19 +628,19 @@ function MyCourses() {
             <Reveal>
               <div
                 style={{
-                  ...styles.summaryBox,
+                  ...styles.summaryBox(isMobile),
                   background: theme.card,
                   border: `1px solid ${theme.border}`,
                   boxShadow: theme.shadow,
                   color: theme.textSecondary,
                 }}
               >
-                <div>
-                  <h3 style={{ color: theme.text, margin: '0 0 8px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: isMobile ? '18px' : '20px' }}>
                     📌 Your Learning Summary
                   </h3>
 
-                  <p style={{ margin: 0, lineHeight: 1.7 }}>
+                  <p style={{ margin: 0, lineHeight: 1.7, fontSize: isMobile ? '13px' : '14px' }}>
                     You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, {totalOpenedItems}/{totalTrackableItems} opened, and {totalCompletedItems}/{totalTrackableItems} manually completed.
                   </p>
                 </div>
@@ -639,7 +651,7 @@ function MyCourses() {
                   transition={{ duration: 0.16, ease: 'easeOut' }}
                   onClick={() => navigate('/courses')}
                   style={{
-                    ...styles.secondaryBtn,
+                    ...styles.secondaryBtn(isMobile),
                     border: `1px solid ${theme.border}`,
                     color: theme.primary,
                     background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
@@ -669,6 +681,7 @@ const styles = {
     pointerEvents: 'none',
     zIndex: 0,
   },
+
   glowOne: {
     position: 'absolute',
     top: '90px',
@@ -681,6 +694,7 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
+
   glowTwo: {
     position: 'absolute',
     top: '650px',
@@ -693,167 +707,212 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
-  page: {
+
+  page: (isMobile) => ({
     maxWidth: '1180px',
     margin: '0 auto',
-    padding: '40px 20px',
+    padding: isMobile ? '24px 14px' : '40px 20px',
     position: 'relative',
     zIndex: 1,
-  },
-  hero: {
-    padding: '30px',
-    marginBottom: '24px',
+    width: '100%',
+  }),
+
+  hero: (isMobile) => ({
+    padding: isMobile ? '24px 18px' : '30px',
+    marginBottom: isMobile ? '18px' : '24px',
     display: 'grid',
-    gridTemplateColumns: '1.25fr 0.75fr',
-    gap: '24px',
+    gridTemplateColumns: isMobile ? '1fr' : '1.25fr 0.75fr',
+    gap: isMobile ? '18px' : '24px',
     alignItems: 'center',
-  },
-  kicker: {
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
+  kicker: (isMobile) => ({
     margin: '0 0 8px',
     fontWeight: 950,
     letterSpacing: '0.5px',
-    fontSize: '13px',
-  },
-  heroTitle: {
-    fontSize: 'clamp(30px, 4vw, 48px)',
+    fontSize: isMobile ? '12px' : '13px',
+    lineHeight: 1.4,
+  }),
+
+  heroTitle: (isMobile) => ({
+    fontSize: isMobile ? 'clamp(30px, 10vw, 42px)' : 'clamp(30px, 4vw, 48px)',
     lineHeight: 1.08,
     margin: '0 0 12px',
     fontWeight: 950,
     letterSpacing: '-0.8px',
-  },
-  heroText: {
+    wordBreak: 'normal',
+  }),
+
+  heroText: (isMobile) => ({
     margin: 0,
     lineHeight: 1.7,
-    fontSize: '15px',
+    fontSize: isMobile ? '14px' : '15px',
     maxWidth: '680px',
-  },
-  streakCard: {
-    padding: '22px',
-    borderRadius: '24px',
+  }),
+
+  streakCard: (isMobile) => ({
+    padding: isMobile ? '18px' : '22px',
+    borderRadius: isMobile ? '20px' : '24px',
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
-    minHeight: '150px',
-  },
-  streakIcon: {
-    width: '62px',
-    height: '62px',
-    borderRadius: '20px',
+    gap: isMobile ? '12px' : '16px',
+    minHeight: isMobile ? 'auto' : '150px',
+    width: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+  }),
+
+  streakIcon: (isMobile) => ({
+    width: isMobile ? '52px' : '62px',
+    height: isMobile ? '52px' : '62px',
+    borderRadius: isMobile ? '17px' : '20px',
     display: 'grid',
     placeItems: 'center',
     background: 'rgba(249, 115, 22, 0.16)',
-    fontSize: '32px',
+    fontSize: isMobile ? '26px' : '32px',
     flex: '0 0 auto',
-  },
-  streakLabel: {
+  }),
+
+  streakLabel: (isMobile) => ({
     margin: '0 0 6px',
-    fontSize: '13px',
+    fontSize: isMobile ? '11px' : '13px',
     fontWeight: 900,
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
-  },
-  streakValue: {
+  }),
+
+  streakValue: (isMobile) => ({
     margin: '0 0 6px',
-    fontSize: '34px',
+    fontSize: isMobile ? '26px' : '34px',
     fontWeight: 950,
-  },
-  streakSub: {
+    lineHeight: 1.1,
+  }),
+
+  streakSub: (isMobile) => ({
     margin: 0,
-    fontSize: '13px',
+    fontSize: isMobile ? '12px' : '13px',
     fontWeight: 800,
-  },
-  statsGrid: {
+    lineHeight: 1.45,
+  }),
+
+  statsGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-    gap: '16px',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(230px, 1fr))',
+    gap: isMobile ? '12px' : '16px',
     marginBottom: '18px',
-  },
-  statCard: {
-    padding: '20px',
-    borderRadius: '22px',
+    width: '100%',
+  }),
+
+  statCard: (isMobile) => ({
+    padding: isMobile ? '16px' : '20px',
+    borderRadius: isMobile ? '18px' : '22px',
     display: 'flex',
     alignItems: 'center',
-    gap: '14px',
-    minHeight: '105px',
-  },
-  statIcon: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '16px',
+    gap: isMobile ? '12px' : '14px',
+    minHeight: isMobile ? '86px' : '105px',
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
+  statIcon: (isMobile) => ({
+    width: isMobile ? '43px' : '48px',
+    height: isMobile ? '43px' : '48px',
+    borderRadius: isMobile ? '14px' : '16px',
     display: 'grid',
     placeItems: 'center',
     background: 'rgba(167, 139, 250, 0.12)',
-    fontSize: '24px',
+    fontSize: isMobile ? '22px' : '24px',
     flex: '0 0 auto',
-  },
-  statLabel: {
+  }),
+
+  statLabel: (isMobile) => ({
     margin: '0 0 5px',
-    fontSize: '13px',
+    fontSize: isMobile ? '12px' : '13px',
     fontWeight: 900,
-  },
-  statValue: {
+    lineHeight: 1.3,
+  }),
+
+  statValue: (isMobile) => ({
     margin: 0,
-    fontSize: '24px',
+    fontSize: isMobile ? '20px' : '24px',
     fontWeight: 950,
-  },
-  noticeStrip: {
-    padding: '14px 16px',
+    lineHeight: 1.15,
+  }),
+
+  noticeStrip: (isMobile) => ({
+    padding: isMobile ? '13px 14px' : '14px 16px',
     borderRadius: '18px',
-    marginBottom: '28px',
+    marginBottom: isMobile ? '22px' : '28px',
     display: 'flex',
     gap: '10px',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     fontWeight: 800,
     lineHeight: 1.5,
-  },
-  sectionHeader: {
+    fontSize: isMobile ? '12.5px' : '14px',
+  }),
+
+  sectionHeader: (isMobile) => ({
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: isMobile ? 'flex-start' : 'flex-end',
     justifyContent: 'space-between',
     gap: '14px',
     marginBottom: '18px',
     flexWrap: 'wrap',
-  },
-  sectionTitle: {
+  }),
+
+  sectionTitle: (isMobile) => ({
     margin: 0,
-    fontSize: '24px',
+    fontSize: isMobile ? '21px' : '24px',
     fontWeight: 950,
-  },
-  sectionSubtitle: {
+    lineHeight: 1.25,
+  }),
+
+  sectionSubtitle: (isMobile) => ({
     margin: '6px 0 0',
-    fontSize: '14px',
-  },
-  courseCount: {
+    fontSize: isMobile ? '13px' : '14px',
+    lineHeight: 1.5,
+  }),
+
+  courseCount: (isMobile) => ({
     fontWeight: 900,
     padding: '8px 13px',
     borderRadius: '999px',
-    fontSize: '13px',
-  },
-  courseGrid: {
+    fontSize: isMobile ? '12px' : '13px',
+  }),
+
+  courseGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    gap: '24px',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
+    gap: isMobile ? '18px' : '24px',
     marginBottom: '30px',
-  },
-  courseCard: {
-    borderRadius: '24px',
+    width: '100%',
+  }),
+
+  courseCard: (isMobile) => ({
+    borderRadius: isMobile ? '20px' : '24px',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '620px',
-  },
-  thumbnailWrap: {
-    height: '200px',
+    minHeight: isMobile ? 'auto' : '620px',
+    width: '100%',
+  }),
+
+  thumbnailWrap: (isMobile) => ({
+    height: isMobile ? '190px' : '200px',
     position: 'relative',
     overflow: 'hidden',
     background: '#111827',
-  },
+  }),
+
   thumbnail: {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
     display: 'block',
   },
+
   emptyThumb: {
     width: '100%',
     height: '100%',
@@ -861,58 +920,67 @@ const styles = {
     placeItems: 'center',
     fontSize: '52px',
   },
-  ownedBadge: {
+
+  ownedBadge: (isMobile) => ({
     position: 'absolute',
-    top: '14px',
-    right: '14px',
+    top: isMobile ? '12px' : '14px',
+    right: isMobile ? '12px' : '14px',
     background: 'rgba(34,197,94,0.95)',
     color: '#fff',
-    padding: '7px 11px',
+    padding: isMobile ? '6px 10px' : '7px 11px',
     borderRadius: '999px',
-    fontSize: '12px',
+    fontSize: isMobile ? '11px' : '12px',
     fontWeight: 950,
     boxShadow: '0 8px 24px rgba(34,197,94,0.22)',
-  },
-  cardBody: {
-    padding: '20px',
+  }),
+
+  cardBody: (isMobile) => ({
+    padding: isMobile ? '16px' : '20px',
     display: 'flex',
     flexDirection: 'column',
     flex: 1,
-  },
-  cardTitle: {
+  }),
+
+  cardTitle: (isMobile) => ({
     margin: '0 0 9px',
-    fontSize: '18px',
+    fontSize: isMobile ? '17px' : '18px',
     fontWeight: 950,
     lineHeight: 1.3,
-    minHeight: '46px',
+    minHeight: isMobile ? 'auto' : '46px',
     display: '-webkit-box',
     WebkitLineClamp: 2,
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden',
-  },
-  cardDesc: {
-    fontSize: '13px',
+  }),
+
+  cardDesc: (isMobile) => ({
+    fontSize: isMobile ? '13px' : '13px',
     margin: '0 0 16px',
     lineHeight: 1.65,
-    minHeight: '44px',
-  },
-  metaGrid: {
+    minHeight: isMobile ? 'auto' : '44px',
+  }),
+
+  metaGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
     gap: '10px',
     marginBottom: '14px',
-  },
-  metaPill: {
-    padding: '9px 10px',
+  }),
+
+  metaPill: (isMobile) => ({
+    padding: isMobile ? '10px 11px' : '9px 10px',
     borderRadius: '13px',
-    fontSize: '12px',
+    fontSize: isMobile ? '12px' : '12px',
     fontWeight: 850,
-  },
-  lastOpenedBox: {
-    padding: '12px 13px',
+    lineHeight: 1.45,
+  }),
+
+  lastOpenedBox: (isMobile) => ({
+    padding: isMobile ? '12px' : '12px 13px',
     borderRadius: '15px',
     marginBottom: '16px',
-  },
+  }),
+
   lastOpenedLabel: {
     margin: '0 0 5px',
     fontSize: '11px',
@@ -920,20 +988,26 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
   },
-  lastOpenedTitle: {
+
+  lastOpenedTitle: (isMobile) => ({
     margin: '0 0 5px',
-    fontSize: '13px',
+    fontSize: isMobile ? '12.5px' : '13px',
     fontWeight: 950,
     lineHeight: 1.45,
-  },
-  lastOpenedTime: {
+    wordBreak: 'normal',
+    overflowWrap: 'break-word',
+  }),
+
+  lastOpenedTime: (isMobile) => ({
     margin: 0,
-    fontSize: '12px',
+    fontSize: isMobile ? '11.5px' : '12px',
     fontWeight: 800,
-  },
-  progressArea: {
-    marginBottom: '18px',
-  },
+  }),
+
+  progressArea: (isMobile) => ({
+    marginBottom: isMobile ? '16px' : '18px',
+  }),
+
   progressTop: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -942,78 +1016,94 @@ const styles = {
     fontSize: '12px',
     fontWeight: 900,
   },
+
   progressTrack: {
     width: '100%',
     height: '9px',
     borderRadius: '999px',
     overflow: 'hidden',
   },
+
   progressFill: {
     height: '100%',
     borderRadius: '999px',
   },
-  progressSmall: {
+
+  progressSmall: (isMobile) => ({
     margin: '8px 0 0',
-    fontSize: '12px',
+    fontSize: isMobile ? '11.5px' : '12px',
     fontWeight: 800,
     lineHeight: 1.45,
-  },
-  bottomRow: {
+  }),
+
+  bottomRow: (isMobile) => ({
     marginTop: 'auto',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: isMobile ? 'stretch' : 'center',
     gap: '12px',
-  },
+    flexWrap: isMobile ? 'wrap' : 'nowrap',
+  }),
+
   smallLabel: {
     margin: '0 0 3px',
     fontSize: '12px',
     fontWeight: 800,
   },
-  continueBtn: {
-    padding: '12px 16px',
+
+  continueBtn: (isMobile) => ({
+    padding: isMobile ? '12px 14px' : '12px 16px',
     border: 'none',
     borderRadius: '14px',
     cursor: 'pointer',
-    fontSize: '13px',
+    fontSize: isMobile ? '13px' : '13px',
     fontWeight: 950,
-    minWidth: '130px',
-  },
-  emptyBox: {
-    padding: '38px 24px',
-    borderRadius: '24px',
+    minWidth: isMobile ? '100%' : '130px',
+  }),
+
+  emptyBox: (isMobile) => ({
+    padding: isMobile ? '28px 18px' : '38px 24px',
+    borderRadius: isMobile ? '20px' : '24px',
     textAlign: 'center',
     fontWeight: 800,
-    marginTop: '28px',
-  },
-  emptyIcon: {
-    fontSize: '52px',
+    marginTop: isMobile ? '20px' : '28px',
+  }),
+
+  emptyIcon: (isMobile) => ({
+    fontSize: isMobile ? '42px' : '52px',
     marginBottom: '12px',
-  },
-  primaryBtn: {
-    padding: '13px 24px',
+  }),
+
+  primaryBtn: (isMobile) => ({
+    width: isMobile ? '100%' : 'auto',
+    maxWidth: isMobile ? '260px' : 'none',
+    padding: isMobile ? '13px 20px' : '13px 24px',
     border: 'none',
     borderRadius: '14px',
     cursor: 'pointer',
     fontWeight: 950,
-    fontSize: '15px',
-  },
-  summaryBox: {
-    padding: '22px',
-    borderRadius: '24px',
+    fontSize: isMobile ? '14px' : '15px',
+  }),
+
+  summaryBox: (isMobile) => ({
+    padding: isMobile ? '18px' : '22px',
+    borderRadius: isMobile ? '20px' : '24px',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: isMobile ? 'stretch' : 'center',
     gap: '18px',
     flexWrap: 'wrap',
-  },
-  secondaryBtn: {
+    width: '100%',
+  }),
+
+  secondaryBtn: (isMobile) => ({
+    width: isMobile ? '100%' : 'auto',
     padding: '12px 18px',
     borderRadius: '14px',
     cursor: 'pointer',
     fontWeight: 950,
     fontSize: '14px',
-  },
+  }),
 };
 
 export default MyCourses;

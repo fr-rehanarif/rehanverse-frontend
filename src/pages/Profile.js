@@ -16,6 +16,7 @@ function Profile() {
   const [activeTab, setActiveTab] = useState('profile');
   const [msg, setMsg] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -29,6 +30,17 @@ function Profile() {
     newPassword: '',
     confirmPassword: '',
   });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -160,10 +172,10 @@ function Profile() {
 
   const inputStyle = {
     width: '100%',
-    padding: '14px 15px',
+    padding: isMobile ? '13px 14px' : '14px 15px',
     marginBottom: '16px',
     borderRadius: '14px',
-    fontSize: '15px',
+    fontSize: '16px',
     outline: 'none',
     background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
     color: theme.text,
@@ -180,8 +192,8 @@ function Profile() {
     marginBottom: '8px',
   };
 
-  const tabButton = (tabName, label) => ({
-    padding: '11px 18px',
+  const tabButton = (tabName) => ({
+    padding: isMobile ? '11px 12px' : '11px 18px',
     borderRadius: '15px',
     border: `1px solid ${activeTab === tabName ? theme.primary : theme.border}`,
     cursor: 'pointer',
@@ -194,6 +206,8 @@ function Profile() {
         : 'rgba(255,255,255,0.72)',
     color: activeTab === tabName ? theme.buttonText : theme.text,
     boxShadow: activeTab === tabName ? `0 0 18px ${theme.primary}35` : 'none',
+    flex: isMobile ? '1 1 100%' : '0 0 auto',
+    width: isMobile ? '100%' : 'auto',
   });
 
   if (!profile) {
@@ -227,13 +241,13 @@ function Profile() {
       <div style={styles.glowOne} />
       <div style={styles.glowTwo} />
 
-      <main style={styles.page}>
+      <main style={styles.page(isMobile)}>
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{
-            ...styles.heroCard,
+            ...styles.heroCard(isMobile),
             background: theme.card,
             border: `1px solid ${theme.border}`,
             boxShadow: theme.shadow,
@@ -242,14 +256,14 @@ function Profile() {
             borderRadius: theme.radius,
           }}
         >
-          <div style={styles.profileTop}>
-            <div style={styles.avatarWrap}>
+          <div style={styles.profileTop(isMobile)}>
+            <div style={styles.avatarWrap(isMobile)}>
               {profile.photo ? (
                 <img
                   src={profile.photo}
                   alt="profile"
                   style={{
-                    ...styles.avatar,
+                    ...styles.avatar(isMobile),
                     border: `3px solid ${theme.primary}`,
                     boxShadow: `0 0 26px ${theme.primary}45`,
                   }}
@@ -257,7 +271,7 @@ function Profile() {
               ) : (
                 <div
                   style={{
-                    ...styles.avatarFallback,
+                    ...styles.avatarFallback(isMobile),
                     background: theme.primary,
                     color: theme.buttonText,
                     boxShadow: `0 0 26px ${theme.primary}45`,
@@ -267,21 +281,21 @@ function Profile() {
                 </div>
               )}
 
-              <div style={styles.onlineDot} />
+              <div style={styles.onlineDot(isMobile)} />
             </div>
 
-            <div style={styles.profileInfo}>
+            <div style={styles.profileInfo(isMobile)}>
               <p style={{ ...styles.kicker, color: theme.primary }}>👤 USER PROFILE</p>
 
-              <h1 style={{ ...styles.name, color: theme.text }}>
+              <h1 style={{ ...styles.name(isMobile), color: theme.text }}>
                 {profile.name || 'User'}
               </h1>
 
-              <p style={{ ...styles.email, color: theme.muted }}>
+              <p style={{ ...styles.email(isMobile), color: theme.muted }}>
                 {profile.email}
               </p>
 
-              <div style={styles.badgeRow}>
+              <div style={styles.badgeRow(isMobile)}>
                 <span
                   style={{
                     ...styles.smallBadge,
@@ -314,7 +328,7 @@ function Profile() {
           {profile.bio && (
             <p
               style={{
-                ...styles.bioText,
+                ...styles.bioText(isMobile),
                 color: theme.textSecondary,
                 background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                 border: `1px solid ${theme.border}`,
@@ -324,7 +338,7 @@ function Profile() {
             </p>
           )}
 
-          <div style={styles.statsGrid}>
+          <div style={styles.statsGrid(isMobile)}>
             {[
               { icon: '📚', label: 'Courses', value: enrolledCount },
               { icon: '📅', label: 'Joined', value: getJoinedDate() },
@@ -333,22 +347,22 @@ function Profile() {
               <div
                 key={item.label}
                 style={{
-                  ...styles.statCard,
+                  ...styles.statCard(isMobile),
                   background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                   border: `1px solid ${theme.border}`,
                 }}
               >
-                <span style={styles.statIcon}>{item.icon}</span>
-                <div>
+                <span style={styles.statIcon(isMobile)}>{item.icon}</span>
+                <div style={{ minWidth: 0 }}>
                   <p style={{ ...styles.statLabel, color: theme.muted }}>{item.label}</p>
-                  <h3 style={{ ...styles.statValue, color: theme.text }}>{item.value}</h3>
+                  <h3 style={{ ...styles.statValue(isMobile), color: theme.text }}>{item.value}</h3>
                 </div>
               </div>
             ))}
           </div>
         </motion.div>
 
-        <div style={styles.tabs}>
+        <div style={styles.tabs(isMobile)}>
           <motion.button
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.985 }}
@@ -385,7 +399,7 @@ function Profile() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             style={{
-              ...styles.msgBox,
+              ...styles.msgBox(isMobile),
               background: msg.includes('✅')
                 ? theme.isDark
                   ? 'rgba(34, 197, 94, 0.15)'
@@ -433,7 +447,7 @@ function Profile() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: 'easeOut' }}
             style={{
-              ...styles.panel,
+              ...styles.panel(isMobile),
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadow,
@@ -441,10 +455,10 @@ function Profile() {
               WebkitBackdropFilter: theme.glass,
             }}
           >
-            <div style={styles.panelHead}>
+            <div style={styles.panelHead(isMobile)}>
               <div>
                 <h3 style={{ color: theme.text, margin: 0 }}>✏️ Edit Profile</h3>
-                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '14px' }}>
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: isMobile ? '13px' : '14px' }}>
                   Apni profile details update karo.
                 </p>
               </div>
@@ -475,20 +489,20 @@ function Profile() {
             />
 
             <label style={labelStyle}>Profile Photo</label>
-            <div style={styles.photoUploadRow}>
+            <div style={styles.photoUploadRow(isMobile)}>
               {form.photo ? (
                 <img
                   src={form.photo}
                   alt="preview"
                   style={{
-                    ...styles.previewAvatar,
+                    ...styles.previewAvatar(isMobile),
                     border: `2px solid ${theme.primary}`,
                   }}
                 />
               ) : (
                 <div
                   style={{
-                    ...styles.previewFallback,
+                    ...styles.previewFallback(isMobile),
                     background: theme.primary,
                     color: theme.buttonText,
                   }}
@@ -497,10 +511,10 @@ function Profile() {
                 </div>
               )}
 
-              <label style={{ flex: 1, minWidth: '220px', cursor: uploading ? 'not-allowed' : 'pointer' }}>
+              <label style={{ flex: 1, minWidth: isMobile ? '100%' : '220px', cursor: uploading ? 'not-allowed' : 'pointer' }}>
                 <div
                   style={{
-                    ...styles.uploadBox,
+                    ...styles.uploadBox(isMobile),
                     background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
                     border: `2px dashed ${theme.border}`,
                     color: theme.muted,
@@ -526,7 +540,7 @@ function Profile() {
               onClick={handleUpdate}
               disabled={uploading}
               style={{
-                ...styles.primaryBtn,
+                ...styles.primaryBtn(isMobile),
                 background: uploading ? theme.muted : theme.primary,
                 color: theme.buttonText,
                 boxShadow: `0 0 20px ${theme.primary}35`,
@@ -545,7 +559,7 @@ function Profile() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: 'easeOut' }}
             style={{
-              ...styles.panel,
+              ...styles.panel(isMobile),
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadow,
@@ -553,10 +567,10 @@ function Profile() {
               WebkitBackdropFilter: theme.glass,
             }}
           >
-            <div style={styles.panelHead}>
+            <div style={styles.panelHead(isMobile)}>
               <div>
                 <h3 style={{ color: theme.text, margin: 0 }}>🔐 Change Password</h3>
-                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '14px' }}>
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: isMobile ? '13px' : '14px' }}>
                   Strong password rakho, account safe rahega.
                 </p>
               </div>
@@ -597,7 +611,7 @@ function Profile() {
 
             <div
               style={{
-                ...styles.securityNote,
+                ...styles.securityNote(isMobile),
                 background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                 border: `1px solid ${theme.border}`,
                 color: theme.muted,
@@ -612,7 +626,7 @@ function Profile() {
               transition={{ duration: 0.16 }}
               onClick={handlePasswordChange}
               style={{
-                ...styles.primaryBtn,
+                ...styles.primaryBtn(isMobile),
                 background: theme.success,
                 color: theme.buttonText,
                 boxShadow: '0 0 20px rgba(34,197,94,0.30)',
@@ -632,18 +646,18 @@ function Profile() {
             {profile.enrolledCourses?.length === 0 ? (
               <div
                 style={{
-                  ...styles.emptyBox,
+                  ...styles.emptyBox(isMobile),
                   background: theme.card,
                   border: `1px solid ${theme.border}`,
                   boxShadow: theme.shadow,
                   color: theme.muted,
                 }}
               >
-                <p style={{ fontSize: '54px', margin: '0 0 12px' }}>📭</p>
-                <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: '24px' }}>
+                <p style={{ fontSize: isMobile ? '42px' : '54px', margin: '0 0 12px' }}>📭</p>
+                <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: isMobile ? '21px' : '24px' }}>
                   Koi course enroll nahi!
                 </h3>
-                <p style={{ margin: '0 0 22px', lineHeight: 1.7 }}>
+                <p style={{ margin: '0 0 22px', lineHeight: 1.7, fontSize: isMobile ? '13px' : '14px' }}>
                   Start with free courses or preview premium courses.
                 </p>
 
@@ -653,7 +667,7 @@ function Profile() {
                   transition={{ duration: 0.16 }}
                   onClick={() => navigate('/courses')}
                   style={{
-                    ...styles.secondaryActionBtn,
+                    ...styles.secondaryActionBtn(isMobile),
                     background: theme.primary,
                     color: theme.buttonText,
                     border: 'none',
@@ -663,14 +677,14 @@ function Profile() {
                 </motion.button>
               </div>
             ) : (
-              <div style={styles.courseGrid}>
+              <div style={styles.courseGrid(isMobile)}>
                 {profile.enrolledCourses?.map((course) => (
                   <motion.div
                     key={course._id}
                     whileHover={{ y: -4 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
                     style={{
-                      ...styles.courseCard,
+                      ...styles.courseCard(isMobile),
                       background: theme.card,
                       border: `1px solid ${theme.border}`,
                       boxShadow: theme.shadow,
@@ -682,12 +696,12 @@ function Profile() {
                       <img
                         src={course.thumbnail}
                         alt={course.title}
-                        style={styles.courseThumb}
+                        style={styles.courseThumb(isMobile)}
                       />
                     ) : (
                       <div
                         style={{
-                          ...styles.emptyThumb,
+                          ...styles.emptyThumb(isMobile),
                           background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
                         }}
                       >
@@ -695,10 +709,10 @@ function Profile() {
                       </div>
                     )}
 
-                    <div style={styles.courseBody}>
+                    <div style={styles.courseBody(isMobile)}>
                       <div style={styles.enrolledBadge}>✅ Enrolled</div>
 
-                      <h4 style={{ ...styles.courseTitleText, color: theme.text }}>
+                      <h4 style={{ ...styles.courseTitleText(isMobile), color: theme.text }}>
                         {course.title}
                       </h4>
 
@@ -708,7 +722,7 @@ function Profile() {
                         transition={{ duration: 0.16 }}
                         onClick={() => navigate(`/course/${course._id}`)}
                         style={{
-                          ...styles.continueBtn,
+                          ...styles.continueBtn(isMobile),
                           background: theme.primary,
                           color: theme.buttonText,
                           boxShadow: `0 0 18px ${theme.primary}35`,
@@ -739,6 +753,7 @@ const styles = {
     pointerEvents: 'none',
     zIndex: 0,
   },
+
   glowOne: {
     position: 'absolute',
     top: '90px',
@@ -751,6 +766,7 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
+
   glowTwo: {
     position: 'absolute',
     top: '620px',
@@ -763,230 +779,295 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
-  page: {
+
+  page: (isMobile) => ({
     maxWidth: '920px',
     margin: '0 auto',
-    padding: '40px 20px',
+    padding: isMobile ? '24px 14px 36px' : '40px 20px',
     position: 'relative',
     zIndex: 1,
-  },
-  heroCard: {
-    padding: '30px',
+    width: '100%',
+  }),
+
+  heroCard: (isMobile) => ({
+    padding: isMobile ? '22px 16px' : '30px',
     marginBottom: '20px',
-  },
-  profileTop: {
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
+  profileTop: (isMobile) => ({
     display: 'flex',
-    gap: '22px',
-    alignItems: 'center',
+    gap: isMobile ? '16px' : '22px',
+    alignItems: isMobile ? 'flex-start' : 'center',
     flexWrap: 'wrap',
-  },
-  avatarWrap: {
+    flexDirection: isMobile ? 'column' : 'row',
+    textAlign: isMobile ? 'center' : 'left',
+  }),
+
+  avatarWrap: (isMobile) => ({
     position: 'relative',
-    width: '112px',
-    height: '112px',
+    width: isMobile ? '92px' : '112px',
+    height: isMobile ? '92px' : '112px',
     flex: '0 0 auto',
-  },
-  avatar: {
-    width: '112px',
-    height: '112px',
+    margin: isMobile ? '0 auto' : 0,
+  }),
+
+  avatar: (isMobile) => ({
+    width: isMobile ? '92px' : '112px',
+    height: isMobile ? '92px' : '112px',
     borderRadius: '50%',
     objectFit: 'cover',
-  },
-  avatarFallback: {
-    width: '112px',
-    height: '112px',
+  }),
+
+  avatarFallback: (isMobile) => ({
+    width: isMobile ? '92px' : '112px',
+    height: isMobile ? '92px' : '112px',
     borderRadius: '50%',
     display: 'grid',
     placeItems: 'center',
-    fontSize: '44px',
+    fontSize: isMobile ? '36px' : '44px',
     fontWeight: 950,
-  },
-  onlineDot: {
+  }),
+
+  onlineDot: (isMobile) => ({
     position: 'absolute',
-    right: '8px',
-    bottom: '8px',
-    width: '18px',
-    height: '18px',
+    right: isMobile ? '5px' : '8px',
+    bottom: isMobile ? '5px' : '8px',
+    width: isMobile ? '16px' : '18px',
+    height: isMobile ? '16px' : '18px',
     borderRadius: '50%',
     background: '#22c55e',
     border: '3px solid #0f172a',
-  },
-  profileInfo: {
+  }),
+
+  profileInfo: (isMobile) => ({
     flex: 1,
-    minWidth: '220px',
-  },
+    minWidth: 0,
+    width: isMobile ? '100%' : 'auto',
+  }),
+
   kicker: {
     margin: '0 0 6px',
     fontWeight: 950,
     fontSize: '13px',
     letterSpacing: '0.5px',
   },
-  name: {
+
+  name: (isMobile) => ({
     margin: '0 0 6px',
-    fontSize: 'clamp(28px, 4vw, 42px)',
+    fontSize: isMobile ? '28px' : 'clamp(28px, 4vw, 42px)',
     lineHeight: 1.1,
     fontWeight: 950,
     letterSpacing: '-0.8px',
-  },
-  email: {
+    wordBreak: 'break-word',
+  }),
+
+  email: (isMobile) => ({
     margin: 0,
     fontWeight: 750,
-  },
-  badgeRow: {
+    fontSize: isMobile ? '13px' : '15px',
+    overflowWrap: 'anywhere',
+  }),
+
+  badgeRow: (isMobile) => ({
     display: 'flex',
     gap: '10px',
     flexWrap: 'wrap',
     marginTop: '14px',
-  },
+    justifyContent: isMobile ? 'center' : 'flex-start',
+  }),
+
   smallBadge: {
     padding: '8px 12px',
     borderRadius: '999px',
     fontSize: '12px',
     fontWeight: 950,
   },
-  bioText: {
-    padding: '14px 16px',
+
+  bioText: (isMobile) => ({
+    padding: isMobile ? '13px 14px' : '14px 16px',
     borderRadius: '18px',
     margin: '20px 0 0',
     lineHeight: 1.7,
     fontWeight: 750,
     fontStyle: 'italic',
-  },
-  statsGrid: {
+    fontSize: isMobile ? '13px' : '14px',
+  }),
+
+  statsGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(190px, 1fr))',
     gap: '14px',
     marginTop: '22px',
-  },
-  statCard: {
-    padding: '16px',
+    width: '100%',
+  }),
+
+  statCard: (isMobile) => ({
+    padding: isMobile ? '14px' : '16px',
     borderRadius: '18px',
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-  },
-  statIcon: {
-    width: '44px',
-    height: '44px',
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
+  statIcon: (isMobile) => ({
+    width: isMobile ? '40px' : '44px',
+    height: isMobile ? '40px' : '44px',
     borderRadius: '15px',
     display: 'grid',
     placeItems: 'center',
     background: 'rgba(167, 139, 250, 0.12)',
-    fontSize: '22px',
+    fontSize: isMobile ? '20px' : '22px',
     flex: '0 0 auto',
-  },
+  }),
+
   statLabel: {
     margin: '0 0 4px',
     fontSize: '12px',
     fontWeight: 900,
   },
-  statValue: {
+
+  statValue: (isMobile) => ({
     margin: 0,
-    fontSize: '17px',
+    fontSize: isMobile ? '15px' : '17px',
     fontWeight: 950,
     wordBreak: 'break-word',
-  },
-  tabs: {
+    overflowWrap: 'anywhere',
+    lineHeight: 1.25,
+  }),
+
+  tabs: (isMobile) => ({
     display: 'flex',
     gap: '10px',
     marginBottom: '20px',
     flexWrap: 'wrap',
-  },
-  msgBox: {
-    padding: '13px 16px',
+    width: '100%',
+  }),
+
+  msgBox: (isMobile) => ({
+    padding: isMobile ? '12px 14px' : '13px 16px',
     borderRadius: '16px',
     marginBottom: '20px',
     fontWeight: 900,
-  },
-  panel: {
-    borderRadius: '24px',
-    padding: '30px',
-  },
-  panelHead: {
-    marginBottom: '22px',
-  },
-  photoUploadRow: {
+    fontSize: isMobile ? '13px' : '14px',
+    lineHeight: 1.45,
+  }),
+
+  panel: (isMobile) => ({
+    borderRadius: isMobile ? '20px' : '24px',
+    padding: isMobile ? '20px 16px' : '30px',
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
+  panelHead: (isMobile) => ({
+    marginBottom: isMobile ? '18px' : '22px',
+  }),
+
+  photoUploadRow: (isMobile) => ({
     marginBottom: '18px',
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
     flexWrap: 'wrap',
-  },
-  previewAvatar: {
-    width: '70px',
-    height: '70px',
+    flexDirection: isMobile ? 'column' : 'row',
+  }),
+
+  previewAvatar: (isMobile) => ({
+    width: isMobile ? '64px' : '70px',
+    height: isMobile ? '64px' : '70px',
     borderRadius: '50%',
     objectFit: 'cover',
-  },
-  previewFallback: {
-    width: '70px',
-    height: '70px',
+  }),
+
+  previewFallback: (isMobile) => ({
+    width: isMobile ? '64px' : '70px',
+    height: isMobile ? '64px' : '70px',
     borderRadius: '50%',
     display: 'grid',
     placeItems: 'center',
-    fontSize: '26px',
+    fontSize: isMobile ? '24px' : '26px',
     fontWeight: 950,
-  },
-  uploadBox: {
+  }),
+
+  uploadBox: (isMobile) => ({
     padding: '14px 16px',
     borderRadius: '16px',
     textAlign: 'center',
-    fontSize: '13px',
+    fontSize: isMobile ? '12.5px' : '13px',
     fontWeight: 900,
-  },
-  primaryBtn: {
     width: '100%',
-    padding: '14px',
+  }),
+
+  primaryBtn: (isMobile) => ({
+    width: '100%',
+    padding: isMobile ? '13px' : '14px',
     border: 'none',
     borderRadius: '15px',
-    fontSize: '16px',
+    fontSize: isMobile ? '15px' : '16px',
     fontWeight: 950,
-  },
-  securityNote: {
+  }),
+
+  securityNote: (isMobile) => ({
     padding: '12px 14px',
     borderRadius: '16px',
     marginBottom: '18px',
-    fontSize: '13px',
+    fontSize: isMobile ? '12.5px' : '13px',
     fontWeight: 800,
-  },
-  emptyBox: {
-    padding: '44px 24px',
-    borderRadius: '24px',
+    lineHeight: 1.5,
+  }),
+
+  emptyBox: (isMobile) => ({
+    padding: isMobile ? '30px 18px' : '44px 24px',
+    borderRadius: isMobile ? '20px' : '24px',
     textAlign: 'center',
     fontWeight: 800,
-  },
-  secondaryActionBtn: {
-    padding: '13px 24px',
+  }),
+
+  secondaryActionBtn: (isMobile) => ({
+    width: isMobile ? '100%' : 'auto',
+    padding: isMobile ? '13px 18px' : '13px 24px',
     borderRadius: '15px',
     cursor: 'pointer',
     fontWeight: 950,
-    fontSize: '15px',
-  },
-  courseGrid: {
+    fontSize: isMobile ? '14px' : '15px',
+  }),
+
+  courseGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '18px',
-  },
-  courseCard: {
-    borderRadius: '24px',
-    overflow: 'hidden',
-  },
-  courseThumb: {
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: isMobile ? '16px' : '18px',
     width: '100%',
-    height: '150px',
+  }),
+
+  courseCard: (isMobile) => ({
+    borderRadius: isMobile ? '20px' : '24px',
+    overflow: 'hidden',
+    width: '100%',
+  }),
+
+  courseThumb: (isMobile) => ({
+    width: '100%',
+    height: isMobile ? '170px' : '150px',
     objectFit: 'cover',
     display: 'block',
-  },
-  emptyThumb: {
+  }),
+
+  emptyThumb: (isMobile) => ({
     width: '100%',
-    height: '150px',
+    height: isMobile ? '170px' : '150px',
     display: 'grid',
     placeItems: 'center',
-    fontSize: '42px',
-  },
-  courseBody: {
-    padding: '18px',
-  },
+    fontSize: isMobile ? '38px' : '42px',
+  }),
+
+  courseBody: (isMobile) => ({
+    padding: isMobile ? '16px' : '18px',
+  }),
+
   enrolledBadge: {
     width: 'fit-content',
     padding: '7px 10px',
@@ -998,22 +1079,26 @@ const styles = {
     fontWeight: 950,
     marginBottom: '12px',
   },
-  courseTitleText: {
+
+  courseTitleText: (isMobile) => ({
     margin: '0 0 14px',
-    fontSize: '16px',
+    fontSize: isMobile ? '15px' : '16px',
     lineHeight: 1.35,
     fontWeight: 950,
-    minHeight: '44px',
-  },
-  continueBtn: {
+    minHeight: isMobile ? 'auto' : '44px',
+    wordBreak: 'normal',
+    overflowWrap: 'break-word',
+  }),
+
+  continueBtn: (isMobile) => ({
     width: '100%',
-    padding: '12px',
+    padding: isMobile ? '12px' : '12px',
     border: 'none',
     borderRadius: '14px',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: isMobile ? '13.5px' : '14px',
     fontWeight: 950,
-  },
+  }),
 };
 
 export default Profile;

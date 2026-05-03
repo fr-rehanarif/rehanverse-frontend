@@ -62,6 +62,30 @@ function GlobalSelectFix() {
           -webkit-box-shadow: 0 0 0px 1000px #111827 inset !important;
           transition: background-color 5000s ease-in-out 0s;
         }
+
+        /* ✅ Only safe global mobile rule */
+        * {
+          box-sizing: border-box;
+        }
+
+        html,
+        body,
+        #root {
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        img,
+        video,
+        iframe {
+          max-width: 100%;
+        }
       `}
     </style>
   );

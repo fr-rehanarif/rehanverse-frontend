@@ -5,6 +5,58 @@
   transition: background 0.3s ease, color 0.3s ease;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
   font-family: 'Segoe UI', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+video,
+iframe {
+  max-width: 100%;
+}
+
+/* ✅ Safe only: horizontal scroll avoid, but layout force nahi karega */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* ✅ Better mobile inputs */
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+
+/* ✅ Mobile input zoom fix */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  button {
+    touch-action: manipulation;
+  }
+}
+
+/* ✅ React PDF safety only */
+.react-pdf__Document,
+.react-pdf__Page {
+  max-width: 100%;
+}
+
+.react-pdf__Page canvas {
+  max-width: 100%;
+  height: auto !important;
 }

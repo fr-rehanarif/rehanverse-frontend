@@ -21,8 +21,23 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [pdfError, setPdfError] = useState('');
   const [zoom, setZoom] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const baseWidth = Math.min(window.innerWidth - 100, 850);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const baseWidth = isMobile
+    ? Math.max(260, window.innerWidth - 58)
+    : Math.min(window.innerWidth - 100, 850);
+
   const pageWidth = baseWidth * zoom;
 
   const zoomIn = () => {
@@ -144,15 +159,16 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
       onDragStart={block}
       style={{
         position: 'relative',
-        height: '640px',
+        height: isMobile ? '520px' : '640px',
         overflowY: 'auto',
         overflowX: 'auto',
-        borderRadius: '22px',
+        borderRadius: isMobile ? '18px' : '22px',
         border: `1px solid ${theme.border}`,
         background: theme.isDark ? 'rgba(2,6,23,0.55)' : 'rgba(255,255,255,0.72)',
-        padding: '16px',
+        padding: isMobile ? '10px' : '16px',
         userSelect: 'none',
         boxShadow: theme.shadow,
+        width: '100%',
       }}
     >
       <div
@@ -162,20 +178,22 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
           zIndex: 30,
           background: theme.card,
           color: theme.text,
-          padding: '12px 14px',
+          padding: isMobile ? '10px' : '12px 14px',
           borderRadius: '16px',
           marginBottom: '14px',
           border: `1px solid ${theme.border}`,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: isMobile ? 'flex-start' : 'center',
           gap: '12px',
           flexWrap: 'wrap',
           backdropFilter: theme.glass,
           WebkitBackdropFilter: theme.glass,
         }}
       >
-        <strong>📄 {pdf?.title || 'PDF'}</strong>
+        <strong style={{ fontSize: isMobile ? '13px' : '16px', lineHeight: 1.4 }}>
+          📄 {pdf?.title || 'PDF'}
+        </strong>
 
         <div style={styles.pdfControls}>
           <button
@@ -221,7 +239,7 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
             Fit Width
           </button>
 
-          <span style={{ color: theme.muted, fontSize: '13px', fontWeight: 800 }}>
+          <span style={{ color: theme.muted, fontSize: '12px', fontWeight: 800 }}>
             View only • Protected
           </span>
         </div>
@@ -270,7 +288,7 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
   );
 }
 
-function LockedCoursePreview({ course, theme, onUnlock }) {
+function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
   const videosCount = course.videos?.length || 0;
   const pdfsCount = course.pdfs?.length || 0;
 
@@ -283,20 +301,22 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
   return (
     <div
       style={{
-        padding: '24px',
-        borderRadius: '24px',
+        padding: isMobile ? '18px' : '24px',
+        borderRadius: isMobile ? '20px' : '24px',
         background: theme.isDark ? 'rgba(2,6,23,0.35)' : 'rgba(255,255,255,0.68)',
         border: `1px solid ${theme.border}`,
+        width: '100%',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ textAlign: 'center', marginBottom: '26px' }}>
+      <div style={{ textAlign: 'center', marginBottom: isMobile ? '22px' : '26px' }}>
         <div style={styles.lockedBadge}>🔥 Premium Locked Preview • Launch Access</div>
 
-        <h2 style={{ ...styles.lockedTitle, color: theme.text }}>
+        <h2 style={{ ...styles.lockedTitle(isMobile), color: theme.text }}>
           🔒 Preview Locked — Full Course Waiting Inside
         </h2>
 
-        <p style={{ ...styles.lockedText, color: theme.muted }}>
+        <p style={{ ...styles.lockedText(isMobile), color: theme.muted }}>
           Tum abhi preview dekh rahe ho. Full access ke baad videos, premium PDFs,
           live classes aur complete unit-wise material unlock hoga — sab kuch ek jagah.
         </p>
@@ -308,22 +328,22 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
         </div>
       </div>
 
-      <div style={styles.previewGrid}>
+      <div style={styles.previewGrid(isMobile)}>
         {previewCards.map((item, index) => (
           <motion.div
             key={index}
             whileHover={{ y: -3 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
-              ...styles.previewCard,
+              ...styles.previewCard(isMobile),
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadow,
             }}
           >
-            <div style={{ fontSize: '26px', marginBottom: '8px' }}>{item.icon}</div>
+            <div style={{ fontSize: isMobile ? '22px' : '26px', marginBottom: '8px' }}>{item.icon}</div>
 
-            <h3 style={{ margin: 0, color: theme.primary, fontSize: '28px' }}>
+            <h3 style={{ margin: 0, color: theme.primary, fontSize: isMobile ? '23px' : '28px' }}>
               {item.count}
             </h3>
 
@@ -336,7 +356,7 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
 
       <div
         style={{
-          ...styles.unlockBox,
+          ...styles.unlockBox(isMobile),
           background: theme.isDark
             ? 'linear-gradient(135deg, rgba(139,92,246,0.16), rgba(59,130,246,0.10))'
             : 'linear-gradient(135deg, rgba(237,233,254,0.85), rgba(219,234,254,0.85))',
@@ -345,7 +365,7 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
       >
         <h3 style={{ marginTop: 0, color: theme.text }}>🚀 What You’ll Unlock</h3>
 
-        <div style={{ ...styles.unlockGrid, color: theme.textSecondary }}>
+        <div style={{ ...styles.unlockGrid(isMobile), color: theme.textSecondary }}>
           <span>✅ Complete course content</span>
           <span>✅ Premium protected notes</span>
           <span>✅ Videos + PDFs in one place</span>
@@ -355,7 +375,7 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
         </div>
       </div>
 
-      <div style={styles.compareGrid}>
+      <div style={styles.compareGrid(isMobile)}>
         <div
           style={{
             ...styles.compareCard,
@@ -385,19 +405,19 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
         </div>
       </div>
 
-      <div style={styles.lockedListsGrid}>
+      <div style={styles.lockedListsGrid(isMobile)}>
         <LockedList title="🎥 Videos Preview" items={course.videos} type="video" theme={theme} />
         <LockedList title="📄 PDFs Preview" items={course.pdfs} type="pdf" theme={theme} />
       </div>
 
-      <div style={styles.finalUnlock}>
+      <div style={styles.finalUnlock(isMobile)}>
         <div style={styles.launchBadge}>🔥 Launch Access • Limited Time</div>
 
-        <h2 style={styles.finalUnlockTitle}>
+        <h2 style={styles.finalUnlockTitle(isMobile)}>
           Stop searching random notes. Unlock everything in one place.
         </h2>
 
-        <p style={styles.finalUnlockText}>
+        <p style={styles.finalUnlockText(isMobile)}>
           Unit-wise PDFs, videos, live class access aur protected premium notes ek hi jagah
           milenge — clean, organized aur ready-to-study.
         </p>
@@ -413,7 +433,7 @@ function LockedCoursePreview({ course, theme, onUnlock }) {
           whileTap={{ scale: 0.985 }}
           transition={{ duration: 0.16, ease: 'easeOut' }}
           onClick={onUnlock}
-          style={styles.unlockBtn}
+          style={styles.unlockBtn(isMobile)}
         >
           🚀 Unlock Full Course Now
         </motion.button>
@@ -448,7 +468,7 @@ function LockedList({ title, items, type, theme }) {
               color: theme.text,
             }}
           >
-            <span style={{ fontWeight: 800 }}>
+            <span style={{ fontWeight: 800, minWidth: 0, overflowWrap: 'break-word' }}>
               🔒 {item.title || `${type === 'video' ? 'Video' : 'PDF'} ${i + 1}`}
             </span>
 
@@ -477,12 +497,24 @@ function CourseDetail() {
   const [lockedMsg, setLockedMsg] = useState('');
   const [doneMsg, setDoneMsg] = useState('');
   const [loadingFreeEnroll, setLoadingFreeEnroll] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [courseProgress, setCourseProgress] = useState({
     progressPercent: 0,
     completedVideoUrls: [],
     completedPdfUrls: [],
   });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchCourseProgress = async () => {
     try {
@@ -637,9 +669,6 @@ function CourseDetail() {
 
         setLockedMsg('⚠️ Course load issue. Please refresh once.');
         setTimeout(() => setLockedMsg(''), 4000);
-
-        // IMPORTANT: yahan redirect mat karo
-        // navigate('/my-courses');
       }
     };
 
@@ -842,6 +871,115 @@ function CourseDetail() {
   const totalVideos = course.videos?.length || 0;
   const totalPdfs = course.pdfs?.length || 0;
 
+  const CourseContentPanel = () => (
+    <aside
+      style={{
+        ...styles.sidebar(isMobile),
+        background: theme.card,
+        border: `1px solid ${theme.border}`,
+        boxShadow: theme.shadow,
+        backdropFilter: theme.glass,
+        WebkitBackdropFilter: theme.glass,
+      }}
+    >
+      <h3 style={{ marginTop: 0, marginBottom: '16px', color: theme.text }}>
+        Course Content
+      </h3>
+
+      {isEnrolled && (
+        <div
+          style={{
+            ...styles.previewOnlyBox,
+            background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
+            border: `1px solid ${theme.border}`,
+            color: theme.textSecondary,
+          }}
+        >
+          📈 Real progress: {courseProgress.progressPercent || 0}% complete.
+          Open = streak, Mark Done = progress.
+        </div>
+      )}
+
+      {locked && (
+        <div
+          style={{
+            ...styles.previewOnlyBox,
+            background: 'linear-gradient(135deg, rgba(251,191,36,0.14), rgba(239,68,68,0.10))',
+            border: '1px solid rgba(251,191,36,0.30)',
+            color: theme.muted,
+          }}
+        >
+          🔒 Preview only. Unlock karne ke baad actual videos, PDFs aur live classes open honge.
+        </div>
+      )}
+
+      <div style={styles.tabRow}>
+        <button
+          onClick={() => handleTabChange('videos')}
+          style={{
+            ...styles.tabBtn,
+            background: activeTab === 'videos' ? theme.primary : theme.bgSecondary,
+            color: activeTab === 'videos' ? '#fff' : theme.text,
+            border: `1px solid ${theme.border}`,
+          }}
+        >
+          Videos
+        </button>
+
+        <button
+          onClick={() => handleTabChange('pdfs')}
+          style={{
+            ...styles.tabBtn,
+            background: activeTab === 'pdfs' ? theme.primary : theme.bgSecondary,
+            color: activeTab === 'pdfs' ? '#fff' : theme.text,
+            border: `1px solid ${theme.border}`,
+          }}
+        >
+          PDFs
+        </button>
+      </div>
+
+      {activeTab === 'videos' && (
+        <ContentList
+          items={course.videos}
+          type="video"
+          locked={locked}
+          activeTitle={activeVideo?.title}
+          onClick={handleVideoClick}
+          theme={theme}
+          completedUrls={courseProgress.completedVideoUrls}
+        />
+      )}
+
+      {activeTab === 'pdfs' && (
+        <ContentList
+          items={course.pdfs}
+          type="pdf"
+          locked={locked}
+          activeTitle={activePdf?.title}
+          onClick={handlePdfClick}
+          theme={theme}
+          completedUrls={courseProgress.completedPdfUrls}
+        />
+      )}
+
+      {locked && (
+        <motion.button
+          whileHover={{ scale: 1.018, y: -1 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+          onClick={() => openCheckout('sidebar locked preview')}
+          style={{
+            ...styles.sidebarUnlockBtn,
+            background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+          }}
+        >
+          🚀 Unlock Course Now
+        </motion.button>
+      )}
+    </aside>
+  );
+
   return (
     <div
       style={{
@@ -856,13 +994,13 @@ function CourseDetail() {
       <div style={styles.glowOne} />
       <div style={styles.glowTwo} />
 
-      <main style={styles.page}>
+      <main style={styles.page(isMobile)}>
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{
-            ...styles.hero,
+            ...styles.hero(isMobile),
             background: theme.card,
             border: `1px solid ${theme.border}`,
             boxShadow: theme.shadow,
@@ -871,7 +1009,7 @@ function CourseDetail() {
             borderRadius: theme.radius,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <button
               onClick={() => {
                 logActivity(
@@ -938,18 +1076,18 @@ function CourseDetail() {
               )}
             </div>
 
-            <h1 style={{ ...styles.heroTitle, color: theme.text }}>
+            <h1 style={{ ...styles.heroTitle(isMobile), color: theme.text }}>
               {course.title}
             </h1>
 
-            <p style={{ ...styles.heroText, color: theme.muted }}>
+            <p style={{ ...styles.heroText(isMobile), color: theme.muted }}>
               {course.description || 'Access structured content, videos, PDFs and course resources in one clean learning page.'}
             </p>
           </div>
 
           <div
             style={{
-              ...styles.priceCard,
+              ...styles.priceCard(isMobile),
               background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.74)',
               border: `1px solid ${theme.border}`,
             }}
@@ -1074,14 +1212,14 @@ function CourseDetail() {
           </motion.div>
         )}
 
-        <div style={styles.mainLayout}>
+        <div style={styles.mainLayout(isMobile)}>
           <div style={styles.contentArea}>
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
               style={{
-                ...styles.playerCard,
+                ...styles.playerCard(isMobile),
                 background: theme.card,
                 border: `1px solid ${theme.border}`,
                 boxShadow: theme.shadow,
@@ -1094,6 +1232,7 @@ function CourseDetail() {
                   course={course}
                   theme={theme}
                   onUnlock={() => openCheckout('locked preview')}
+                  isMobile={isMobile}
                 />
               ) : (
                 <>
@@ -1102,11 +1241,11 @@ function CourseDetail() {
                       <iframe
                         src={getEmbedUrl(activeVideo.url)}
                         width="100%"
-                        height="430px"
+                        height={isMobile ? '220px' : '430px'}
                         title={activeVideo.title}
                         style={{
                           border: 'none',
-                          borderRadius: '18px',
+                          borderRadius: isMobile ? '14px' : '18px',
                           background: '#000',
                         }}
                         allowFullScreen
@@ -1121,6 +1260,7 @@ function CourseDetail() {
                         disabled={isVideoDone(activeVideo)}
                         style={{
                           ...styles.doneBtn,
+                          width: isMobile ? '100%' : 'auto',
                           background: isVideoDone(activeVideo)
                             ? 'linear-gradient(135deg, #16a34a, #15803d)'
                             : theme.success,
@@ -1154,6 +1294,7 @@ function CourseDetail() {
                             disabled={isPdfDone(activePdf)}
                             style={{
                               ...styles.doneBtn,
+                              width: isMobile ? '100%' : 'auto',
                               marginTop: '14px',
                               background: isPdfDone(activePdf)
                                 ? 'linear-gradient(135deg, #16a34a, #15803d)'
@@ -1176,6 +1317,9 @@ function CourseDetail() {
               )}
             </motion.div>
 
+            {/* ✅ Mobile: Course Content comes immediately after viewer + Mark Done */}
+            {isMobile && <CourseContentPanel />}
+
             <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
 
             {course.price > 0 && isEnrolled && (
@@ -1187,7 +1331,7 @@ function CourseDetail() {
             {course.price > 0 && !isEnrolled && (
               <div
                 style={{
-                  ...styles.bottomUnlockCard,
+                  ...styles.bottomUnlockCard(isMobile),
                   background: theme.card,
                   border: `1px solid ${theme.border}`,
                   boxShadow: theme.shadow,
@@ -1206,7 +1350,7 @@ function CourseDetail() {
                   whileTap={{ scale: 0.985 }}
                   transition={{ duration: 0.16, ease: 'easeOut' }}
                   onClick={() => openCheckout('bottom unlock card')}
-                  style={styles.unlockBtn}
+                  style={styles.unlockBtn(isMobile)}
                 >
                   🚀 Unlock Full Course Now
                 </motion.button>
@@ -1218,112 +1362,8 @@ function CourseDetail() {
             </div>
           </div>
 
-          <aside
-            style={{
-              ...styles.sidebar,
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              boxShadow: theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: '16px', color: theme.text }}>
-              Course Content
-            </h3>
-
-            {isEnrolled && (
-              <div
-                style={{
-                  ...styles.previewOnlyBox,
-                  background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
-                  border: `1px solid ${theme.border}`,
-                  color: theme.textSecondary,
-                }}
-              >
-                📈 Real progress: {courseProgress.progressPercent || 0}% complete.
-                Open = streak, Mark Done = progress.
-              </div>
-            )}
-
-            {locked && (
-              <div
-                style={{
-                  ...styles.previewOnlyBox,
-                  background: 'linear-gradient(135deg, rgba(251,191,36,0.14), rgba(239,68,68,0.10))',
-                  border: '1px solid rgba(251,191,36,0.30)',
-                  color: theme.muted,
-                }}
-              >
-                🔒 Preview only. Unlock karne ke baad actual videos, PDFs aur live classes open honge.
-              </div>
-            )}
-
-            <div style={styles.tabRow}>
-              <button
-                onClick={() => handleTabChange('videos')}
-                style={{
-                  ...styles.tabBtn,
-                  background: activeTab === 'videos' ? theme.primary : theme.bgSecondary,
-                  color: activeTab === 'videos' ? '#fff' : theme.text,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
-                Videos
-              </button>
-
-              <button
-                onClick={() => handleTabChange('pdfs')}
-                style={{
-                  ...styles.tabBtn,
-                  background: activeTab === 'pdfs' ? theme.primary : theme.bgSecondary,
-                  color: activeTab === 'pdfs' ? '#fff' : theme.text,
-                  border: `1px solid ${theme.border}`,
-                }}
-              >
-                PDFs
-              </button>
-            </div>
-
-            {activeTab === 'videos' && (
-              <ContentList
-                items={course.videos}
-                type="video"
-                locked={locked}
-                activeTitle={activeVideo?.title}
-                onClick={handleVideoClick}
-                theme={theme}
-                completedUrls={courseProgress.completedVideoUrls}
-              />
-            )}
-
-            {activeTab === 'pdfs' && (
-              <ContentList
-                items={course.pdfs}
-                type="pdf"
-                locked={locked}
-                activeTitle={activePdf?.title}
-                onClick={handlePdfClick}
-                theme={theme}
-                completedUrls={courseProgress.completedPdfUrls}
-              />
-            )}
-
-            {locked && (
-              <motion.button
-                whileHover={{ scale: 1.018, y: -1 }}
-                whileTap={{ scale: 0.985 }}
-                transition={{ duration: 0.16, ease: 'easeOut' }}
-                onClick={() => openCheckout('sidebar locked preview')}
-                style={{
-                  ...styles.sidebarUnlockBtn,
-                  background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
-                }}
-              >
-                🚀 Unlock Course Now
-              </motion.button>
-            )}
-          </aside>
+          {/* ✅ Desktop: Course Content stays as right sidebar */}
+          {!isMobile && <CourseContentPanel />}
         </div>
       </main>
 
@@ -1377,7 +1417,7 @@ function ContentList({ items, type, locked, activeTitle, onClick, theme, complet
               border: `1px solid ${done ? 'rgba(34,197,94,0.35)' : theme.border}`,
             }}
           >
-            <span>
+            <span style={{ minWidth: 0, overflowWrap: 'break-word' }}>
               {locked ? '🔒' : type === 'video' ? '▶️' : '📄'} {item.title}
             </span>
 
@@ -1406,6 +1446,7 @@ const styles = {
     pointerEvents: 'none',
     zIndex: 0,
   },
+
   glowOne: {
     position: 'absolute',
     top: '90px',
@@ -1418,6 +1459,7 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
+
   glowTwo: {
     position: 'absolute',
     top: '650px',
@@ -1430,21 +1472,27 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
-  page: {
+
+  page: (isMobile) => ({
     maxWidth: '1240px',
     margin: '0 auto',
-    padding: '32px 20px 46px',
+    padding: isMobile ? '22px 14px 36px' : '32px 20px 46px',
     position: 'relative',
     zIndex: 1,
-  },
-  hero: {
-    padding: '28px',
+    width: '100%',
+  }),
+
+  hero: (isMobile) => ({
+    padding: isMobile ? '22px 16px' : '28px',
     marginBottom: '22px',
     display: 'grid',
-    gridTemplateColumns: '1.35fr 0.65fr',
-    gap: '24px',
+    gridTemplateColumns: isMobile ? '1fr' : '1.35fr 0.65fr',
+    gap: isMobile ? '18px' : '24px',
     alignItems: 'center',
-  },
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
   backBtn: {
     padding: '10px 14px',
     borderRadius: '14px',
@@ -1452,46 +1500,57 @@ const styles = {
     fontWeight: 900,
     marginBottom: '16px',
   },
+
   heroTags: {
     display: 'flex',
     gap: '10px',
     flexWrap: 'wrap',
     marginBottom: '14px',
   },
+
   heroTag: {
     padding: '8px 12px',
     borderRadius: '999px',
     fontSize: '12px',
     fontWeight: 950,
   },
-  heroTitle: {
+
+  heroTitle: (isMobile) => ({
     margin: '0 0 12px',
-    fontSize: 'clamp(30px, 4vw, 48px)',
+    fontSize: isMobile ? 'clamp(26px, 8vw, 38px)' : 'clamp(30px, 4vw, 48px)',
     lineHeight: 1.08,
     fontWeight: 950,
     letterSpacing: '-0.8px',
-  },
-  heroText: {
+    wordBreak: 'normal',
+  }),
+
+  heroText: (isMobile) => ({
     margin: 0,
     lineHeight: 1.75,
-    fontSize: '15px',
+    fontSize: isMobile ? '13.5px' : '15px',
     maxWidth: '720px',
-  },
-  priceCard: {
-    padding: '22px',
-    borderRadius: '24px',
-  },
+  }),
+
+  priceCard: (isMobile) => ({
+    padding: isMobile ? '18px' : '22px',
+    borderRadius: isMobile ? '20px' : '24px',
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
   priceLabel: {
     margin: '0 0 6px',
     fontSize: '13px',
     fontWeight: 900,
     textTransform: 'uppercase',
   },
+
   priceValue: {
     margin: '0 0 10px',
     fontSize: '34px',
     fontWeight: 950,
   },
+
   mainActionBtn: {
     width: '100%',
     padding: '13px 16px',
@@ -1502,6 +1561,7 @@ const styles = {
     fontSize: '15px',
     marginTop: '10px',
   },
+
   doneBtn: {
     marginTop: '10px',
     padding: '12px 16px',
@@ -1511,32 +1571,44 @@ const styles = {
     fontWeight: 950,
     cursor: 'pointer',
   },
+
   lockedMsg: {
     marginBottom: '18px',
     padding: '13px 16px',
     borderRadius: '16px',
     fontWeight: 900,
   },
-  mainLayout: {
+
+  mainLayout: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: '1fr 330px',
-    gap: '22px',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 330px',
+    gap: isMobile ? '18px' : '22px',
     alignItems: 'start',
-  },
+    width: '100%',
+  }),
+
   contentArea: {
     minWidth: 0,
   },
-  playerCard: {
-    borderRadius: '24px',
-    padding: '18px',
-    marginBottom: '22px',
-  },
-  sidebar: {
-    borderRadius: '24px',
-    padding: '18px',
-    position: 'sticky',
-    top: '92px',
-  },
+
+  playerCard: (isMobile) => ({
+    borderRadius: isMobile ? '20px' : '24px',
+    padding: isMobile ? '12px' : '18px',
+    marginBottom: isMobile ? '14px' : '22px',
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
+  sidebar: (isMobile) => ({
+    borderRadius: isMobile ? '20px' : '24px',
+    padding: isMobile ? '14px' : '18px',
+    position: isMobile ? 'relative' : 'sticky',
+    top: isMobile ? 'auto' : '92px',
+    width: '100%',
+    overflow: 'hidden',
+    marginBottom: isMobile ? '18px' : 0,
+  }),
+
   previewOnlyBox: {
     padding: '12px',
     borderRadius: '14px',
@@ -1545,11 +1617,13 @@ const styles = {
     lineHeight: '1.55',
     fontWeight: 800,
   },
+
   tabRow: {
     display: 'flex',
     gap: '10px',
     marginBottom: '18px',
   },
+
   tabBtn: {
     flex: 1,
     padding: '11px 14px',
@@ -1557,6 +1631,7 @@ const styles = {
     cursor: 'pointer',
     fontWeight: 900,
   },
+
   contentItem: {
     padding: '12px 14px',
     borderRadius: '14px',
@@ -1567,11 +1642,14 @@ const styles = {
     gap: '8px',
     alignItems: 'center',
   },
+
   lockedSmall: {
     color: '#fbbf24',
     fontSize: '11px',
     fontWeight: 950,
+    flex: '0 0 auto',
   },
+
   sidebarUnlockBtn: {
     marginTop: '14px',
     width: '100%',
@@ -1583,6 +1661,7 @@ const styles = {
     fontWeight: 950,
     boxShadow: '0 12px 28px rgba(34,197,94,0.22)',
   },
+
   approvedBox: {
     marginTop: '24px',
     padding: '16px',
@@ -1592,29 +1671,35 @@ const styles = {
     fontWeight: 900,
     border: '1px solid #166534',
   },
-  bottomUnlockCard: {
+
+  bottomUnlockCard: (isMobile) => ({
     marginTop: '24px',
-    padding: '22px',
-    borderRadius: '24px',
+    padding: isMobile ? '18px' : '22px',
+    borderRadius: isMobile ? '20px' : '24px',
     textAlign: 'center',
-  },
+    width: '100%',
+  }),
+
   pdfControls: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     flexWrap: 'wrap',
   },
+
   pdfBtn: {
     padding: '7px 10px',
     borderRadius: '10px',
     fontWeight: 950,
   },
+
   zoomText: {
     minWidth: '52px',
     textAlign: 'center',
     fontSize: '13px',
     fontWeight: 950,
   },
+
   fitBtn: {
     padding: '7px 12px',
     borderRadius: '10px',
@@ -1623,6 +1708,7 @@ const styles = {
     fontWeight: 900,
     fontSize: '12px',
   },
+
   pdfWatermark: {
     position: 'absolute',
     inset: 0,
@@ -1638,6 +1724,7 @@ const styles = {
     textAlign: 'center',
     padding: '20px',
   },
+
   lockedBadge: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -1651,18 +1738,21 @@ const styles = {
     fontSize: '13px',
     marginBottom: '14px',
   },
-  lockedTitle: {
+
+  lockedTitle: (isMobile) => ({
     margin: '0 0 10px',
-    fontSize: '30px',
+    fontSize: isMobile ? '23px' : '30px',
     lineHeight: 1.2,
     fontWeight: 950,
-  },
-  lockedText: {
+  }),
+
+  lockedText: (isMobile) => ({
     lineHeight: 1.8,
     maxWidth: '820px',
     margin: '0 auto',
-    fontSize: '15px',
-  },
+    fontSize: isMobile ? '13.5px' : '15px',
+  }),
+
   lockedTags: {
     marginTop: '18px',
     display: 'flex',
@@ -1670,6 +1760,7 @@ const styles = {
     gap: '10px',
     flexWrap: 'wrap',
   },
+
   greenTag: {
     padding: '8px 12px',
     borderRadius: '999px',
@@ -1679,6 +1770,7 @@ const styles = {
     fontSize: '12px',
     fontWeight: 950,
   },
+
   blueTag: {
     padding: '8px 12px',
     borderRadius: '999px',
@@ -1688,6 +1780,7 @@ const styles = {
     fontSize: '12px',
     fontWeight: 950,
   },
+
   yellowTag: {
     padding: '8px 12px',
     borderRadius: '999px',
@@ -1697,55 +1790,65 @@ const styles = {
     fontSize: '12px',
     fontWeight: 950,
   },
-  previewGrid: {
+
+  previewGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(170px, 1fr))',
     gap: '14px',
     marginBottom: '24px',
-  },
-  previewCard: {
-    padding: '18px',
+  }),
+
+  previewCard: (isMobile) => ({
+    padding: isMobile ? '16px' : '18px',
     borderRadius: '18px',
     textAlign: 'center',
-  },
-  unlockBox: {
-    padding: '18px',
+  }),
+
+  unlockBox: (isMobile) => ({
+    padding: isMobile ? '16px' : '18px',
     borderRadius: '20px',
     marginBottom: '22px',
-  },
-  unlockGrid: {
+  }),
+
+  unlockGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: '10px',
     fontWeight: 800,
-    fontSize: '14px',
-  },
-  compareGrid: {
+    fontSize: isMobile ? '13px' : '14px',
+  }),
+
+  compareGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))',
     gap: '14px',
     marginBottom: '24px',
-  },
+  }),
+
   compareCard: {
     padding: '16px',
     borderRadius: '18px',
   },
+
   compareText: {
     margin: '8px 0 0',
     lineHeight: 1.6,
     fontSize: '13px',
     fontWeight: 700,
   },
-  lockedListsGrid: {
+
+  lockedListsGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: '18px',
     marginBottom: '24px',
-  },
+  }),
+
   lockedList: {
     padding: '18px',
     borderRadius: '20px',
   },
+
   lockedItem: {
     padding: '12px 14px',
     borderRadius: '14px',
@@ -1755,14 +1858,16 @@ const styles = {
     gap: '10px',
     alignItems: 'center',
   },
-  finalUnlock: {
+
+  finalUnlock: (isMobile) => ({
     textAlign: 'center',
-    padding: '30px',
-    borderRadius: '24px',
+    padding: isMobile ? '22px 16px' : '30px',
+    borderRadius: isMobile ? '20px' : '24px',
     background: 'linear-gradient(135deg, rgba(34,197,94,0.20), rgba(59,130,246,0.18), rgba(139,92,246,0.16))',
     border: '1px solid rgba(34,197,94,0.40)',
     boxShadow: '0 18px 50px rgba(34,197,94,0.14)',
-  },
+  }),
+
   launchBadge: {
     display: 'inline-flex',
     padding: '7px 14px',
@@ -1774,33 +1879,38 @@ const styles = {
     marginBottom: '14px',
     border: '1px solid rgba(239,68,68,0.28)',
   },
-  finalUnlockTitle: {
+
+  finalUnlockTitle: (isMobile) => ({
     margin: '0 0 10px',
     color: '#fff',
-    fontSize: '26px',
+    fontSize: isMobile ? '21px' : '26px',
     lineHeight: 1.25,
     fontWeight: 950,
-  },
-  finalUnlockText: {
+  }),
+
+  finalUnlockText: (isMobile) => ({
     color: '#dbeafe',
     lineHeight: 1.75,
     maxWidth: '780px',
     margin: '0 auto 18px',
-    fontSize: '15px',
+    fontSize: isMobile ? '13px' : '15px',
     fontWeight: 700,
-  },
-  unlockBtn: {
-    padding: '15px 28px',
+  }),
+
+  unlockBtn: (isMobile) => ({
+    width: isMobile ? '100%' : 'auto',
+    padding: isMobile ? '14px 18px' : '15px 28px',
     borderRadius: '18px',
     border: 'none',
     background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
     color: 'white',
     fontWeight: 950,
     cursor: 'pointer',
-    fontSize: '16px',
+    fontSize: isMobile ? '14px' : '16px',
     boxShadow: '0 16px 42px rgba(34,197,94,0.26)',
     marginTop: '20px',
-  },
+  }),
+
   unlockSmallText: {
     marginTop: '10px',
     color: '#d1d5db',

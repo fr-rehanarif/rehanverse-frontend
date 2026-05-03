@@ -2,9 +2,22 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
 import Reveal from './Reveal';
+import { useEffect, useState } from 'react';
 
 function Footer() {
   const theme = useTheme();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const footerLinks = [
     { label: 'Courses', path: '/courses', icon: '📚' },
@@ -12,11 +25,7 @@ function Footer() {
     { label: 'Profile', path: '/profile', icon: '👤' },
   ];
 
-  const trustItems = [
-    'Protected PDFs',
-    'Secure Access',
-    'Student First',
-  ];
+  const trustItems = ['Protected PDFs', 'Secure Access', 'Student First'];
 
   return (
     <Reveal>
@@ -33,13 +42,13 @@ function Footer() {
         <div style={styles.glowOne} />
         <div style={styles.glowTwo} />
 
-        <div style={styles.inner}>
+        <div style={styles.inner(isMobile)}>
           {/* BRAND */}
           <div style={styles.brandCol}>
-            <div style={styles.logoRow}>
+            <div style={styles.logoRow(isMobile)}>
               <div
                 style={{
-                  ...styles.logoIcon,
+                  ...styles.logoIcon(isMobile),
                   background: theme.primary,
                   color: theme.buttonText,
                   boxShadow: `0 0 20px ${theme.primary}40`,
@@ -48,16 +57,16 @@ function Footer() {
                 🎓
               </div>
 
-              <h2 style={{ ...styles.brandName, color: theme.primary }}>
+              <h2 style={{ ...styles.brandName(isMobile), color: theme.primary }}>
                 REHANVERSE
               </h2>
             </div>
 
-            <p style={{ ...styles.brandText, color: theme.muted }}>
+            <p style={{ ...styles.brandText(isMobile), color: theme.muted }}>
               Learn anything, anytime — clean, simple and powerful learning experience for focused students.
             </p>
 
-            <div style={styles.trustRow}>
+            <div style={styles.trustRow(isMobile)}>
               {trustItems.map((item) => (
                 <span
                   key={item}
@@ -77,39 +86,43 @@ function Footer() {
           </div>
 
           {/* QUICK LINKS */}
-          <div>
-            <h4 style={{ ...styles.heading, color: theme.text }}>Quick Links</h4>
+          <div style={styles.col(isMobile)}>
+            <h4 style={{ ...styles.heading(isMobile), color: theme.text }}>
+              Quick Links
+            </h4>
 
             {footerLinks.map((item) => (
-              <Link key={item.path} to={item.path} style={styles.link(theme)}>
-                <span>{item.icon}</span>
+              <Link key={item.path} to={item.path} style={styles.link(theme, isMobile)}>
+                <span style={styles.linkIcon}>{item.icon}</span>
                 <span>{item.label}</span>
               </Link>
             ))}
           </div>
 
           {/* SUPPORT */}
-          <div>
-            <h4 style={{ ...styles.heading, color: theme.text }}>Support</h4>
+          <div style={styles.col(isMobile)}>
+            <h4 style={{ ...styles.heading(isMobile), color: theme.text }}>
+              Support
+            </h4>
 
-            <a href="mailto:rehanverse.app@gmail.com" style={styles.link(theme)}>
-              <span>📧</span>
-              <span>rehanverse.app@gmail.com</span>
+            <a href="mailto:rehanverse.app@gmail.com" style={styles.link(theme, isMobile)}>
+              <span style={styles.linkIcon}>📧</span>
+              <span style={styles.emailText}>rehanverse.app@gmail.com</span>
             </a>
 
             <a
               href="https://chat.whatsapp.com/HNuaMVaLxx062jr8QfdcJi"
               target="_blank"
               rel="noreferrer"
-              style={styles.link(theme)}
+              style={styles.link(theme, isMobile)}
             >
-              <span>📱</span>
+              <span style={styles.linkIcon}>📱</span>
               <span>WhatsApp Community</span>
             </a>
 
             <div
               style={{
-                ...styles.noticeMini,
+                ...styles.noticeMini(isMobile),
                 background: theme.isDark
                   ? 'rgba(255,255,255,0.035)'
                   : 'rgba(255,255,255,0.72)',
@@ -122,16 +135,18 @@ function Footer() {
           </div>
 
           {/* CONNECT + CREDITS */}
-          <div>
-            <h4 style={{ ...styles.heading, color: theme.text }}>Connect</h4>
+          <div style={styles.col(isMobile)}>
+            <h4 style={{ ...styles.heading(isMobile), color: theme.text }}>
+              Connect
+            </h4>
 
             <a
               href="https://www.instagram.com/fr._rehanarif/"
               target="_blank"
               rel="noreferrer"
-              style={styles.link(theme)}
+              style={styles.link(theme, isMobile)}
             >
-              <span>📸</span>
+              <span style={styles.linkIcon}>📸</span>
               <span>Instagram</span>
             </a>
 
@@ -139,15 +154,15 @@ function Footer() {
               href="https://chat.whatsapp.com/HNuaMVaLxx062jr8QfdcJi"
               target="_blank"
               rel="noreferrer"
-              style={styles.link(theme)}
+              style={styles.link(theme, isMobile)}
             >
-              <span>💬</span>
+              <span style={styles.linkIcon}>💬</span>
               <span>WhatsApp</span>
             </a>
 
             <div
               style={{
-                ...styles.creditBox,
+                ...styles.creditBox(isMobile),
                 background: theme.isDark
                   ? 'rgba(255,255,255,0.035)'
                   : 'rgba(255,255,255,0.72)',
@@ -174,7 +189,7 @@ function Footer() {
         {/* BOTTOM */}
         <div
           style={{
-            ...styles.bottom,
+            ...styles.bottom(isMobile),
             borderTop: `1px solid ${theme.border}`,
             color: theme.muted,
           }}
@@ -199,7 +214,10 @@ const styles = {
     marginTop: '60px',
     position: 'relative',
     overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
   },
+
   glowOne: {
     position: 'absolute',
     top: '-80px',
@@ -211,6 +229,7 @@ const styles = {
     filter: 'blur(90px)',
     pointerEvents: 'none',
   },
+
   glowTwo: {
     position: 'absolute',
     bottom: '-120px',
@@ -222,103 +241,157 @@ const styles = {
     filter: 'blur(95px)',
     pointerEvents: 'none',
   },
-  inner: {
+
+  inner: (isMobile) => ({
+    width: '100%',
     maxWidth: '1180px',
     margin: '0 auto',
-    padding: '44px 20px',
+    padding: isMobile ? '32px 16px 26px' : '44px 20px',
     display: 'grid',
-    gridTemplateColumns: '1.35fr repeat(3, 1fr)',
-    gap: '30px',
+    gridTemplateColumns: isMobile ? '1fr' : '1.35fr repeat(3, minmax(0, 1fr))',
+    gap: isMobile ? '24px' : '30px',
     position: 'relative',
     zIndex: 1,
-  },
+  }),
+
+  col: (isMobile) => ({
+    width: '100%',
+    minWidth: 0,
+    textAlign: isMobile ? 'left' : 'left',
+  }),
+
   brandCol: {
+    width: '100%',
     minWidth: 0,
   },
-  logoRow: {
+
+  logoRow: (isMobile) => ({
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: isMobile ? '10px' : '12px',
     marginBottom: '14px',
-  },
-  logoIcon: {
-    width: '46px',
-    height: '46px',
+    flexWrap: 'nowrap',
+    minWidth: 0,
+  }),
+
+  logoIcon: (isMobile) => ({
+    width: isMobile ? '42px' : '46px',
+    height: isMobile ? '42px' : '46px',
     borderRadius: '16px',
     display: 'grid',
     placeItems: 'center',
-    fontSize: '24px',
+    fontSize: isMobile ? '22px' : '24px',
     flex: '0 0 auto',
-  },
-  brandName: {
+  }),
+
+  brandName: (isMobile) => ({
     margin: 0,
-    fontSize: '24px',
+    fontSize: isMobile ? '21px' : '24px',
     fontWeight: 950,
-    letterSpacing: '1px',
-  },
-  brandText: {
-    lineHeight: 1.75,
+    letterSpacing: isMobile ? '0.6px' : '1px',
+    lineHeight: 1.15,
+    wordBreak: 'normal',
+    overflowWrap: 'normal',
+  }),
+
+  brandText: (isMobile) => ({
+    lineHeight: 1.7,
     margin: '0 0 18px',
-    maxWidth: '390px',
+    maxWidth: isMobile ? '100%' : '390px',
     fontWeight: 700,
-  },
-  trustRow: {
+    fontSize: isMobile ? '13.5px' : '15px',
+    wordBreak: 'normal',
+    overflowWrap: 'break-word',
+  }),
+
+  trustRow: (isMobile) => ({
     display: 'flex',
     gap: '8px',
     flexWrap: 'wrap',
-  },
+    width: '100%',
+    alignItems: 'center',
+  }),
+
   trustBadge: {
     padding: '7px 10px',
     borderRadius: '999px',
     fontSize: '12px',
     fontWeight: 900,
+    whiteSpace: 'nowrap',
   },
-  heading: {
+
+  heading: (isMobile) => ({
     marginTop: 0,
-    marginBottom: '14px',
-    fontSize: '16px',
+    marginBottom: isMobile ? '10px' : '14px',
+    fontSize: isMobile ? '15px' : '16px',
     fontWeight: 950,
-  },
-  link: (theme) => ({
+    lineHeight: 1.25,
+    wordBreak: 'normal',
+  }),
+
+  link: (theme, isMobile) => ({
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: '9px',
     color: theme.muted,
     textDecoration: 'none',
-    margin: '10px 0',
+    margin: isMobile ? '9px 0' : '10px 0',
     transition: '0.16s ease',
     fontWeight: 800,
     lineHeight: 1.5,
-    wordBreak: 'break-word',
+    fontSize: isMobile ? '13.5px' : '14px',
+    width: '100%',
+    minWidth: 0,
+    wordBreak: 'normal',
+    overflowWrap: 'anywhere',
   }),
-  noticeMini: {
-    marginTop: '14px',
-    padding: '12px 13px',
-    borderRadius: '16px',
-    fontSize: '13px',
-    fontWeight: 800,
-    lineHeight: 1.55,
-  },
-  creditBox: {
-    marginTop: '14px',
-    padding: '13px 14px',
-    borderRadius: '16px',
-    fontSize: '13px',
+
+  linkIcon: {
+    flex: '0 0 auto',
     lineHeight: 1.5,
   },
-  bottom: {
-    padding: '15px 20px',
+
+  emailText: {
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+  },
+
+  noticeMini: (isMobile) => ({
+    marginTop: '14px',
+    padding: isMobile ? '11px 12px' : '12px 13px',
+    borderRadius: '16px',
+    fontSize: isMobile ? '12.5px' : '13px',
+    fontWeight: 800,
+    lineHeight: 1.55,
+    width: '100%',
+    wordBreak: 'normal',
+    overflowWrap: 'break-word',
+  }),
+
+  creditBox: (isMobile) => ({
+    marginTop: '14px',
+    padding: isMobile ? '12px 12px' : '13px 14px',
+    borderRadius: '16px',
+    fontSize: isMobile ? '12.5px' : '13px',
+    lineHeight: 1.5,
+    width: '100%',
+  }),
+
+  bottom: (isMobile) => ({
+    padding: isMobile ? '15px 16px 88px' : '15px 20px',
     display: 'flex',
     justifyContent: 'center',
-    gap: '14px',
+    gap: isMobile ? '8px' : '14px',
     alignItems: 'center',
     flexWrap: 'wrap',
     textAlign: 'center',
-    fontSize: '14px',
+    fontSize: isMobile ? '12.5px' : '14px',
     fontWeight: 800,
     position: 'relative',
     zIndex: 1,
-  },
+    lineHeight: 1.5,
+    width: '100%',
+  }),
 };
 
 export default Footer;

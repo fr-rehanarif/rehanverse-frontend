@@ -1,5 +1,5 @@
 import API from '../api';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
@@ -14,9 +14,21 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const navigate = useNavigate();
   const theme = useTheme();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSubmit = async () => {
     if (loading || verifyLoading) return;
@@ -141,7 +153,7 @@ function Login() {
   return (
     <div
       style={{
-        ...styles.page,
+        ...styles.page(isMobile),
         background: theme.bg,
         color: theme.text,
       }}
@@ -155,63 +167,86 @@ function Login() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.38, ease: 'easeOut' }}
-        style={styles.wrapper}
+        style={styles.wrapper(isMobile)}
       >
-        <div style={styles.leftPanel}>
+        {!isMobile && (
+          <div style={styles.leftPanel}>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, duration: 0.35 }}
+              style={{
+                ...styles.brandCard(isMobile),
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                boxShadow: theme.shadow,
+                backdropFilter: theme.glass,
+                WebkitBackdropFilter: theme.glass,
+                borderRadius: theme.radius,
+              }}
+            >
+              <div style={styles.brandBadge}>🎓 REHANVERSE</div>
+
+              <h1 style={{ ...styles.heroTitle(isMobile), color: theme.primary }}>
+                Welcome back to your learning space.
+              </h1>
+
+              <p style={{ ...styles.heroText(isMobile), color: theme.textSecondary }}>
+                Continue your courses, access notes, watch videos, and stay focused with a clean student-first platform.
+              </p>
+
+              <div style={styles.points}>
+                {[
+                  'Secure course access',
+                  'Organized notes and PDFs',
+                  'Clean learning dashboard',
+                  'Email OTP login protection',
+                ].map((item) => (
+                  <div
+                    key={item}
+                    style={{
+                      ...styles.point,
+                      background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                      border: `1px solid ${theme.border}`,
+                      color: theme.textSecondary,
+                    }}
+                  >
+                    <span>✅</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isMobile && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08, duration: 0.35 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
             style={{
-              ...styles.brandCard,
+              ...styles.mobileBrand,
               background: theme.card,
               border: `1px solid ${theme.border}`,
               boxShadow: theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
-              borderRadius: theme.radius,
             }}
           >
-            <div style={styles.brandBadge}>🎓 REHANVERSE</div>
-
-            <h1 style={{ ...styles.heroTitle, color: theme.primary }}>
-              Welcome back to your learning space.
-            </h1>
-
-            <p style={{ ...styles.heroText, color: theme.textSecondary }}>
-              Continue your courses, access notes, watch videos, and stay focused with a clean student-first platform.
-            </p>
-
-            <div style={styles.points}>
-              {[
-                'Secure course access',
-                'Organized notes and PDFs',
-                'Clean learning dashboard',
-                'Email OTP login protection',
-              ].map((item) => (
-                <div
-                  key={item}
-                  style={{
-                    ...styles.point,
-                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                    border: `1px solid ${theme.border}`,
-                    color: theme.textSecondary,
-                  }}
-                >
-                  <span>✅</span>
-                  <span>{item}</span>
-                </div>
-              ))}
+            <div style={{ color: theme.primary, fontWeight: 950, fontSize: '20px' }}>
+              🎓 REHANVERSE
+            </div>
+            <div style={{ color: theme.muted, fontSize: '12.5px', fontWeight: 800, lineHeight: 1.5 }}>
+              Secure login with email OTP protection.
             </div>
           </motion.div>
-        </div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, scale: 0.985 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.05, duration: 0.35, ease: 'easeOut' }}
           style={{
-            ...styles.card,
+            ...styles.card(isMobile),
             background: theme.card,
             border: `1px solid ${theme.border}`,
             boxShadow: theme.shadowHover,
@@ -227,11 +262,11 @@ function Login() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              style={styles.cardHeader}
+              style={styles.cardHeader(isMobile)}
             >
               <div
                 style={{
-                  ...styles.iconBox,
+                  ...styles.iconBox(isMobile),
                   background: theme.isDark ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.10)',
                   border: `1px solid ${theme.border}`,
                 }}
@@ -239,11 +274,11 @@ function Login() {
                 {otpSent ? '📩' : '🔐'}
               </div>
 
-              <h2 style={{ ...styles.title, color: theme.primary }}>
+              <h2 style={{ ...styles.title(isMobile), color: theme.primary }}>
                 {otpSent ? 'Verify Login OTP 📩' : 'Welcome Back 👋'}
               </h2>
 
-              <p style={{ ...styles.subtitle, color: theme.muted }}>
+              <p style={{ ...styles.subtitle(isMobile), color: theme.muted }}>
                 {otpSent ? 'Enter OTP sent to your email' : 'Login and get back to REHANVERSE'}
               </p>
             </motion.div>
@@ -262,7 +297,7 @@ function Login() {
                   <label style={{ ...styles.label, color: theme.textSecondary }}>Email Address</label>
                   <input
                     style={{
-                      ...styles.input,
+                      ...styles.input(isMobile),
                       background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
                       color: theme.text,
                       border: `1px solid ${theme.border}`,
@@ -278,7 +313,7 @@ function Login() {
                   <div style={styles.passwordWrap}>
                     <input
                       style={{
-                        ...styles.input,
+                        ...styles.input(isMobile),
                         ...styles.passwordInput,
                         background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
                         color: theme.text,
@@ -308,7 +343,7 @@ function Login() {
                     whileTap={{ scale: loading ? 1 : 0.985 }}
                     transition={{ duration: 0.16, ease: 'easeOut' }}
                     style={{
-                      ...styles.btn,
+                      ...styles.btn(isMobile),
                       background: loading ? theme.muted : theme.primary,
                       color: theme.buttonText,
                       boxShadow: `0 0 20px ${theme.primary}45`,
@@ -330,7 +365,7 @@ function Login() {
                 >
                   <div
                     style={{
-                      ...styles.otpInfoBox,
+                      ...styles.otpInfoBox(isMobile),
                       background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
                       border: `1px solid ${theme.border}`,
                       color: theme.textSecondary,
@@ -347,8 +382,8 @@ function Login() {
                   <label style={{ ...styles.label, color: theme.textSecondary }}>Enter OTP</label>
                   <input
                     style={{
-                      ...styles.input,
-                      ...styles.otpInput,
+                      ...styles.input(isMobile),
+                      ...styles.otpInput(isMobile),
                       background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
                       color: theme.text,
                       border: `1px solid ${theme.border}`,
@@ -367,7 +402,7 @@ function Login() {
                     whileTap={{ scale: verifyLoading ? 1 : 0.985 }}
                     transition={{ duration: 0.16, ease: 'easeOut' }}
                     style={{
-                      ...styles.btn,
+                      ...styles.btn(isMobile),
                       background: verifyLoading ? theme.muted : theme.primary,
                       color: theme.buttonText,
                       boxShadow: `0 0 20px ${theme.primary}45`,
@@ -421,7 +456,7 @@ function Login() {
                   exit={{ opacity: 0, y: -8, scale: 0.98 }}
                   transition={{ duration: 0.22, ease: 'easeOut' }}
                   style={{
-                    ...styles.msg,
+                    ...styles.msg(isMobile),
                     color: isSuccess ? theme.success : theme.danger,
                     background: isSuccess
                       ? theme.isDark
@@ -448,7 +483,7 @@ function Login() {
 
             <div
               style={{
-                ...styles.securityStrip,
+                ...styles.securityStrip(isMobile),
                 background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
                 border: `1px solid ${theme.border}`,
                 color: theme.muted,
@@ -483,15 +518,16 @@ function Login() {
 }
 
 const styles = {
-  page: {
+  page: (isMobile) => ({
     minHeight: '100vh',
-    padding: '46px 20px',
+    padding: isMobile ? '24px 14px 34px' : '46px 20px',
     position: 'relative',
     overflow: 'hidden',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: isMobile ? 'flex-start' : 'center',
     justifyContent: 'center',
-  },
+  }),
+
   bgGrid: {
     position: 'absolute',
     inset: 0,
@@ -502,6 +538,7 @@ const styles = {
     pointerEvents: 'none',
     zIndex: 0,
   },
+
   glowOne: {
     position: 'absolute',
     top: '80px',
@@ -514,6 +551,7 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
+
   glowTwo: {
     position: 'absolute',
     bottom: '60px',
@@ -526,6 +564,7 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
+
   glowThree: {
     position: 'absolute',
     top: '45%',
@@ -538,27 +577,39 @@ const styles = {
     zIndex: 0,
     pointerEvents: 'none',
   },
-  wrapper: {
+
+  wrapper: (isMobile) => ({
     width: '100%',
-    maxWidth: '1120px',
+    maxWidth: isMobile ? '460px' : '1120px',
     display: 'grid',
-    gridTemplateColumns: '1.05fr 0.95fr',
-    gap: '26px',
+    gridTemplateColumns: isMobile ? '1fr' : '1.05fr 0.95fr',
+    gap: isMobile ? '14px' : '26px',
     alignItems: 'stretch',
     position: 'relative',
     zIndex: 1,
-  },
+  }),
+
   leftPanel: {
     display: 'flex',
   },
-  brandCard: {
+
+  brandCard: (isMobile) => ({
     width: '100%',
-    padding: '42px',
+    padding: isMobile ? '22px' : '42px',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    minHeight: '520px',
+    minHeight: isMobile ? 'auto' : '520px',
+  }),
+
+  mobileBrand: {
+    width: '100%',
+    padding: '16px 18px',
+    borderRadius: '22px',
+    display: 'grid',
+    gap: '5px',
   },
+
   brandBadge: {
     width: 'fit-content',
     padding: '9px 14px',
@@ -570,23 +621,27 @@ const styles = {
     marginBottom: '22px',
     letterSpacing: '0.5px',
   },
-  heroTitle: {
-    fontSize: 'clamp(34px, 4vw, 54px)',
+
+  heroTitle: (isMobile) => ({
+    fontSize: isMobile ? '30px' : 'clamp(34px, 4vw, 54px)',
     lineHeight: 1.08,
     margin: '0 0 18px',
     fontWeight: '950',
     letterSpacing: '-1px',
-  },
-  heroText: {
-    fontSize: '16px',
+  }),
+
+  heroText: (isMobile) => ({
+    fontSize: isMobile ? '14px' : '16px',
     lineHeight: '1.8',
     margin: '0 0 26px',
     maxWidth: '560px',
-  },
+  }),
+
   points: {
     display: 'grid',
     gap: '12px',
   },
+
   point: {
     padding: '14px 16px',
     borderRadius: '16px',
@@ -595,63 +650,77 @@ const styles = {
     gap: '10px',
     fontWeight: '800',
   },
-  card: {
-    padding: '34px',
+
+  card: (isMobile) => ({
+    padding: isMobile ? '22px 18px' : '34px',
     width: '100%',
-    maxWidth: '460px',
-    justifySelf: 'end',
-  },
-  cardHeader: {
+    maxWidth: isMobile ? '100%' : '460px',
+    justifySelf: isMobile ? 'stretch' : 'end',
+    overflow: 'hidden',
+  }),
+
+  cardHeader: (isMobile) => ({
     textAlign: 'center',
-    marginBottom: '24px',
-  },
-  iconBox: {
-    width: '58px',
-    height: '58px',
-    borderRadius: '20px',
+    marginBottom: isMobile ? '20px' : '24px',
+  }),
+
+  iconBox: (isMobile) => ({
+    width: isMobile ? '50px' : '58px',
+    height: isMobile ? '50px' : '58px',
+    borderRadius: isMobile ? '17px' : '20px',
     display: 'grid',
     placeItems: 'center',
     margin: '0 auto 16px',
-    fontSize: '26px',
-  },
-  title: {
+    fontSize: isMobile ? '24px' : '26px',
+  }),
+
+  title: (isMobile) => ({
     marginBottom: '10px',
     marginTop: 0,
-    fontSize: '32px',
+    fontSize: isMobile ? '25px' : '32px',
     fontWeight: '950',
-  },
-  subtitle: {
+    lineHeight: 1.15,
+  }),
+
+  subtitle: (isMobile) => ({
     margin: 0,
-    fontSize: '14px',
+    fontSize: isMobile ? '12px' : '14px',
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
-  },
+    lineHeight: 1.4,
+  }),
+
   formArea: {
     width: '100%',
   },
+
   label: {
     display: 'block',
     fontSize: '13px',
     fontWeight: '900',
     marginBottom: '8px',
   },
-  input: {
+
+  input: (isMobile) => ({
     width: '100%',
-    padding: '14px 15px',
+    padding: isMobile ? '13px 14px' : '14px 15px',
     marginBottom: '16px',
     borderRadius: '14px',
-    fontSize: '15px',
+    fontSize: '16px',
     outline: 'none',
     boxSizing: 'border-box',
     fontWeight: '700',
-  },
+  }),
+
   passwordWrap: {
     position: 'relative',
   },
+
   passwordInput: {
     paddingRight: '72px',
   },
+
   eyeBtn: {
     position: 'absolute',
     right: '12px',
@@ -662,46 +731,55 @@ const styles = {
     cursor: 'pointer',
     fontSize: '13px',
   },
-  btn: {
+
+  btn: (isMobile) => ({
     width: '100%',
-    padding: '14px',
+    padding: isMobile ? '13px' : '14px',
     border: 'none',
     borderRadius: '14px',
-    fontSize: '16px',
+    fontSize: isMobile ? '15px' : '16px',
     fontWeight: '900',
     marginTop: '4px',
-  },
-  msg: {
+  }),
+
+  msg: (isMobile) => ({
     textAlign: 'center',
     marginTop: '14px',
     padding: '11px 12px',
     borderRadius: '12px',
-    fontSize: '14px',
+    fontSize: isMobile ? '13px' : '14px',
     fontWeight: '800',
-  },
-  securityStrip: {
+    lineHeight: 1.45,
+  }),
+
+  securityStrip: (isMobile) => ({
     marginTop: '16px',
     padding: '12px 14px',
     borderRadius: '14px',
     display: 'flex',
     justifyContent: 'center',
     gap: '8px',
-    fontSize: '13px',
+    fontSize: isMobile ? '12.5px' : '13px',
     fontWeight: '800',
-  },
-  otpInfoBox: {
+    lineHeight: 1.45,
+    textAlign: 'center',
+  }),
+
+  otpInfoBox: (isMobile) => ({
     padding: '13px 14px',
     borderRadius: '14px',
     marginBottom: '16px',
-    fontSize: '14px',
+    fontSize: isMobile ? '13px' : '14px',
     lineHeight: 1.45,
-  },
-  otpInput: {
+  }),
+
+  otpInput: (isMobile) => ({
     textAlign: 'center',
-    letterSpacing: '6px',
-    fontSize: '22px',
+    letterSpacing: isMobile ? '4px' : '6px',
+    fontSize: isMobile ? '20px' : '22px',
     fontWeight: '950',
-  },
+  }),
+
   otpActions: {
     display: 'flex',
     justifyContent: 'center',
@@ -709,6 +787,7 @@ const styles = {
     flexWrap: 'wrap',
     marginTop: '14px',
   },
+
   linkBtn: {
     border: 'none',
     background: 'transparent',
