@@ -71,6 +71,7 @@ function Navbar() {
       whileHover={{ y: -1 }}
       whileTap={{ scale: 0.985 }}
       transition={{ duration: 0.16, ease: 'easeOut' }}
+      style={styles.navMotionItem}
     >
       {children}
     </motion.div>
@@ -142,7 +143,16 @@ function Navbar() {
 
       {user ? (
         <>
-          <div style={styles.bellWrap}>
+          <div
+            style={{
+              ...styles.bellWrap,
+              background: theme.isDark
+                ? 'rgba(255,255,255,0.045)'
+                : 'rgba(255,255,255,0.72)',
+              border: `1px solid ${theme.border}`,
+              boxShadow: `0 0 14px ${theme.primary}18`,
+            }}
+          >
             <NotificationBell theme={theme} />
           </div>
 
@@ -262,8 +272,13 @@ function Navbar() {
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.985 }}
         transition={{ duration: 0.16, ease: 'easeOut' }}
+        style={styles.logoWrap}
       >
-        <Link to="/" onClick={() => setMenuOpen(false)} style={{ ...styles.logo, color: theme.primary }}>
+        <Link
+          to="/"
+          onClick={() => setMenuOpen(false)}
+          style={{ ...styles.logo, color: theme.primary }}
+        >
           <span style={styles.logoIcon}>🎓</span>
           <span>REHANVERSE</span>
         </Link>
@@ -294,9 +309,9 @@ function Navbar() {
       <AnimatePresence>
         {isMobile && menuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               ...styles.mobileMenu,
@@ -320,12 +335,14 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '15px 38px',
+    padding: '14px 34px',
     position: 'sticky',
     top: 0,
-    zIndex: 100,
+    zIndex: 999,
     minHeight: '72px',
+    width: '100%',
   },
+
   navGlow: {
     position: 'absolute',
     inset: 0,
@@ -334,6 +351,13 @@ const styles = {
     pointerEvents: 'none',
     zIndex: -1,
   },
+
+  logoWrap: {
+    flexShrink: 0,
+    position: 'relative',
+    zIndex: 2,
+  },
+
   logo: {
     fontSize: '23px',
     fontWeight: '950',
@@ -343,18 +367,29 @@ const styles = {
     alignItems: 'center',
     gap: '10px',
     textShadow: '0 0 12px rgba(167,139,250,0.18)',
+    whiteSpace: 'nowrap',
   },
+
   logoIcon: {
     fontSize: '22px',
     filter: 'drop-shadow(0 0 7px rgba(167,139,250,0.35))',
   },
+
   links: {
     display: 'flex',
     alignItems: 'center',
-    gap: '14px',
-    flexWrap: 'wrap',
+    gap: '12px',
+    flexWrap: 'nowrap',
     justifyContent: 'flex-end',
+    minWidth: 0,
+    position: 'relative',
+    zIndex: 5,
   },
+
+  navMotionItem: {
+    flexShrink: 0,
+  },
+
   link: {
     textDecoration: 'none',
     fontSize: '15px',
@@ -364,7 +399,9 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '7px',
+    whiteSpace: 'nowrap',
   },
+
   btn: {
     padding: '11px 20px',
     border: 'none',
@@ -372,9 +409,12 @@ const styles = {
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '900',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
+
   themeWrap: {
-    minWidth: '225px',
+    minWidth: '220px',
     height: '46px',
     borderRadius: '17px',
     display: 'flex',
@@ -382,11 +422,14 @@ const styles = {
     gap: '8px',
     padding: '0 12px',
     overflow: 'hidden',
+    flexShrink: 0,
   },
+
   themeIcon: {
     fontSize: '16px',
     flex: '0 0 auto',
   },
+
   select: {
     width: '100%',
     height: '100%',
@@ -397,10 +440,21 @@ const styles = {
     fontWeight: '900',
     outline: 'none',
   },
+
   bellWrap: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '999px',
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    flexShrink: 0,
+    zIndex: 9999,
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
   },
+
   profilePill: {
     display: 'flex',
     alignItems: 'center',
@@ -408,13 +462,18 @@ const styles = {
     textDecoration: 'none',
     padding: '7px 10px 7px 7px',
     borderRadius: '999px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
+
   avatar: {
     width: '38px',
     height: '38px',
     borderRadius: '50%',
     objectFit: 'cover',
+    flexShrink: 0,
   },
+
   avatarFallback: {
     width: '38px',
     height: '38px',
@@ -424,7 +483,9 @@ const styles = {
     justifyContent: 'center',
     fontWeight: '900',
     fontSize: '14px',
+    flexShrink: 0,
   },
+
   menuBtn: {
     width: '44px',
     height: '44px',
@@ -432,7 +493,10 @@ const styles = {
     cursor: 'pointer',
     fontSize: '22px',
     fontWeight: '900',
+    position: 'relative',
+    zIndex: 20,
   },
+
   mobileMenu: {
     position: 'absolute',
     top: '82px',
@@ -444,6 +508,7 @@ const styles = {
     flexDirection: 'column',
     gap: '12px',
     alignItems: 'stretch',
+    zIndex: 9999,
   },
 };
 

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import API from '../api';
 
 function NotificationBell({ theme }) {
@@ -8,34 +9,76 @@ function NotificationBell({ theme }) {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [error, setError] = useState('');
 
+  const wrapperRef = useRef(null);
   const firstLoadDone = useRef(false);
   const previousIds = useRef(new Set());
 
   const token = localStorage.getItem('token');
 
-  const fetchNotifications = async () => {
-    try {
-      if (!token) return;
+  const safeText = theme?.text || '#ffffff';
+  const safeCard = theme?.card || 'rgba(15, 23, 42, 0.92)';
+  const safeBorder = theme?.border || 'rgba(255,255,255,0.12)';
+  const safePrimary = theme?.primary || '#8b5cf6';
+  const safeMuted = theme?.muted || 'rgba(255,255,255,0.65)';
+  const safeDanger = theme?.danger || '#ef4444';
 
-      setLoading(true);
+  const normalizeNotifications = (data) => {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.notifications)) return data.notifications;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+  };
 
-      const res = await fetch(`${API}/api/notifications/my`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  const fetchNotifications = useCallback(
+    async (silent = false) => {
+      try {
+        if (!token) {
+          setNotifications([]);
+          return;
+        }
 
-      const data = await res.json();
+        if (!silent) setLoading(true);
+        setError('');
 
-      if (res.ok && Array.isArray(data)) {
-        const newIds = new Set(data.map((n) => n._id));
+        const res = await fetch(`${API}/api/notifications/my`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        let data = null;
+
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
+
+        if (!res.ok) {
+          const msg = data?.message || 'Unable to load notifications';
+          setError(msg);
+          console.log('Notification fetch error:', msg);
+          return;
+        }
+
+        const list = normalizeNotifications(data);
+
+        const sortedList = [...list].sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        });
+
+        const newIds = new Set(sortedList.map((n) => n._id));
 
         if (firstLoadDone.current) {
-          const freshNotification = data.find(
-            (n) => !previousIds.current.has(n._id) && !n.isRead
+          const freshNotification = sortedList.find(
+            (n) => n?._id && !previousIds.current.has(n._id) && !n.isRead
           );
 
           if (freshNotification) {
@@ -50,29 +93,63 @@ function NotificationBell({ theme }) {
         previousIds.current = newIds;
         firstLoadDone.current = true;
 
-        setNotifications(data);
-      } else {
-        console.log('Notification fetch error:', data.message);
+        setNotifications(sortedList);
+      } catch (err) {
+        setError('Network issue while loading notifications');
+        console.log('Notification fetch failed:', err);
+      } finally {
+        if (!silent) setLoading(false);
       }
-    } catch (err) {
-      console.log('Notification fetch failed:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [token]
+  );
+
+  useEffect(() => {
+    fetchNotifications(true);
+
+    if (!token) return undefined;
+
+    const interval = setInterval(() => {
+      fetchNotifications(true);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications, token]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEsc);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const readCount = notifications.filter((n) => n.isRead).length;
 
   const toggleOpen = () => {
-    const nextOpen = !open;
-    setOpen(nextOpen);
-
-    if (nextOpen) {
-      fetchNotifications();
-    }
+    setOpen((prev) => {
+      const next = !prev;
+      if (next) fetchNotifications();
+      return next;
+    });
   };
 
   const markAsRead = async (notificationId) => {
     try {
-      if (!token) return;
+      if (!token || !notificationId) return;
 
       await fetch(`${API}/api/notifications/read/${notificationId}`, {
         method: 'PUT',
@@ -92,7 +169,10 @@ function NotificationBell({ theme }) {
   };
 
   const handleNotificationClick = async (notification) => {
+    if (!notification) return;
+
     await markAsRead(notification._id);
+
     setOpen(false);
     setToast(null);
 
@@ -112,9 +192,13 @@ function NotificationBell({ theme }) {
     navigate('/courses');
   };
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = async (e) => {
+    e?.stopPropagation();
+
     try {
       if (!token) return;
+
+      setActionLoading(true);
 
       await fetch(`${API}/api/notifications/read-all`, {
         method: 'PUT',
@@ -131,12 +215,18 @@ function NotificationBell({ theme }) {
       );
     } catch (err) {
       console.log('Mark all notifications read failed:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const clearReadNotifications = async () => {
+  const clearReadNotifications = async (e) => {
+    e?.stopPropagation();
+
     try {
       if (!token) return;
+
+      setActionLoading(true);
 
       await fetch(`${API}/api/notifications/clear-read`, {
         method: 'PUT',
@@ -148,21 +238,10 @@ function NotificationBell({ theme }) {
       setNotifications((prev) => prev.filter((n) => !n.isRead));
     } catch (err) {
       console.log('Clear read notifications failed:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchNotifications();
-
-    const interval = setInterval(() => {
-      fetchNotifications();
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const readCount = notifications.filter((n) => n.isRead).length;
 
   const getIcon = (type) => {
     switch (type) {
@@ -184,59 +263,59 @@ function NotificationBell({ theme }) {
   };
 
   const getActionText = (notification) => {
-    if (['course', 'pdf', 'video', 'live'].includes(notification.type)) {
-      return 'Open course →';
+    if (['course', 'pdf', 'video', 'live'].includes(notification?.type)) {
+      return 'Open course';
     }
 
-    if (notification.type === 'payment') {
-      return 'Open my courses →';
+    if (notification?.type === 'payment') {
+      return 'My courses';
     }
 
-    return 'Explore →';
+    return 'Explore';
   };
 
   const getPriorityBadge = (type) => {
     switch (type) {
       case 'live':
         return {
-          label: '🔴 Urgent',
-          bg: 'rgba(239,68,68,0.15)',
+          label: 'Live',
+          bg: 'rgba(239,68,68,0.14)',
           color: '#fca5a5',
         };
 
       case 'payment':
         return {
-          label: '✅ Important',
-          bg: 'rgba(34,197,94,0.15)',
+          label: 'Important',
+          bg: 'rgba(34,197,94,0.14)',
           color: '#86efac',
         };
 
       case 'offer':
         return {
-          label: '⚡ Offer',
-          bg: 'rgba(245,158,11,0.15)',
+          label: 'Offer',
+          bg: 'rgba(245,158,11,0.14)',
           color: '#fcd34d',
         };
 
       case 'pdf':
       case 'video':
         return {
-          label: '📚 Course Update',
-          bg: 'rgba(59,130,246,0.15)',
+          label: 'Course Update',
+          bg: 'rgba(59,130,246,0.14)',
           color: '#93c5fd',
         };
 
       case 'course':
         return {
-          label: '🚀 New',
-          bg: 'rgba(139,92,246,0.15)',
+          label: 'New Course',
+          bg: 'rgba(139,92,246,0.14)',
           color: '#c4b5fd',
         };
 
       default:
         return {
-          label: '🔔 Info',
-          bg: 'rgba(148,163,184,0.15)',
+          label: 'Info',
+          bg: 'rgba(148,163,184,0.14)',
           color: '#cbd5e1',
         };
     }
@@ -245,7 +324,11 @@ function NotificationBell({ theme }) {
   const formatDate = (date) => {
     if (!date) return '';
 
-    return new Date(date).toLocaleString('en-IN', {
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) return '';
+
+    return parsedDate.toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
       hour: '2-digit',
@@ -254,14 +337,16 @@ function NotificationBell({ theme }) {
   };
 
   const headerButtonStyle = {
-    border: 'none',
-    background: 'transparent',
-    color: theme?.primary || '#38bdf8',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '700',
-    padding: 0,
+    border: `1px solid ${safeBorder}`,
+    background: 'rgba(255,255,255,0.045)',
+    color: safePrimary,
+    cursor: actionLoading ? 'not-allowed' : 'pointer',
+    fontSize: '11px',
+    fontWeight: '900',
+    padding: '7px 10px',
+    borderRadius: '999px',
     whiteSpace: 'nowrap',
+    opacity: actionLoading ? 0.65 : 1,
   };
 
   const badgeStyle = (type) => {
@@ -271,12 +356,13 @@ function NotificationBell({ theme }) {
       display: 'inline-flex',
       alignItems: 'center',
       width: 'fit-content',
-      marginTop: '6px',
+      marginTop: '7px',
       marginBottom: '2px',
-      padding: '3px 8px',
+      padding: '4px 8px',
       borderRadius: '999px',
       fontSize: '10px',
-      fontWeight: '900',
+      fontWeight: '950',
+      letterSpacing: '0.2px',
       background: badge.bg,
       color: badge.color,
       border: `1px solid ${badge.color}33`,
@@ -285,113 +371,90 @@ function NotificationBell({ theme }) {
 
   return (
     <>
-      <div style={{ position: 'relative', display: 'inline-block' }}>
-        <button
+      <div ref={wrapperRef} style={styles.wrapper}>
+        <motion.button
+          whileHover={{ y: -1, scale: 1.03 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
           onClick={toggleOpen}
           style={{
-            position: 'relative',
-            border: 'none',
-            background: theme?.card || 'rgba(255,255,255,0.08)',
-            color: theme?.text || '#fff',
-            borderRadius: '999px',
-            padding: '9px 12px',
-            cursor: 'pointer',
-            fontSize: '18px',
-            boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+            ...styles.bellButton,
+            color: safeText,
+            background: open
+              ? `linear-gradient(135deg, ${safePrimary}, rgba(99,102,241,0.92))`
+              : 'rgba(255,255,255,0.035)',
+            border: `1px solid ${open ? safePrimary : safeBorder}`,
+            boxShadow: open
+              ? `0 0 22px ${safePrimary}55`
+              : `0 0 15px ${safePrimary}18`,
           }}
           title="Notifications"
+          aria-label="Notifications"
         >
-          🔔
+          <span style={styles.bellIcon}>{open ? '🔕' : '🔔'}</span>
 
           {unreadCount > 0 && (
-            <span
-              style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '-6px',
-                background: '#ff2d55',
-                color: '#fff',
-                minWidth: '20px',
-                height: '20px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: '700',
-                border: '2px solid #111',
-              }}
+            <motion.span
+              initial={{ scale: 0.7 }}
+              animate={{ scale: 1 }}
+              style={styles.unreadBadge}
             >
               {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+            </motion.span>
           )}
-        </button>
+        </motion.button>
 
-        {open && (
-          <div
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: '48px',
-              width: '380px',
-              maxHeight: '430px',
-              overflowY: 'auto',
-              background: theme?.card || '#111827',
-              color: theme?.text || '#fff',
-              borderRadius: '18px',
-              boxShadow: '0 18px 45px rgba(0,0,0,0.35)',
-              border: `1px solid ${theme?.border || 'rgba(255,255,255,0.1)'}`,
-              zIndex: 9999,
-              padding: '12px',
-            }}
-          >
-            <div
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.97 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: '10px',
-                marginBottom: '10px',
+                ...styles.dropdown,
+                background:
+                  theme?.isDark === false
+                    ? 'rgba(255,255,255,0.94)'
+                    : 'rgba(8, 13, 28, 0.96)',
+                color: safeText,
+                border: `1px solid ${safeBorder}`,
+                boxShadow: `0 24px 70px rgba(0,0,0,0.42), 0 0 35px ${safePrimary}18`,
               }}
             >
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>
-                  Notifications
-                </h3>
-                <p
-                  style={{
-                    margin: '3px 0 0',
-                    fontSize: '11px',
-                    opacity: 0.6,
-                  }}
-                >
-                  {unreadCount} unread • {readCount} read
-                </p>
-              </div>
+              <div style={styles.dropdownGlow} />
 
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '9px',
-                  flexWrap: 'wrap',
-                  justifyContent: 'flex-end',
-                }}
-              >
+              <div style={styles.header}>
+                <div>
+                  <h3 style={styles.title}>Notifications</h3>
+                  <p style={{ ...styles.subTitle, color: safeMuted }}>
+                    {unreadCount} unread • {readCount} read
+                  </p>
+                </div>
+
                 <button
-                  onClick={fetchNotifications}
+                  onClick={() => fetchNotifications()}
                   disabled={loading}
                   style={{
-                    ...headerButtonStyle,
-                    cursor: loading ? 'not-allowed' : 'pointer',
+                    ...styles.refreshBtn,
+                    color: safePrimary,
+                    border: `1px solid ${safeBorder}`,
                     opacity: loading ? 0.6 : 1,
+                    cursor: loading ? 'not-allowed' : 'pointer',
                   }}
+                  title="Refresh notifications"
                 >
-                  {loading ? 'Refreshing...' : 'Refresh'}
+                  {loading ? '⏳' : '↻'}
                 </button>
+              </div>
 
+              <div style={styles.actionsRow}>
                 {unreadCount > 0 && (
-                  <button onClick={markAllAsRead} style={headerButtonStyle}>
+                  <button
+                    onClick={markAllAsRead}
+                    disabled={actionLoading}
+                    style={headerButtonStyle}
+                  >
                     Mark all read
                   </button>
                 )}
@@ -399,240 +462,506 @@ function NotificationBell({ theme }) {
                 {readCount > 0 && (
                   <button
                     onClick={clearReadNotifications}
+                    disabled={actionLoading}
                     style={{
                       ...headerButtonStyle,
-                      color: theme?.danger || '#ef4444',
+                      color: safeDanger,
                     }}
                   >
                     Clear read
                   </button>
                 )}
               </div>
-            </div>
 
-            {loading && notifications.length === 0 && (
-              <p style={{ opacity: 0.7, fontSize: '14px' }}>
-                Loading notifications...
-              </p>
-            )}
-
-            {!loading && notifications.length === 0 && (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '28px 10px',
-                  opacity: 0.75,
-                }}
-              >
-                <div style={{ fontSize: '34px', marginBottom: '8px' }}>🔕</div>
-                <p style={{ margin: 0, fontSize: '14px' }}>
-                  No notifications yet
-                </p>
-              </div>
-            )}
-
-            {notifications.map((n) => (
-              <div
-                key={n._id}
-                onClick={() => handleNotificationClick(n)}
-                style={{
-                  padding: '12px',
-                  marginBottom: '9px',
-                  borderRadius: '14px',
-                  cursor: 'pointer',
-                  background: n.isRead
-                    ? 'rgba(255,255,255,0.04)'
-                    : 'rgba(56,189,248,0.16)',
-                  border: n.isRead
-                    ? '1px solid rgba(255,255,255,0.08)'
-                    : '1px solid rgba(56,189,248,0.35)',
-                }}
-              >
+              {error && (
                 <div
                   style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
+                    ...styles.errorBox,
+                    border: `1px solid ${safeDanger}55`,
+                    color: safeDanger,
                   }}
                 >
-                  <span style={{ fontSize: '20px' }}>{getIcon(n.type)}</span>
-
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: '8px',
-                      }}
-                    >
-                      <h4
-                        style={{
-                          margin: 0,
-                          fontSize: '14px',
-                          fontWeight: n.isRead ? '600' : '800',
-                        }}
-                      >
-                        {n.title}
-                      </h4>
-
-                      {!n.isRead && (
-                        <span
-                          style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: '#38bdf8',
-                            marginTop: '5px',
-                            flexShrink: 0,
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    <div style={badgeStyle(n.type)}>
-                      {getPriorityBadge(n.type).label}
-                    </div>
-
-                    <p
-                      style={{
-                        margin: '5px 0 7px',
-                        fontSize: '13px',
-                        lineHeight: '1.4',
-                        opacity: 0.82,
-                      }}
-                    >
-                      {n.message}
-                    </p>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <small style={{ opacity: 0.55, fontSize: '11px' }}>
-                        {formatDate(n.createdAt)}
-                      </small>
-
-                      <small
-                        style={{
-                          color: theme?.primary || '#38bdf8',
-                          fontSize: '11px',
-                          fontWeight: '800',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {getActionText(n)}
-                      </small>
-                    </div>
-                  </div>
+                  {error}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+
+              {loading && notifications.length === 0 && (
+                <div style={styles.centerState}>
+                  <div style={styles.loaderDot}>🔄</div>
+                  <p style={{ ...styles.centerText, color: safeMuted }}>
+                    Loading notifications...
+                  </p>
+                </div>
+              )}
+
+              {!loading && notifications.length === 0 && !error && (
+                <div style={styles.centerState}>
+                  <div style={styles.emptyIcon}>🔕</div>
+                  <h4 style={styles.emptyTitle}>All clear</h4>
+                  <p style={{ ...styles.centerText, color: safeMuted }}>
+                    No notifications yet. Updates will appear here.
+                  </p>
+                </div>
+              )}
+
+              {notifications.length > 0 && (
+                <div style={styles.list}>
+                  {notifications.map((n) => (
+                    <motion.div
+                      key={n._id}
+                      whileHover={{ y: -1, scale: 1.005 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.14, ease: 'easeOut' }}
+                      onClick={() => handleNotificationClick(n)}
+                      style={{
+                        ...styles.notificationItem,
+                        background: n.isRead
+                          ? 'rgba(255,255,255,0.04)'
+                          : `linear-gradient(135deg, ${safePrimary}22, rgba(59,130,246,0.10))`,
+                        border: n.isRead
+                          ? '1px solid rgba(255,255,255,0.08)'
+                          : `1px solid ${safePrimary}55`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          ...styles.iconBubble,
+                          background: n.isRead
+                            ? 'rgba(255,255,255,0.06)'
+                            : `${safePrimary}25`,
+                          border: `1px solid ${safeBorder}`,
+                        }}
+                      >
+                        {getIcon(n.type)}
+                      </div>
+
+                      <div style={styles.notificationBody}>
+                        <div style={styles.itemTop}>
+                          <h4
+                            style={{
+                              ...styles.itemTitle,
+                              color: safeText,
+                              fontWeight: n.isRead ? 800 : 950,
+                            }}
+                          >
+                            {n.title || 'Notification'}
+                          </h4>
+
+                          {!n.isRead && (
+                            <span
+                              style={{
+                                ...styles.unreadDot,
+                                background: safePrimary,
+                                boxShadow: `0 0 10px ${safePrimary}`,
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div style={badgeStyle(n.type)}>
+                          {getPriorityBadge(n.type).label}
+                        </div>
+
+                        <p style={{ ...styles.message, color: safeMuted }}>
+                          {n.message || 'You have a new update.'}
+                        </p>
+
+                        <div style={styles.footerLine}>
+                          <small style={{ ...styles.dateText, color: safeMuted }}>
+                            {formatDate(n.createdAt)}
+                          </small>
+
+                          <small
+                            style={{
+                              ...styles.actionText,
+                              color: safePrimary,
+                            }}
+                          >
+                            {getActionText(n)} →
+                          </small>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {toast && (
-        <div
-          onClick={() => handleNotificationClick(toast)}
-          style={{
-            position: 'fixed',
-            right: '24px',
-            bottom: '24px',
-            width: '330px',
-            maxWidth: 'calc(100vw - 40px)',
-            zIndex: 99999,
-            padding: '16px',
-            borderRadius: '18px',
-            background: theme?.card || '#111827',
-            color: theme?.text || '#fff',
-            border: `1px solid ${theme?.primary || '#38bdf8'}`,
-            boxShadow: '0 18px 45px rgba(0,0,0,0.35)',
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <div style={{ fontSize: '24px' }}>{getIcon(toast.type)}</div>
-
-            <div style={{ flex: 1 }}>
-              <p
-                style={{
-                  margin: '0 0 4px',
-                  fontSize: '12px',
-                  fontWeight: '800',
-                  color: theme?.primary || '#38bdf8',
-                }}
-              >
-                New Notification
-              </p>
-
-              <h4
-                style={{
-                  margin: '0 0 6px',
-                  fontSize: '15px',
-                  fontWeight: '900',
-                }}
-              >
-                {toast.title}
-              </h4>
-
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, x: 35, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 35, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            onClick={() => handleNotificationClick(toast)}
+            style={{
+              ...styles.toast,
+              background:
+                theme?.isDark === false
+                  ? 'rgba(255,255,255,0.96)'
+                  : 'rgba(8, 13, 28, 0.96)',
+              color: safeText,
+              border: `1px solid ${safePrimary}88`,
+              boxShadow: `0 22px 60px rgba(0,0,0,0.40), 0 0 30px ${safePrimary}25`,
+            }}
+          >
+            <div style={styles.toastInner}>
               <div
                 style={{
-                  ...badgeStyle(toast.type),
-                  marginTop: 0,
-                  marginBottom: '7px',
+                  ...styles.toastIcon,
+                  background: `${safePrimary}20`,
+                  border: `1px solid ${safePrimary}55`,
                 }}
               >
-                {getPriorityBadge(toast.type).label}
+                {getIcon(toast.type)}
               </div>
 
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: '13px',
-                  lineHeight: '1.4',
-                  opacity: 0.8,
-                }}
-              >
-                {toast.message}
-              </p>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ ...styles.toastLabel, color: safePrimary }}>
+                  New notification
+                </p>
 
-              <p
+                <h4 style={styles.toastTitle}>
+                  {toast.title || 'Notification'}
+                </h4>
+
+                <div
+                  style={{
+                    ...badgeStyle(toast.type),
+                    marginTop: 0,
+                    marginBottom: '7px',
+                  }}
+                >
+                  {getPriorityBadge(toast.type).label}
+                </div>
+
+                <p style={{ ...styles.toastMessage, color: safeMuted }}>
+                  {toast.message || 'You have a new update.'}
+                </p>
+
+                <p style={{ ...styles.toastAction, color: safePrimary }}>
+                  {getActionText(toast)} →
+                </p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setToast(null);
+                }}
                 style={{
-                  margin: '8px 0 0',
-                  fontSize: '12px',
-                  fontWeight: '800',
-                  color: theme?.primary || '#38bdf8',
+                  ...styles.closeToast,
+                  color: safeMuted,
                 }}
               >
-                {getActionText(toast)}
-              </p>
+                ×
+              </button>
             </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setToast(null);
-              }}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: theme?.muted || '#9ca3af',
-                cursor: 'pointer',
-                fontSize: '18px',
-                lineHeight: 1,
-              }}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
+
+const styles = {
+  wrapper: {
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  bellButton: {
+    width: '46px',
+    height: '46px',
+    borderRadius: '999px',
+    cursor: 'pointer',
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    outline: 'none',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+  },
+
+  bellIcon: {
+    fontSize: '19px',
+    lineHeight: 1,
+    filter: 'drop-shadow(0 0 7px rgba(255,255,255,0.18))',
+  },
+
+  unreadBadge: {
+    position: 'absolute',
+    top: '-5px',
+    right: '-5px',
+    background: 'linear-gradient(135deg, #fb7185, #ef4444)',
+    color: '#fff',
+    minWidth: '19px',
+    height: '19px',
+    padding: '0 5px',
+    borderRadius: '999px',
+    fontSize: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '950',
+    border: '2px solid rgba(8,13,28,0.95)',
+    boxShadow: '0 0 14px rgba(239,68,68,0.45)',
+  },
+
+  dropdown: {
+    position: 'absolute',
+    right: 0,
+    top: '58px',
+    width: '390px',
+    maxWidth: 'calc(100vw - 28px)',
+    maxHeight: '520px',
+    overflow: 'hidden',
+    borderRadius: '24px',
+    zIndex: 99999,
+    padding: '14px',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+  },
+
+  dropdownGlow: {
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+    background:
+      'radial-gradient(circle at 20% 0%, rgba(139,92,246,0.16), transparent 35%), radial-gradient(circle at 100% 10%, rgba(59,130,246,0.12), transparent 35%)',
+    zIndex: -1,
+  },
+
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '12px',
+    marginBottom: '10px',
+  },
+
+  title: {
+    margin: 0,
+    fontSize: '17px',
+    fontWeight: '950',
+    letterSpacing: '-0.2px',
+  },
+
+  subTitle: {
+    margin: '4px 0 0',
+    fontSize: '12px',
+    fontWeight: '700',
+  },
+
+  refreshBtn: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '999px',
+    background: 'rgba(255,255,255,0.045)',
+    fontSize: '17px',
+    fontWeight: '950',
+    lineHeight: 1,
+  },
+
+  actionsRow: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginBottom: '10px',
+  },
+
+  errorBox: {
+    padding: '10px 12px',
+    borderRadius: '14px',
+    background: 'rgba(239,68,68,0.08)',
+    fontSize: '12px',
+    fontWeight: '800',
+    marginBottom: '10px',
+  },
+
+  centerState: {
+    textAlign: 'center',
+    padding: '34px 14px 38px',
+  },
+
+  loaderDot: {
+    fontSize: '30px',
+    marginBottom: '10px',
+  },
+
+  emptyIcon: {
+    fontSize: '38px',
+    marginBottom: '8px',
+  },
+
+  emptyTitle: {
+    margin: '0 0 6px',
+    fontSize: '15px',
+    fontWeight: '950',
+  },
+
+  centerText: {
+    margin: 0,
+    fontSize: '13px',
+    lineHeight: 1.5,
+    fontWeight: '650',
+  },
+
+  list: {
+    maxHeight: '410px',
+    overflowY: 'auto',
+    paddingRight: '3px',
+  },
+
+  notificationItem: {
+    display: 'flex',
+    gap: '11px',
+    padding: '12px',
+    marginBottom: '9px',
+    borderRadius: '18px',
+    cursor: 'pointer',
+  },
+
+  iconBubble: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    fontSize: '18px',
+  },
+
+  notificationBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  itemTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '8px',
+    alignItems: 'flex-start',
+  },
+
+  itemTitle: {
+    margin: 0,
+    fontSize: '13.5px',
+    lineHeight: 1.25,
+    wordBreak: 'break-word',
+  },
+
+  unreadDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    marginTop: '5px',
+    flexShrink: 0,
+  },
+
+  message: {
+    margin: '6px 0 9px',
+    fontSize: '12.5px',
+    lineHeight: 1.45,
+    fontWeight: '600',
+    wordBreak: 'break-word',
+  },
+
+  footerLine: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '10px',
+  },
+
+  dateText: {
+    fontSize: '10.5px',
+    fontWeight: '700',
+  },
+
+  actionText: {
+    fontSize: '11px',
+    fontWeight: '950',
+    whiteSpace: 'nowrap',
+  },
+
+  toast: {
+    position: 'fixed',
+    right: '24px',
+    bottom: '24px',
+    width: '350px',
+    maxWidth: 'calc(100vw - 40px)',
+    zIndex: 999999,
+    padding: '15px',
+    borderRadius: '22px',
+    cursor: 'pointer',
+    backdropFilter: 'blur(18px)',
+    WebkitBackdropFilter: 'blur(18px)',
+  },
+
+  toastInner: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start',
+  },
+
+  toastIcon: {
+    width: '42px',
+    height: '42px',
+    borderRadius: '15px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '21px',
+    flexShrink: 0,
+  },
+
+  toastLabel: {
+    margin: '0 0 4px',
+    fontSize: '11px',
+    fontWeight: '950',
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+  },
+
+  toastTitle: {
+    margin: '0 0 6px',
+    fontSize: '14.5px',
+    fontWeight: '950',
+    lineHeight: 1.25,
+  },
+
+  toastMessage: {
+    margin: 0,
+    fontSize: '12.5px',
+    lineHeight: 1.45,
+    fontWeight: '600',
+  },
+
+  toastAction: {
+    margin: '8px 0 0',
+    fontSize: '12px',
+    fontWeight: '950',
+  },
+
+  closeToast: {
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    fontSize: '20px',
+    lineHeight: 1,
+    padding: 0,
+    marginLeft: '2px',
+  },
+};
 
 export default NotificationBell;
