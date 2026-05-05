@@ -49,6 +49,13 @@ function AdminPanel() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiSelectedPdfIndexes, setAiSelectedPdfIndexes] = useState([]);
 
+  // ✅ AI Study Tools review states
+  const [aiReviewModalOpen, setAiReviewModalOpen] = useState(false);
+  const [aiReviewCourse, setAiReviewCourse] = useState(null);
+  const [aiStudyTools, setAiStudyTools] = useState([]);
+  const [aiToolsLoading, setAiToolsLoading] = useState(false);
+  const [expandedStudyTool, setExpandedStudyTool] = useState(null);
+
   // ✅ Assistant Logs states
   const [assistantLogs, setAssistantLogs] = useState([]);
   const [assistantLoading, setAssistantLoading] = useState(false);
@@ -758,6 +765,103 @@ function AdminPanel() {
     }
   };
 
+  // ✅ Fetch AI generated drafts/published study tools for review
+  const fetchStudyToolsForCourse = async (course) => {
+    if (!course?._id) return;
+
+    try {
+      setAiToolsLoading(true);
+
+      const res = await axios.get(`${API}/api/study-tools/admin/course/${course._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setAiStudyTools(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.log('AI STUDY TOOLS FETCH ERROR:', err);
+      toast.error(err.response?.data?.message || '❌ AI drafts load nahi hue');
+      setAiStudyTools([]);
+    } finally {
+      setAiToolsLoading(false);
+    }
+  };
+
+  // ✅ Open review modal for AI generated questions
+  const openStudyToolsReviewModal = async (course) => {
+    setAiReviewCourse(course);
+    setExpandedStudyTool(null);
+    setAiReviewModalOpen(true);
+    await fetchStudyToolsForCourse(course);
+  };
+
+  // ✅ Close review modal
+  const closeStudyToolsReviewModal = () => {
+    setAiReviewModalOpen(false);
+    setAiReviewCourse(null);
+    setAiStudyTools([]);
+    setExpandedStudyTool(null);
+  };
+
+  // ✅ Publish AI study tool
+  const publishStudyTool = async (toolId) => {
+    try {
+      const res = await axios.patch(
+        `${API}/api/study-tools/${toolId}/publish`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success(res.data?.message || '✅ Study tool published!');
+      setMsg('✅ AI Questions published! Students ko ab dikhega.');
+      await fetchStudyToolsForCourse(aiReviewCourse);
+      setTimeout(() => setMsg(''), 3500);
+    } catch (err) {
+      console.log('PUBLISH STUDY TOOL ERROR:', err);
+      toast.error(err.response?.data?.message || '❌ Publish failed');
+    }
+  };
+
+  // ✅ Unpublish AI study tool
+  const unpublishStudyTool = async (toolId) => {
+    try {
+      const res = await axios.patch(
+        `${API}/api/study-tools/${toolId}/unpublish`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success(res.data?.message || '✅ Study tool moved to draft!');
+      setMsg('✅ AI Questions draft mein move ho gaye.');
+      await fetchStudyToolsForCourse(aiReviewCourse);
+      setTimeout(() => setMsg(''), 3500);
+    } catch (err) {
+      console.log('UNPUBLISH STUDY TOOL ERROR:', err);
+      toast.error(err.response?.data?.message || '❌ Unpublish failed');
+    }
+  };
+
+  // ✅ Delete AI study tool
+  const deleteStudyTool = async (toolId, title = 'AI Questions') => {
+    showConfirmToast({
+      title: 'Delete AI Draft?',
+      message: `${title} permanently delete karna hai?`,
+      confirmText: 'Delete Draft',
+      onConfirm: async () => {
+        try {
+          const res = await axios.delete(`${API}/api/study-tools/${toolId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          toast.success(res.data?.message || '✅ Study tool deleted!');
+          await fetchStudyToolsForCourse(aiReviewCourse);
+        } catch (err) {
+          console.log('DELETE STUDY TOOL ERROR:', err);
+          toast.error(err.response?.data?.message || '❌ Delete failed');
+        }
+      },
+    });
+  };
+
   const getLiveStatus = (scheduledAt, durationMinutes) => {
     const now = new Date();
     const start = new Date(scheduledAt);
@@ -836,6 +940,93 @@ function AdminPanel() {
     boxShadow: theme.shadow,
     backdropFilter: theme.glass,
     WebkitBackdropFilter: theme.glass,
+  };
+
+  const renderQuestionList = (title, items, icon) => {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    if (safeItems.length === 0) return null;
+
+    return (
+      <div
+        style={{
+          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+          border: `1px solid ${theme.border}`,
+          borderRadius: '16px',
+          padding: '14px',
+          marginBottom: '12px',
+        }}
+      >
+        <h4 style={{ color: theme.text, margin: '0 0 12px', fontWeight: 950 }}>
+          {icon} {title} ({safeItems.length})
+        </h4>
+
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {safeItems.map((item, index) => (
+            <div
+              key={index}
+              style={{
+                border: `1px solid ${theme.border}`,
+                borderRadius: '13px',
+                padding: '12px',
+                background: theme.isDark ? 'rgba(15,23,42,0.55)' : '#ffffff',
+              }}
+            >
+              <p style={{ color: theme.text, margin: '0 0 8px', fontWeight: 900, lineHeight: 1.5 }}>
+                {index + 1}. {item?.question || 'Question missing'}
+              </p>
+
+              {Array.isArray(item?.options) && item.options.length > 0 && (
+                <div style={{ display: 'grid', gap: '5px', marginBottom: '8px' }}>
+                  {item.options.map((opt, optIndex) => (
+                    <p key={optIndex} style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
+                      {String.fromCharCode(65 + optIndex)}. {opt}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {item?.correctAnswer && (
+                <p style={{ color: theme.success, margin: '6px 0', fontSize: '13px', fontWeight: 900 }}>
+                  ✅ Correct: {item.correctAnswer}
+                </p>
+              )}
+
+              {item?.answerHint && (
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px', lineHeight: 1.5 }}>
+                  💡 Hint: {item.answerHint}
+                </p>
+              )}
+
+              {item?.explanation && (
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px', lineHeight: 1.5 }}>
+                  🧠 Explanation: {item.explanation}
+                </p>
+              )}
+
+              {item?.reason && (
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px', lineHeight: 1.5 }}>
+                  🎯 Reason: {item.reason}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStudyToolContent = (tool) => {
+    const content = tool?.content || {};
+
+    return (
+      <div style={{ marginTop: '14px' }}>
+        {renderQuestionList('Short Questions', content.shortQuestions, '✍️')}
+        {renderQuestionList('Long Questions', content.longQuestions, '📚')}
+        {renderQuestionList('MCQs', content.mcqs, '✅')}
+        {renderQuestionList('Most Expected Questions', content.mostExpectedQuestions, '🔥')}
+      </div>
+    );
   };
 
   const renderCouponSection = () => (
@@ -1838,6 +2029,231 @@ function AdminPanel() {
         </div>
       )}
 
+      {aiReviewModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(2, 6, 23, 0.78)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '18px',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+          }}
+          onClick={closeStudyToolsReviewModal}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(980px, 100%)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 30px 90px rgba(0,0,0,0.45)',
+              backdropFilter: theme.glass,
+              WebkitBackdropFilter: theme.glass,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '14px',
+                alignItems: 'flex-start',
+                marginBottom: '18px',
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    color: theme.primary,
+                    margin: '0 0 7px',
+                    fontSize: '12px',
+                    fontWeight: 950,
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  🧾 AI REVIEW CENTER
+                </p>
+
+                <h3 style={{ color: theme.text, margin: 0, fontSize: '24px', fontWeight: 950 }}>
+                  Review / Publish AI Questions
+                </h3>
+
+                <p style={{ color: theme.muted, margin: '8px 0 0', fontWeight: 750, lineHeight: 1.5 }}>
+                  Course:{' '}
+                  <strong style={{ color: theme.text }}>
+                    {aiReviewCourse?.title || 'Selected Course'}
+                  </strong>
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => fetchStudyToolsForCourse(aiReviewCourse)}
+                  disabled={aiToolsLoading}
+                  style={{
+                    padding: '9px 13px',
+                    borderRadius: '12px',
+                    border: `1px solid ${theme.border}`,
+                    background: theme.primary,
+                    color: theme.buttonText,
+                    cursor: aiToolsLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: 900,
+                  }}
+                >
+                  🔄 Refresh
+                </button>
+
+                <button
+                  onClick={closeStudyToolsReviewModal}
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '12px',
+                    border: `1px solid ${theme.border}`,
+                    background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#ffffff',
+                    color: theme.text,
+                    cursor: 'pointer',
+                    fontWeight: 950,
+                    fontSize: '18px',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '16px',
+                padding: '14px',
+                marginBottom: '16px',
+              }}
+            >
+              <p style={{ color: theme.text, margin: '0 0 6px', fontWeight: 900 }}>
+                Kaise use karna hai?
+              </p>
+              <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750, lineHeight: 1.5 }}>
+                Pehle “Review” se generated questions check karo. Sahi lage toh “Publish” dabao. Published questions students ko CourseDetail mein dikhenge.
+              </p>
+            </div>
+
+            {aiToolsLoading ? (
+              <div style={{ ...smallCardStyle, color: theme.muted, fontWeight: 900, textAlign: 'center' }}>
+                ⏳ AI drafts loading...
+              </div>
+            ) : aiStudyTools.length === 0 ? (
+              <div style={{ ...smallCardStyle, color: theme.muted, fontWeight: 900, textAlign: 'center' }}>
+                Abhi is course ke liye koi AI draft nahi mila. Pehle “✨ AI Questions” se generate karo.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '14px' }}>
+                {aiStudyTools.map((tool) => {
+                  const isExpanded = expandedStudyTool === tool._id;
+                  const isPublished = tool.status === 'published';
+                  const content = tool.content || {};
+                  const totalQuestions =
+                    (content.shortQuestions?.length || 0) +
+                    (content.longQuestions?.length || 0) +
+                    (content.mcqs?.length || 0) +
+                    (content.mostExpectedQuestions?.length || 0);
+
+                  return (
+                    <div key={tool._id} style={smallCardStyle}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: '14px',
+                          flexWrap: 'wrap',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: '260px' }}>
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <h4 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
+                              ✨ {tool.title || 'AI Important Questions'}
+                            </h4>
+                            <span
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '999px',
+                                fontSize: '12px',
+                                fontWeight: 950,
+                                background: isPublished ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                                color: isPublished ? theme.success : theme.warning,
+                                border: `1px solid ${theme.border}`,
+                              }}
+                            >
+                              {isPublished ? 'Published' : 'Draft'}
+                            </span>
+                          </div>
+
+                          <p style={{ color: theme.muted, margin: '8px 0 0', fontSize: '13px', fontWeight: 750 }}>
+                            Questions: <strong style={{ color: theme.text }}>{totalQuestions}</strong> | Source:{' '}
+                            <strong style={{ color: theme.text }}>{tool.sourcePdf?.title || 'PDF'}</strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '12px', fontWeight: 700 }}>
+                            Created: {tool.createdAt ? new Date(tool.createdAt).toLocaleString('en-IN') : 'Not available'}
+                          </p>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => setExpandedStudyTool(isExpanded ? null : tool._id)}
+                            style={adminStyles.blueBtn(theme)}
+                          >
+                            {isExpanded ? 'Hide' : 'Review'}
+                          </button>
+
+                          {isPublished ? (
+                            <button
+                              onClick={() => unpublishStudyTool(tool._id)}
+                              style={adminStyles.warningBtn(theme)}
+                            >
+                              Unpublish
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => publishStudyTool(tool._id)}
+                              style={adminStyles.successBtn(theme)}
+                            >
+                              Publish
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => deleteStudyTool(tool._id, tool.title)}
+                            style={adminStyles.dangerBtn(theme)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+
+                      {isExpanded && renderStudyToolContent(tool)}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
       <div
         style={{
           maxWidth: '1160px',
@@ -2359,6 +2775,22 @@ function AdminPanel() {
                         }}
                       >
                         ✨ AI Questions
+                      </button>
+
+                      <button
+                        onClick={() => openStudyToolsReviewModal(course)}
+                        style={{
+                          padding: '9px 14px',
+                          background: 'linear-gradient(135deg, #22c55e, #15803d)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '900',
+                          boxShadow: theme.shadow,
+                        }}
+                      >
+                        🧾 Review AI
                       </button>
 
                       <button
