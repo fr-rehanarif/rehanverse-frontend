@@ -42,6 +42,13 @@ function AdminPanel() {
   const [liveClasses, setLiveClasses] = useState([]);
   const [coupons, setCoupons] = useState([]);
 
+  // ✅ AI Study Tools states
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiSelectedCourse, setAiSelectedCourse] = useState(null);
+  const [aiSourceText, setAiSourceText] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiSelectedPdfIndexes, setAiSelectedPdfIndexes] = useState([]);
+
   // ✅ Assistant Logs states
   const [assistantLogs, setAssistantLogs] = useState([]);
   const [assistantLoading, setAssistantLoading] = useState(false);
@@ -651,6 +658,104 @@ function AdminPanel() {
         }
       },
     });
+  };
+
+  // ✅ Open AI Important Questions Modal
+  const openImportantQuestionsModal = (course) => {
+    setAiSelectedCourse(course);
+    setAiSourceText('');
+    setAiSelectedPdfIndexes((course?.pdfs || []).map((_, index) => index));
+    setAiModalOpen(true);
+  };
+
+  // ✅ Close AI Important Questions Modal
+  const closeImportantQuestionsModal = () => {
+    if (aiGenerating) return;
+    setAiModalOpen(false);
+    setAiSelectedCourse(null);
+    setAiSourceText('');
+    setAiSelectedPdfIndexes([]);
+  };
+
+  // ✅ Toggle selected PDFs for AI generation
+  const toggleAiPdfSelection = (index) => {
+    setAiSelectedPdfIndexes((prev) =>
+      prev.includes(index)
+        ? prev.filter((item) => item !== index)
+        : [...prev, index].sort((a, b) => a - b)
+    );
+  };
+
+  // ✅ Select all PDFs for AI generation
+  const selectAllAiPdfs = () => {
+    setAiSelectedPdfIndexes((aiSelectedCourse?.pdfs || []).map((_, index) => index));
+  };
+
+  // ✅ Clear all selected PDFs for AI generation
+  const clearAllAiPdfs = () => {
+    setAiSelectedPdfIndexes([]);
+  };
+
+  // ✅ Generate AI Important Questions directly from selected uploaded course PDFs
+  const generateImportantQuestions = async () => {
+    if (!aiSelectedCourse?._id) {
+      toast.error('❌ Course select nahi hua!');
+      return;
+    }
+
+    if (!aiSelectedCourse?.pdfs || aiSelectedCourse.pdfs.length === 0) {
+      toast.error('❌ Is course mein koi PDF uploaded nahi hai!');
+      setMsg('❌ Pehle is course mein PDF upload karo, phir AI Questions generate honge.');
+      setTimeout(() => setMsg(''), 4000);
+      return;
+    }
+
+    if (!aiSelectedPdfIndexes || aiSelectedPdfIndexes.length === 0) {
+      toast.error('❌ Kam se kam ek PDF select karo!');
+      setMsg('❌ AI generate karne ke liye kam se kam ek PDF select karni padegi.');
+      setTimeout(() => setMsg(''), 4000);
+      return;
+    }
+
+    try {
+      setAiGenerating(true);
+      setMsg(`⏳ AI selected ${aiSelectedPdfIndexes.length} PDF(s) se text extract karke important questions bana raha hai...`);
+
+      const res = await axios.post(
+        `${API}/api/study-tools/generate-important-questions-from-pdf`,
+        {
+          courseId: aiSelectedCourse._id,
+          pdfIndexes: aiSelectedPdfIndexes,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      toast.success(res.data?.message || '✅ Important questions generated from selected PDFs!');
+      setMsg(
+        `✅ AI questions draft mein save ho gaye! PDFs used: ${res.data?.usedPdfCount || aiSelectedPdfIndexes.length}, Extracted: ${res.data?.extractedCharacters || 'PDF'} characters`
+      );
+
+      setAiModalOpen(false);
+      setAiSelectedCourse(null);
+      setAiSourceText('');
+      setAiSelectedPdfIndexes([]);
+
+      setTimeout(() => setMsg(''), 5000);
+    } catch (err) {
+      console.log('AI IMPORTANT QUESTIONS FROM PDF ERROR:', err);
+      const errorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'AI PDF generation failed';
+
+      toast.error('❌ ' + errorMsg);
+      setMsg('❌ ' + errorMsg);
+      setTimeout(() => setMsg(''), 6000);
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const getLiveStatus = (scheduledAt, durationMinutes) => {
@@ -1400,6 +1505,339 @@ function AdminPanel() {
       <div style={adminStyles.glowOne} />
       <div style={adminStyles.glowTwo} />
 
+      {aiModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(2, 6, 23, 0.72)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '18px',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+          }}
+          onClick={closeImportantQuestionsModal}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(720px, 100%)',
+              maxHeight: '88vh',
+              overflowY: 'auto',
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 30px 90px rgba(0,0,0,0.45)',
+              backdropFilter: theme.glass,
+              WebkitBackdropFilter: theme.glass,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '14px',
+                alignItems: 'flex-start',
+                marginBottom: '18px',
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    color: theme.primary,
+                    margin: '0 0 7px',
+                    fontSize: '12px',
+                    fontWeight: 950,
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  ✨ AI STUDY TOOL
+                </p>
+
+                <h3
+                  style={{
+                    color: theme.text,
+                    margin: 0,
+                    fontSize: '24px',
+                    fontWeight: 950,
+                  }}
+                >
+                  Generate Important Questions
+                </h3>
+
+                <p
+                  style={{
+                    color: theme.muted,
+                    margin: '8px 0 0',
+                    fontWeight: 750,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Course:{' '}
+                  <strong style={{ color: theme.text }}>
+                    {aiSelectedCourse?.title || 'Selected Course'}
+                  </strong>
+                </p>
+              </div>
+
+              <button
+                onClick={closeImportantQuestionsModal}
+                disabled={aiGenerating}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '12px',
+                  border: `1px solid ${theme.border}`,
+                  background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#ffffff',
+                  color: theme.text,
+                  cursor: aiGenerating ? 'not-allowed' : 'pointer',
+                  fontWeight: 950,
+                  fontSize: '18px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '16px',
+                padding: '14px',
+                marginBottom: '16px',
+              }}
+            >
+              <p
+                style={{
+                  color: theme.text,
+                  margin: '0 0 6px',
+                  fontWeight: 900,
+                }}
+              >
+                Kaise use karna hai?
+              </p>
+
+              <p
+                style={{
+                  color: theme.muted,
+                  margin: 0,
+                  fontSize: '13px',
+                  fontWeight: 750,
+                  lineHeight: 1.5,
+                }}
+              >
+                AI sirf un PDFs se questions banayega jo tum select karoge. Notes, cheat sheet, unit PDFs — jo useful ho bas wahi tick karo. AI 10 short questions, 10 long questions, 15 MCQs aur 5 most expected questions draft mein save karega.
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                border: `1px solid ${theme.border}`,
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '16px',
+              }}
+            >
+              <p
+                style={{
+                  color: theme.text,
+                  margin: '0 0 8px',
+                  fontWeight: 950,
+                }}
+              >
+                📄 PDF Source
+              </p>
+
+              {aiSelectedCourse?.pdfs?.length > 0 ? (
+                <>
+                  <p
+                    style={{
+                      color: theme.muted,
+                      margin: '0 0 6px',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Jo PDFs use karni hain woh select karo:
+                  </p>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      flexWrap: 'wrap',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={selectAllAiPdfs}
+                      disabled={aiGenerating}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '12px',
+                        border: `1px solid ${theme.border}`,
+                        background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#ffffff',
+                        color: theme.text,
+                        cursor: aiGenerating ? 'not-allowed' : 'pointer',
+                        fontWeight: 900,
+                      }}
+                    >
+                      Select All
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={clearAllAiPdfs}
+                      disabled={aiGenerating}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '12px',
+                        border: `1px solid ${theme.border}`,
+                        background: 'transparent',
+                        color: theme.muted,
+                        cursor: aiGenerating ? 'not-allowed' : 'pointer',
+                        fontWeight: 900,
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {aiSelectedCourse?.pdfs?.map((pdf, index) => {
+                      const checked = aiSelectedPdfIndexes.includes(index);
+
+                      return (
+                        <label
+                          key={index}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '10px 12px',
+                            borderRadius: '13px',
+                            border: `1px solid ${checked ? theme.primary : theme.border}`,
+                            background: checked
+                              ? theme.isDark
+                                ? 'rgba(139,92,246,0.14)'
+                                : '#f5f3ff'
+                              : theme.isDark
+                              ? 'rgba(255,255,255,0.03)'
+                              : 'rgba(255,255,255,0.6)',
+                            cursor: aiGenerating ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={aiGenerating}
+                            onChange={() => toggleAiPdfSelection(index)}
+                            style={{ width: '16px', height: '16px', accentColor: theme.primary }}
+                          />
+
+                          <span
+                            style={{
+                              color: checked ? theme.primary : theme.text,
+                              fontSize: '14px',
+                              fontWeight: 950,
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {index + 1}. {pdf.title || pdf.filename || 'Uploaded PDF'}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <p
+                    style={{
+                      color: aiSelectedPdfIndexes.length === 0 ? theme.danger : theme.success,
+                      margin: '12px 0 0',
+                      fontSize: '13px',
+                      fontWeight: 900,
+                    }}
+                  >
+                    Selected PDFs: {aiSelectedPdfIndexes.length} / {aiSelectedCourse?.pdfs?.length || 0}
+                  </p>
+                </>
+              ) : (
+                <p
+                  style={{
+                    color: theme.danger,
+                    margin: 0,
+                    fontSize: '13px',
+                    fontWeight: 900,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  ❌ Is course mein abhi koi PDF nahi hai. Pehle PDF upload karo, phir AI generate hoga.
+                </p>
+              )}
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={closeImportantQuestionsModal}
+                  disabled={aiGenerating}
+                  style={{
+                    padding: '11px 16px',
+                    background: 'transparent',
+                    color: theme.muted,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '13px',
+                    cursor: aiGenerating ? 'not-allowed' : 'pointer',
+                    fontWeight: 900,
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={generateImportantQuestions}
+                  disabled={aiGenerating}
+                  style={{
+                    padding: '11px 18px',
+                    background: aiGenerating
+                      ? 'linear-gradient(135deg, #64748b, #334155)'
+                      : 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '13px',
+                    cursor: aiGenerating ? 'not-allowed' : 'pointer',
+                    fontWeight: 950,
+                    boxShadow: theme.shadow,
+                  }}
+                >
+                  {aiGenerating ? '⏳ Generating...' : '✨ Generate Questions'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <div
         style={{
           maxWidth: '1160px',
@@ -1908,6 +2346,22 @@ function AdminPanel() {
                       </button>
 
                       <button
+                        onClick={() => openImportantQuestionsModal(course)}
+                        style={{
+                          padding: '9px 14px',
+                          background: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '900',
+                          boxShadow: theme.shadow,
+                        }}
+                      >
+                        ✨ AI Questions
+                      </button>
+
+                      <button
                         onClick={() => startEdit(course)}
                         style={adminStyles.warningBtn(theme)}
                       >
@@ -2364,51 +2818,35 @@ function AdminPanel() {
                                 wordBreak: 'break-all',
                               }}
                             >
-                              URL: {screenshotUrl}
+                              {screenshotUrl}
                             </p>
                           </div>
                         ) : (
-                          <div>
-                            <p
-                              style={{
-                                color: theme.danger,
-                                fontWeight: '900',
-                                marginBottom: '8px',
-                              }}
-                            >
-                              ❌ Screenshot path backend se nahi aa raha
-                            </p>
-
-                            <p
-                              style={{
-                                color: theme.muted,
-                                fontSize: '13px',
-                                margin: 0,
-                              }}
-                            >
-                              Iska matlab paymentRoutes.js ya Payment model me screenshot ka path save nahi ho raha.
-                            </p>
-                          </div>
+                          <p style={{ color: theme.danger, fontWeight: '800' }}>
+                            ❌ No screenshot/proof URL found in this payment record.
+                          </p>
                         )}
                       </div>
 
-                      {payment.status === 'pending' && (
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => approvePayment(payment._id)}
-                            style={adminStyles.successBtn(theme)}
-                          >
-                            ✅ Approve
-                          </button>
+                      <div style={{ marginTop: '14px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {payment.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => approvePayment(payment._id)}
+                              style={adminStyles.successBtn(theme)}
+                            >
+                              ✅ Approve
+                            </button>
 
-                          <button
-                            onClick={() => rejectPayment(payment._id)}
-                            style={adminStyles.dangerBtn(theme)}
-                          >
-                            ❌ Reject
-                          </button>
-                        </div>
-                      )}
+                            <button
+                              onClick={() => rejectPayment(payment._id)}
+                              style={adminStyles.dangerBtn(theme)}
+                            >
+                              ❌ Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -2423,11 +2861,11 @@ function AdminPanel() {
           <div>
             <div style={panelStyle}>
               <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
-                🔴 Add Live Class
+                🔴 Create Live Class
               </h3>
 
               <p style={{ color: theme.muted, marginTop: 0, marginBottom: '22px' }}>
-                Course select karo, Google Meet / Zoom / YouTube Live link add karo, aur students ko class dikh jayegi.
+                Course select karo aur live class ka link schedule karo.
               </p>
 
               <select
@@ -2454,15 +2892,15 @@ function AdminPanel() {
               />
 
               <textarea
-                style={{ ...inputStyle, height: '85px', resize: 'vertical' }}
-                placeholder="Description optional"
+                style={{ ...inputStyle, height: '82px', resize: 'vertical' }}
+                placeholder="Description (optional)"
                 value={liveForm.description}
                 onChange={(e) => setLiveForm({ ...liveForm, description: e.target.value })}
               />
 
               <input
                 style={inputStyle}
-                placeholder="Live Class Link *  Example: https://meet.google.com/..."
+                placeholder="Live URL *  YouTube / Meet / Zoom"
                 value={liveForm.liveUrl}
                 onChange={(e) => setLiveForm({ ...liveForm, liveUrl: e.target.value })}
               />
@@ -2505,147 +2943,113 @@ function AdminPanel() {
                   boxShadow: theme.shadow,
                 }}
               >
-                🔴 Create Live Class
+                🔴 Schedule Live Class
               </button>
             </div>
 
-            <div>
-              <h3 style={{ color: theme.text, marginBottom: '16px' }}>
-                📡 Live Classes {liveForm.course ? `(${liveClasses.length})` : ''}
-              </h3>
+            <h3 style={{ color: theme.text, marginBottom: '16px' }}>
+              📺 Live Classes {liveForm.course ? `(${liveClasses.length})` : ''}
+            </h3>
 
-              {!liveForm.course ? (
-                <p style={{ color: theme.muted }}>Pehle course select karo live classes dekhne ke liye.</p>
-              ) : liveClasses.length === 0 ? (
-                <div
-                  style={{
-                    padding: '18px',
-                    background: theme.card,
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: '16px',
-                    color: theme.muted,
-                    fontWeight: 800,
-                  }}
-                >
-                  Abhi is course mein koi live class nahi hai.
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: '14px' }}>
-                  {liveClasses.map((live) => {
-                    const status = getLiveStatus(live.scheduledAt, live.durationMinutes);
+            {!liveForm.course ? (
+              <p style={{ color: theme.muted, fontWeight: 800 }}>
+                Pehle course select karo.
+              </p>
+            ) : liveClasses.length === 0 ? (
+              <p style={{ color: theme.muted, fontWeight: 800 }}>
+                Is course mein abhi koi live class nahi.
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gap: '14px' }}>
+                {liveClasses.map((cls) => {
+                  const status = getLiveStatus(cls.scheduledAt, cls.durationMinutes);
 
-                    return (
+                  return (
+                    <div key={cls._id} style={smallCardStyle}>
                       <div
-                        key={live._id}
                         style={{
-                          ...smallCardStyle,
                           display: 'flex',
                           justifyContent: 'space-between',
-                          gap: '16px',
+                          gap: '12px',
                           flexWrap: 'wrap',
                         }}
                       >
                         <div style={{ flex: 1, minWidth: '260px' }}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px',
-                              flexWrap: 'wrap',
-                              marginBottom: '8px',
-                            }}
-                          >
-                            <h4 style={{ color: theme.text, margin: 0 }}>{live.title}</h4>
+                          <h4 style={{ color: theme.text, margin: '0 0 8px' }}>
+                            🔴 {cls.title}
+                          </h4>
 
-                            <span
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Course:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {cls.course?.title || 'Selected Course'}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Time:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {new Date(cls.scheduledAt).toLocaleString('en-IN')}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Duration:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {cls.durationMinutes || 60} min
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Status:{' '}
+                            <strong
                               style={{
-                                padding: '5px 10px',
-                                borderRadius: '999px',
-                                fontSize: '12px',
-                                fontWeight: '900',
-                                background:
-                                  status === 'Live Now'
-                                    ? 'rgba(239,68,68,0.15)'
-                                    : status === 'Upcoming'
-                                    ? 'rgba(59,130,246,0.15)'
-                                    : 'rgba(148,163,184,0.15)',
                                 color:
                                   status === 'Live Now'
-                                    ? '#fca5a5'
+                                    ? theme.success
                                     : status === 'Upcoming'
-                                    ? '#93c5fd'
+                                    ? theme.warning
                                     : theme.muted,
-                                border: `1px solid ${theme.border}`,
                               }}
                             >
                               {status}
-                            </span>
-                          </div>
+                            </strong>
+                          </p>
 
-                          {live.description && (
-                            <p style={{ color: theme.muted, fontSize: '13px', marginBottom: '8px' }}>
-                              {live.description}
+                          {cls.description && (
+                            <p style={{ color: theme.muted, margin: '8px 0 0', fontSize: '13px' }}>
+                              {cls.description}
                             </p>
                           )}
-
-                          <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
-                            📅{' '}
-                            {new Date(live.scheduledAt).toLocaleString('en-IN', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short',
-                            })}
-                          </p>
-
-                          <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
-                            ⏱ Duration: {live.durationMinutes || 60} minutes
-                          </p>
-
-                          <p
-                            style={{
-                              color: theme.muted,
-                              fontSize: '12px',
-                              margin: '8px 0 0',
-                              wordBreak: 'break-all',
-                            }}
-                          >
-                            🔗 {live.liveUrl}
-                          </p>
                         </div>
 
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: '8px',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                          }}
-                        >
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                           <button
-                            onClick={() => window.open(live.liveUrl, '_blank')}
+                            onClick={() => window.open(cls.liveUrl, '_blank')}
                             style={adminStyles.blueBtn(theme)}
                           >
-                            Open
+                            Open Link
                           </button>
 
                           <button
-                            onClick={() => deleteLiveClass(live._id)}
+                            onClick={() => deleteLiveClass(cls._id)}
                             style={adminStyles.dangerBtn(theme)}
                           >
                             Delete
                           </button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'notifications' && <AdminNotificationSender theme={theme} />}
 
-        {activeTab === 'activity' && <SecurityLogsPanel theme={theme} />}
+        {activeTab === 'activity' && <SecurityLogsPanel />}
 
         {activeTab === 'assistant' && renderAssistantLogsSection()}
       </div>
@@ -2655,37 +3059,34 @@ function AdminPanel() {
 
 const adminStyles = {
   bgGrid: {
-    position: 'absolute',
+    position: 'fixed',
     inset: 0,
     backgroundImage:
-      'linear-gradient(rgba(167,139,250,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(167,139,250,0.035) 1px, transparent 1px)',
-    backgroundSize: '44px 44px',
-    maskImage: 'linear-gradient(to bottom, black, transparent 88%)',
+      'linear-gradient(rgba(139,92,246,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,0.08) 1px, transparent 1px)',
+    backgroundSize: '48px 48px',
     pointerEvents: 'none',
-    zIndex: 0,
+    opacity: 0.45,
   },
   glowOne: {
-    position: 'absolute',
-    top: '90px',
-    left: '-130px',
-    width: '300px',
-    height: '300px',
-    borderRadius: '50%',
-    background: 'rgba(124, 58, 237, 0.18)',
-    filter: 'blur(95px)',
-    zIndex: 0,
+    position: 'fixed',
+    width: '420px',
+    height: '420px',
+    borderRadius: '999px',
+    background: 'rgba(124,58,237,0.20)',
+    filter: 'blur(80px)',
+    top: '-150px',
+    right: '-140px',
     pointerEvents: 'none',
   },
   glowTwo: {
-    position: 'absolute',
-    top: '650px',
-    right: '-140px',
-    width: '340px',
-    height: '340px',
-    borderRadius: '50%',
-    background: 'rgba(59, 130, 246, 0.14)',
-    filter: 'blur(100px)',
-    zIndex: 0,
+    position: 'fixed',
+    width: '380px',
+    height: '380px',
+    borderRadius: '999px',
+    background: 'rgba(14,165,233,0.16)',
+    filter: 'blur(90px)',
+    bottom: '-150px',
+    left: '-140px',
     pointerEvents: 'none',
   },
   blueBtn: (theme) => ({
