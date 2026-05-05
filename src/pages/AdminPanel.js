@@ -704,66 +704,136 @@ function AdminPanel() {
   };
 
   // ✅ Generate AI Important Questions directly from selected uploaded course PDFs
-  const generateImportantQuestions = async () => {
-    if (!aiSelectedCourse?._id) {
-      toast.error('❌ Course select nahi hua!');
-      return;
+  // ✅ Generate AI Important Questions automatically for selected PDFs one-by-one
+const generateImportantQuestions = async () => {
+  if (!aiSelectedCourse?._id) {
+    toast.error('❌ Course select nahi hua!');
+    return;
+  }
+
+  if (!aiSelectedCourse?.pdfs || aiSelectedCourse.pdfs.length === 0) {
+    toast.error('❌ Is course mein koi PDF uploaded nahi hai!');
+    setMsg('❌ Pehle is course mein PDF upload karo, phir AI Questions generate honge.');
+    setTimeout(() => setMsg(''), 4000);
+    return;
+  }
+
+  if (!aiSelectedPdfIndexes || aiSelectedPdfIndexes.length === 0) {
+    toast.error('❌ Kam se kam ek PDF select karo!');
+    setMsg('❌ AI generate karne ke liye kam se kam ek PDF select karni padegi.');
+    setTimeout(() => setMsg(''), 4000);
+    return;
+  }
+
+  try {
+    setAiGenerating(true);
+
+    const total = aiSelectedPdfIndexes.length;
+    let successCount = 0;
+    let failedCount = 0;
+    const failedPdfs = [];
+
+    toast.info(`⏳ ${total} PDF(s) ke liye AI drafts generate ho rahe hain...`);
+    setMsg(`⏳ AI selected ${total} PDF(s) ko one-by-one generate kar raha hai. Page close mat karna.`);
+
+    for (let i = 0; i < aiSelectedPdfIndexes.length; i++) {
+      const pdfIndex = aiSelectedPdfIndexes[i];
+      const pdf = aiSelectedCourse.pdfs[pdfIndex];
+
+      try {
+        setMsg(
+          `⏳ Generating ${i + 1}/${total}: ${
+            pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`
+          }`
+        );
+
+        await axios.post(
+          `${API}/api/study-tools/generate-important-questions-from-pdf`,
+          {
+            courseId: aiSelectedCourse._id,
+
+            // ✅ IMPORTANT:
+            // Ek time pe sirf ek PDF bhej rahe hain.
+            // Isse har PDF ka separate draft banega.
+            pdfIndexes: [pdfIndex],
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        successCount += 1;
+
+        toast.success(
+          `✅ Generated ${i + 1}/${total}: ${
+            pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`
+          }`
+        );
+      } catch (singleErr) {
+        failedCount += 1;
+
+        const singleErrorMsg =
+          singleErr.response?.data?.message ||
+          singleErr.response?.data?.error ||
+          singleErr.message ||
+          'Generation failed';
+
+        failedPdfs.push({
+          title: pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`,
+          error: singleErrorMsg,
+        });
+
+        console.log('SINGLE PDF AI GENERATION ERROR:', {
+          pdfIndex,
+          pdf,
+          error: singleErr,
+        });
+
+        toast.error(
+          `❌ Failed ${i + 1}/${total}: ${
+            pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`
+          }`
+        );
+      }
     }
 
-    if (!aiSelectedCourse?.pdfs || aiSelectedCourse.pdfs.length === 0) {
-      toast.error('❌ Is course mein koi PDF uploaded nahi hai!');
-      setMsg('❌ Pehle is course mein PDF upload karo, phir AI Questions generate honge.');
-      setTimeout(() => setMsg(''), 4000);
-      return;
-    }
-
-    if (!aiSelectedPdfIndexes || aiSelectedPdfIndexes.length === 0) {
-      toast.error('❌ Kam se kam ek PDF select karo!');
-      setMsg('❌ AI generate karne ke liye kam se kam ek PDF select karni padegi.');
-      setTimeout(() => setMsg(''), 4000);
-      return;
-    }
-
-    try {
-      setAiGenerating(true);
-      setMsg(`⏳ AI selected ${aiSelectedPdfIndexes.length} PDF(s) se text extract karke important questions bana raha hai...`);
-
-      const res = await axios.post(
-        `${API}/api/study-tools/generate-important-questions-from-pdf`,
-        {
-          courseId: aiSelectedCourse._id,
-          pdfIndexes: aiSelectedPdfIndexes,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      toast.success(res.data?.message || '✅ Important questions generated from selected PDFs!');
+    if (successCount > 0) {
+      toast.success(`✅ ${successCount} AI draft(s) generated successfully!`);
       setMsg(
-        `✅ AI questions draft mein save ho gaye! PDFs used: ${res.data?.usedPdfCount || aiSelectedPdfIndexes.length}, Extracted: ${res.data?.extractedCharacters || 'PDF'} characters`
+        `✅ Done! ${successCount} draft(s) generated${
+          failedCount ? `, ${failedCount} failed.` : '.'
+        } Review AI mein check karo.`
       );
-
-      setAiModalOpen(false);
-      setAiSelectedCourse(null);
-      setAiSourceText('');
-      setAiSelectedPdfIndexes([]);
-
-      setTimeout(() => setMsg(''), 5000);
-    } catch (err) {
-      console.log('AI IMPORTANT QUESTIONS FROM PDF ERROR:', err);
-      const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'AI PDF generation failed';
-
-      toast.error('❌ ' + errorMsg);
-      setMsg('❌ ' + errorMsg);
-      setTimeout(() => setMsg(''), 6000);
-    } finally {
-      setAiGenerating(false);
+    } else {
+      toast.error('❌ Koi bhi AI draft generate nahi hua.');
+      setMsg('❌ Koi bhi AI draft generate nahi hua. Render logs check karo.');
     }
-  };
+
+    if (failedPdfs.length > 0) {
+      console.log('FAILED AI PDFS:', failedPdfs);
+    }
+
+    setAiModalOpen(false);
+    setAiSelectedCourse(null);
+    setAiSourceText('');
+    setAiSelectedPdfIndexes([]);
+
+    setTimeout(() => setMsg(''), 7000);
+  } catch (err) {
+    console.log('AI IMPORTANT QUESTIONS BULK ERROR:', err);
+
+    const errorMsg =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      'AI PDF generation failed';
+
+    toast.error('❌ ' + errorMsg);
+    setMsg('❌ ' + errorMsg);
+    setTimeout(() => setMsg(''), 6000);
+  } finally {
+    setAiGenerating(false);
+  }
+};
 
   // ✅ Fetch AI generated drafts/published study tools for review
   const fetchStudyToolsForCourse = async (course) => {
