@@ -7,6 +7,7 @@ import Reviews from '../components/Reviews';
 import CheckoutModal from '../components/CheckoutModal';
 import Footer from '../components/Footer';
 import { motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 import logActivity from '../utils/logActivity';
 import LiveClassesBox from '../components/LiveClassesBox';
@@ -516,10 +517,89 @@ function LockedList({ title, items, type, theme }) {
   );
 }
 
-function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
+function StudyToolsBox({
+  tools,
+  loading,
+  locked,
+  theme,
+  isMobile,
+  onUnlock,
+  toolType = 'important_questions',
+}) {
   const [selectedTool, setSelectedTool] = useState(null);
+  const [quizAnswers, setQuizAnswers] = useState({});
 
-  const closeToolModal = () => setSelectedTool(null);
+  const closeToolModal = () => {
+    setSelectedTool(null);
+    setQuizAnswers({});
+  };
+
+  const allTools = Array.isArray(tools) ? tools : [];
+  const importantTools = allTools.filter((tool) => tool?.type !== 'quiz');
+  const quizTools = allTools.filter((tool) => tool?.type === 'quiz');
+  const visibleTools = toolType === 'quiz' ? quizTools : importantTools;
+
+  const getTotalQuestions = (tool) => {
+    const content = tool?.content || {};
+
+    if (tool?.type === 'quiz') {
+      return content.quizQuestions?.length || content.questions?.length || content.mcqs?.length || 0;
+    }
+
+    return (
+      (content.shortQuestions?.length || 0) +
+      (content.longQuestions?.length || 0) +
+      (content.mcqs?.length || 0) +
+      (content.mostExpectedQuestions?.length || 0)
+    );
+  };
+
+  const getToolTitle = (tool) => {
+    const title = tool?.title || '';
+
+    return (
+      title
+        .replace(/^Important Questions\s*-\s*/i, '')
+        .replace(/^Quiz Practice\s*-\s*/i, '')
+        .trim() || 'Study Tool'
+    );
+  };
+
+  const getQuizQuestions = (tool) => {
+    const content = tool?.content || {};
+    return Array.isArray(content.quizQuestions)
+      ? content.quizQuestions
+      : Array.isArray(content.questions)
+      ? content.questions
+      : Array.isArray(content.mcqs)
+      ? content.mcqs
+      : [];
+  };
+
+  const getCorrectAnswerText = (item) => {
+    const options = Array.isArray(item?.options) ? item.options : [];
+    const raw = String(item?.correctAnswer || item?.answer || '').trim();
+
+    if (!raw) return '';
+
+    const letterMap = { A: 0, B: 1, C: 2, D: 3 };
+    const possibleLetter = raw.replace('.', '').trim().toUpperCase();
+
+    if (letterMap[possibleLetter] !== undefined && options[letterMap[possibleLetter]]) {
+      return String(options[letterMap[possibleLetter]]).trim();
+    }
+
+    return raw;
+  };
+
+  const isSelectedCorrect = (item, selectedOption) => {
+    const correct = getCorrectAnswerText(item).toLowerCase().trim();
+    return String(selectedOption || '').toLowerCase().trim() === correct;
+  };
+
+  const resetQuiz = () => {
+    setQuizAnswers({});
+  };
 
   const renderQuestionList = (title, items, icon) => {
     const safeItems = Array.isArray(items) ? items : [];
@@ -594,18 +674,199 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
     );
   };
 
-  const getTotalQuestions = (tool) => {
-    const content = tool?.content || {};
+  const renderQuizContent = (tool) => {
+    const questions = getQuizQuestions(tool);
+    const answeredCount = Object.keys(quizAnswers).length;
+    const score = questions.reduce((total, item, index) => {
+      const selected = quizAnswers[index];
+      return selected && isSelectedCorrect(item, selected) ? total + 1 : total;
+    }, 0);
+
+    if (questions.length === 0) {
+      return (
+        <div
+          style={{
+            marginTop: '14px',
+            padding: '18px',
+            borderRadius: '16px',
+            border: `1px solid ${theme.border}`,
+            background: theme.isDark ? 'rgba(251,191,36,0.10)' : '#fef3c7',
+            color: theme.muted,
+            fontWeight: 850,
+            lineHeight: 1.6,
+          }}
+        >
+          ⚠️ Is quiz draft mein questions nahi mile. AdminPanel se quiz dobara generate karo.
+        </div>
+      );
+    }
+
     return (
-      (content.shortQuestions?.length || 0) +
-      (content.longQuestions?.length || 0) +
-      (content.mcqs?.length || 0) +
-      (content.mostExpectedQuestions?.length || 0)
+      <div style={{ marginTop: '14px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+            padding: '12px 14px',
+            borderRadius: '16px',
+            border: `1px solid ${theme.border}`,
+            background: theme.isDark ? 'rgba(6,182,212,0.10)' : '#e0f2fe',
+            marginBottom: '14px',
+          }}
+        >
+          <div>
+            <h4 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
+              🧠 Interactive Quiz ({questions.length})
+            </h4>
+            <p style={{ color: theme.muted, margin: '6px 0 0', fontWeight: 800, fontSize: '13px' }}>
+              Score: {score}/{questions.length} • Answered: {answeredCount}/{questions.length}
+            </p>
+          </div>
+
+          <button
+            onClick={resetQuiz}
+            style={{
+              padding: '10px 13px',
+              borderRadius: '12px',
+              border: `1px solid ${theme.border}`,
+              background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
+              color: theme.text,
+              cursor: 'pointer',
+              fontWeight: 950,
+            }}
+          >
+            Reset
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: '12px' }}>
+          {questions.map((item, index) => {
+            const options = Array.isArray(item?.options) ? item.options.slice(0, 4) : [];
+            const selected = quizAnswers[index];
+            const correctText = getCorrectAnswerText(item);
+            const answered = Boolean(selected);
+
+            return (
+              <div
+                key={index}
+                style={{
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '16px',
+                  padding: '14px',
+                  background: theme.isDark ? 'rgba(15,23,42,0.58)' : '#ffffff',
+                }}
+              >
+                <p style={{ color: theme.text, margin: '0 0 12px', fontWeight: 950, lineHeight: 1.55 }}>
+                  {index + 1}. {item?.question || 'Question missing'}
+                </p>
+
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  {options.map((option, optIndex) => {
+                    const isSelected = selected === option;
+                    const isCorrect = correctText && String(option).trim().toLowerCase() === correctText.toLowerCase().trim();
+
+                    let optionBg = theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.82)';
+                    let optionBorder = theme.border;
+                    let optionColor = theme.text;
+
+                    if (answered && isCorrect) {
+                      optionBg = theme.isDark ? 'rgba(34,197,94,0.16)' : '#dcfce7';
+                      optionBorder = 'rgba(34,197,94,0.55)';
+                      optionColor = theme.success;
+                    } else if (answered && isSelected && !isCorrect) {
+                      optionBg = theme.isDark ? 'rgba(239,68,68,0.14)' : '#fee2e2';
+                      optionBorder = 'rgba(239,68,68,0.55)';
+                      optionColor = '#ef4444';
+                    } else if (isSelected) {
+                      optionBg = theme.isDark ? 'rgba(59,130,246,0.14)' : '#dbeafe';
+                      optionBorder = 'rgba(59,130,246,0.55)';
+                    }
+
+                    return (
+                      <button
+                        key={optIndex}
+                        disabled={answered}
+                        onClick={() => {
+                          setQuizAnswers((prev) => ({
+                            ...prev,
+                            [index]: option,
+                          }));
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '11px 12px',
+                          borderRadius: '13px',
+                          border: `1px solid ${optionBorder}`,
+                          background: optionBg,
+                          color: optionColor,
+                          cursor: answered ? 'default' : 'pointer',
+                          fontWeight: 850,
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        {String.fromCharCode(65 + optIndex)}. {option}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {answered && (
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      borderRadius: '13px',
+                      border: `1px solid ${isSelectedCorrect(item, selected) ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                      background: isSelectedCorrect(item, selected)
+                        ? theme.isDark
+                          ? 'rgba(34,197,94,0.10)'
+                          : '#dcfce7'
+                        : theme.isDark
+                        ? 'rgba(239,68,68,0.10)'
+                        : '#fee2e2',
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: '0 0 6px',
+                        color: isSelectedCorrect(item, selected) ? theme.success : '#ef4444',
+                        fontWeight: 950,
+                      }}
+                    >
+                      {isSelectedCorrect(item, selected) ? '✅ Correct!' : '❌ Wrong'}
+                    </p>
+
+                    {!isSelectedCorrect(item, selected) && (
+                      <p style={{ margin: '0 0 6px', color: theme.text, fontWeight: 850 }}>
+                        Correct answer: {correctText || 'Not provided'}
+                      </p>
+                    )}
+
+                    {item?.explanation && (
+                      <p style={{ margin: 0, color: theme.muted, lineHeight: 1.55, fontWeight: 750 }}>
+                        🧠 {item.explanation}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     );
   };
 
   const renderToolContent = (tool) => {
     const content = tool?.content || {};
+
+    if (tool?.type === 'quiz') {
+      return renderQuizContent(tool);
+    }
 
     return (
       <div style={{ marginTop: '14px' }}>
@@ -632,18 +893,18 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
         </p>
 
         <h2 style={{ color: theme.text, margin: '0 0 10px', fontWeight: 950 }}>
-          🔒 AI Important Questions Locked
+          🔒 Study With AI Locked
         </h2>
 
         <p style={{ color: theme.muted, lineHeight: 1.75, fontWeight: 750, margin: '0 0 16px' }}>
-          This course includes AI-generated exam practice based on actual uploaded notes —
-          important questions, MCQs and expected questions. Enroll to unlock smarter revision.
+          This course includes AI-generated important questions and quiz practice based on actual uploaded notes.
+          Enroll to unlock smarter revision.
         </p>
 
         <div style={styles.aiFeatureGrid(isMobile)}>
-          <span>🔒 AI Important Questions</span>
+          <span>🔒 Important Questions</span>
+          <span>🔒 Quiz Practice</span>
           <span>🔒 Unit-wise MCQs</span>
-          <span>🔒 Long Answer Practice</span>
           <span>🔒 Most Expected Questions</span>
         </div>
 
@@ -654,11 +915,123 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
           onClick={onUnlock}
           style={{ ...styles.unlockBtn(isMobile), marginTop: '18px' }}
         >
-          🚀 Unlock AI Study Tools
+          🚀 Unlock Study AI
         </motion.button>
       </div>
     );
   }
+
+  const heading =
+    toolType === 'quiz' ? '🧠 Quiz Practice' : '✨ Important Questions';
+
+  const emptyText =
+    toolType === 'quiz'
+      ? 'Admin ne abhi quiz practice publish nahi kiya.'
+      : 'Admin ne abhi important questions publish nahi kiye.';
+
+  const modalOverlay =
+    selectedTool &&
+    createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 999999,
+          background: 'rgba(2, 6, 23, 0.86)',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: isMobile ? '12px' : '20px',
+        }}
+        onClick={closeToolModal}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.94, y: 18 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.94, y: 18 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: isMobile ? 'calc(100vw - 20px)' : 'min(1180px, calc(100vw - 64px))',
+            height: isMobile ? 'calc(100vh - 24px)' : 'min(92vh, 900px)',
+            maxHeight: isMobile ? 'calc(100vh - 24px)' : '92vh',
+            overflow: 'hidden',
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: isMobile ? '20px' : '26px',
+            padding: isMobile ? '16px' : '28px',
+            boxShadow: '0 20px 70px rgba(0,0,0,0.45)',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            willChange: 'transform',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap',
+              alignItems: 'flex-start',
+              paddingBottom: '16px',
+              marginBottom: '16px',
+              borderBottom: `1px solid ${theme.border}`,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: '0 0 7px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+                {selectedTool?.type === 'quiz'
+                  ? '🧠 INTERACTIVE QUIZ • BONUS'
+                  : '✨ IMPORTANT QUESTIONS • BONUS'}
+              </p>
+
+              <h2 style={{ margin: 0, color: theme.text, fontWeight: 950, lineHeight: 1.25 }}>
+                {getToolTitle(selectedTool)}
+              </h2>
+
+              <p style={{ margin: '8px 0 0', color: theme.muted, fontWeight: 750, fontSize: '13px' }}>
+                {getTotalQuestions(selectedTool)} questions • Source: {selectedTool.sourcePdf?.title || 'Course PDFs'}
+              </p>
+            </div>
+
+            <button
+              onClick={closeToolModal}
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '14px',
+                border: `1px solid ${theme.border}`,
+                background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
+                color: theme.text,
+                cursor: 'pointer',
+                fontSize: '22px',
+                fontWeight: 950,
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              paddingRight: isMobile ? '2px' : '10px',
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarGutter: 'stable',
+            }}
+          >
+            {renderToolContent(selectedTool)}
+          </div>
+        </motion.div>
+      </div>,
+      document.body
+    );
 
   return (
     <>
@@ -670,21 +1043,25 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
           boxShadow: theme.shadow,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <div>
-            <p style={{ margin: '0 0 8px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
-              ✨ AI STUDY TOOLS
-            </p>
-            <h2 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
-              Study With AI <span style={{ color: theme.primary }}>BONUS</span>
-            </h2>
-            <p style={{ color: theme.muted, margin: '8px 0 0', lineHeight: 1.65, fontWeight: 750 }}>
-              Open AI questions in a premium focus window. Flashcards, quizzes and audio podcast will live here next.
-            </p>
-          </div>
+        <div>
+          <p style={{ margin: '0 0 8px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+            ✨ STUDY AI BONUS
+          </p>
+
+          <h2 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
+            {heading}
+          </h2>
+
+          <p style={{ color: theme.muted, margin: '8px 0 0', lineHeight: 1.65, fontWeight: 750 }}>
+            {toolType === 'quiz'
+              ? 'Practice interactive AI-generated quiz sets from uploaded course PDFs.'
+              : 'Revise using AI-generated important questions from uploaded course PDFs.'}
+          </p>
 
           <span
             style={{
+              display: 'inline-flex',
+              marginTop: '14px',
               padding: '8px 12px',
               borderRadius: '999px',
               background: theme.isDark ? 'rgba(34,197,94,0.13)' : '#dcfce7',
@@ -694,13 +1071,15 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
               fontWeight: 950,
             }}
           >
-            {tools?.length || 0} Published
+            {visibleTools.length} Published
           </span>
         </div>
 
         {loading ? (
-          <p style={{ color: theme.muted, fontWeight: 900, marginTop: '16px' }}>⏳ Loading AI study tools...</p>
-        ) : !tools?.length ? (
+          <p style={{ color: theme.muted, fontWeight: 900, marginTop: '16px' }}>
+            ⏳ Loading AI study tools...
+          </p>
+        ) : visibleTools.length === 0 ? (
           <div
             style={{
               marginTop: '16px',
@@ -713,12 +1092,11 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
               lineHeight: 1.6,
             }}
           >
-            ⚠️ Admin ne abhi AI questions publish nahi kiye. Course content available hai,
-            AI study tools publish hote hi yahan dikh jayenge.
+            ⚠️ {emptyText} Publish hote hi yahan dikhega.
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '12px', marginTop: '18px' }}>
-            {tools.map((tool) => (
+            {visibleTools.map((tool) => (
               <motion.div
                 key={tool._id}
                 whileHover={{ y: -2 }}
@@ -737,24 +1115,32 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
               >
                 <div style={{ minWidth: 0 }}>
                   <h3 style={{ color: theme.text, margin: '0 0 6px', fontWeight: 950 }}>
-                    ✨ {tool.title || 'Important Questions'}
+                    {tool?.type === 'quiz' ? '🧠 Quiz Practice' : '✨ Important Questions'} - {getToolTitle(tool)}
                   </h3>
+
                   <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
                     {getTotalQuestions(tool)} questions • Source: {tool.sourcePdf?.title || 'Course PDFs'}
                   </p>
                 </div>
 
                 <button
-                  onClick={() => setSelectedTool(tool)}
+                  onClick={() => {
+                    setQuizAnswers({});
+                    setSelectedTool(tool);
+                  }}
                   style={{
                     padding: '12px 18px',
                     borderRadius: '15px',
                     border: 'none',
-                    background: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+                    background: tool?.type === 'quiz'
+                      ? 'linear-gradient(135deg, #06b6d4, #2563eb)'
+                      : 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
                     color: '#fff',
                     cursor: 'pointer',
                     fontWeight: 950,
-                    boxShadow: '0 12px 28px rgba(139,92,246,0.28)',
+                    boxShadow: tool?.type === 'quiz'
+                      ? '0 12px 28px rgba(6,182,212,0.25)'
+                      : '0 12px 28px rgba(139,92,246,0.28)',
                   }}
                 >
                   Open
@@ -765,107 +1151,10 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
         )}
       </div>
 
-      {selectedTool && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 99999,
-            background: 'rgba(2, 6, 23, 0.86)',
-            // ✅ Heavy backdrop blur modal scroll ko laggy bana deta hai, isliye blur remove.
-            backdropFilter: 'none',
-            WebkitBackdropFilter: 'none',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: isMobile ? '12px' : '20px',
-          }}
-          onClick={closeToolModal}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 18 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: 18 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: isMobile ? 'calc(100vw - 20px)' : 'min(1180px, calc(100vw - 64px))',
-              height: isMobile ? 'calc(100vh - 24px)' : 'min(92vh, 900px)',
-              maxHeight: isMobile ? 'calc(100vh - 24px)' : '92vh',
-              overflow: 'hidden',
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              borderRadius: isMobile ? '20px' : '26px',
-              padding: isMobile ? '18px' : '24px',
-              boxShadow: '0 20px 70px rgba(0,0,0,0.45)',
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column',
-              willChange: 'transform',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: '12px',
-                flexWrap: 'wrap',
-                alignItems: 'flex-start',
-                paddingBottom: '16px',
-                marginBottom: '16px',
-                borderBottom: `1px solid ${theme.border}`,
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: '0 0 7px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
-                  ✨ STUDY WITH AI • BONUS
-                </p>
-                <h2 style={{ margin: 0, color: theme.text, fontWeight: 950, lineHeight: 1.25 }}>
-                  {selectedTool.title || 'AI Important Questions'}
-                </h2>
-                <p style={{ margin: '8px 0 0', color: theme.muted, fontWeight: 750, fontSize: '13px' }}>
-                  {getTotalQuestions(selectedTool)} questions • Source: {selectedTool.sourcePdf?.title || 'Course PDFs'}
-                </p>
-              </div>
-
-              <button
-                onClick={closeToolModal}
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '14px',
-                  border: `1px solid ${theme.border}`,
-                  background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
-                  color: theme.text,
-                  cursor: 'pointer',
-                  fontSize: '22px',
-                  fontWeight: 950,
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div
-              style={{
-                flex: 1,
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                paddingRight: isMobile ? '2px' : '10px',
-                overscrollBehavior: 'contain',
-                WebkitOverflowScrolling: 'touch',
-                scrollbarGutter: 'stable',
-              }}
-            >
-              {renderToolContent(selectedTool)}
-            </div>
-          </motion.div>
-        </div>
-      )}
+      {modalOverlay}
     </>
   );
 }
-
 function CourseDetail() {
   const { id } = useParams();
   const theme = useTheme();
@@ -874,6 +1163,7 @@ function CourseDetail() {
 
   const [course, setCourse] = useState(null);
   const [activeTab, setActiveTab] = useState('videos');
+  const [activeStudyToolType, setActiveStudyToolType] = useState('important_questions');
   const [activeVideo, setActiveVideo] = useState(null);
   const [activePdf, setActivePdf] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
@@ -1291,143 +1581,241 @@ function CourseDetail() {
   const totalPdfs = course.pdfs?.length || 0;
 
   const CourseContentPanel = () => (
-    <aside
-      style={{
-        ...styles.sidebar(isMobile),
-        background: theme.card,
-        border: `1px solid ${theme.border}`,
-        boxShadow: theme.shadow,
-        backdropFilter: theme.glass,
-        WebkitBackdropFilter: theme.glass,
-      }}
-    >
-      <h3 style={{ marginTop: 0, marginBottom: '16px', color: theme.text }}>
-        Course Content
-      </h3>
+  <aside
+    style={{
+      ...styles.sidebar(isMobile),
+      background: theme.card,
+      border: `1px solid ${theme.border}`,
+      boxShadow: theme.shadow,
+      backdropFilter: theme.glass,
+      WebkitBackdropFilter: theme.glass,
+    }}
+  >
+    <h3 style={{ marginTop: 0, marginBottom: '16px', color: theme.text }}>
+      Course Content
+    </h3>
 
-      {isEnrolled && (
-        <div
-          style={{
-            ...styles.previewOnlyBox,
-            background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
-            border: `1px solid ${theme.border}`,
-            color: theme.textSecondary,
-          }}
-        >
-          📈 Real progress: {courseProgress.progressPercent || 0}% complete.
-          Open = streak, Mark Done = progress.
-        </div>
-      )}
+    {isEnrolled && (
+      <div
+        style={{
+          ...styles.previewOnlyBox,
+          background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
+          border: `1px solid ${theme.border}`,
+          color: theme.textSecondary,
+        }}
+      >
+        📈 Real progress: {courseProgress.progressPercent || 0}% complete.
+        Open = streak, Mark Done = progress.
+      </div>
+    )}
 
-      {locked && (
-        <div
-          style={{
-            ...styles.previewOnlyBox,
-            background: 'linear-gradient(135deg, rgba(251,191,36,0.14), rgba(239,68,68,0.10))',
-            border: '1px solid rgba(251,191,36,0.30)',
-            color: theme.muted,
-          }}
-        >
-          🔒 Preview only. Unlock karne ke baad actual videos, PDFs, AI study tools aur live classes open honge.
-        </div>
-      )}
+    {locked && (
+      <div
+        style={{
+          ...styles.previewOnlyBox,
+          background:
+            'linear-gradient(135deg, rgba(251,191,36,0.14), rgba(239,68,68,0.10))',
+          border: '1px solid rgba(251,191,36,0.30)',
+          color: theme.muted,
+        }}
+      >
+        🔒 Preview only. Unlock karne ke baad actual videos, PDFs, AI study tools aur live classes open honge.
+      </div>
+    )}
 
-      <div style={styles.tabRow}>
-        <button
-          onClick={() => handleTabChange('videos')}
-          style={{
-            ...styles.tabBtn,
-            background: activeTab === 'videos' ? theme.primary : theme.bgSecondary,
-            color: activeTab === 'videos' ? '#fff' : theme.text,
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          Videos
-        </button>
+    <div style={styles.tabRow}>
+      <button
+        onClick={() => handleTabChange('videos')}
+        style={{
+          ...styles.tabBtn,
+          background: activeTab === 'videos' ? theme.primary : theme.bgSecondary,
+          color: activeTab === 'videos' ? '#fff' : theme.text,
+          border: `1px solid ${theme.border}`,
+        }}
+      >
+        Videos
+      </button>
 
-        <button
-          onClick={() => handleTabChange('pdfs')}
-          style={{
-            ...styles.tabBtn,
-            background: activeTab === 'pdfs' ? theme.primary : theme.bgSecondary,
-            color: activeTab === 'pdfs' ? '#fff' : theme.text,
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          PDFs
-        </button>
+      <button
+        onClick={() => handleTabChange('pdfs')}
+        style={{
+          ...styles.tabBtn,
+          background: activeTab === 'pdfs' ? theme.primary : theme.bgSecondary,
+          color: activeTab === 'pdfs' ? '#fff' : theme.text,
+          border: `1px solid ${theme.border}`,
+        }}
+      >
+        PDFs
+      </button>
 
-        <button
-          onClick={() => handleTabChange('study-ai')}
-          style={{
-            ...styles.tabBtn,
-            background: activeTab === 'study-ai'
+      <button
+        onClick={() => handleTabChange('study-ai')}
+        style={{
+          ...styles.tabBtn,
+          background:
+            activeTab === 'study-ai'
               ? 'linear-gradient(135deg, #8b5cf6, #06b6d4)'
               : theme.bgSecondary,
-            color: activeTab === 'study-ai' ? '#fff' : theme.text,
-            border: `1px solid ${activeTab === 'study-ai' ? 'rgba(139,92,246,0.55)' : theme.border}`,
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          ✨ Study AI
-          <span
-            style={{
-              marginLeft: '6px',
-              padding: '2px 6px',
-              borderRadius: '999px',
-              background: activeTab === 'study-ai' ? 'rgba(255,255,255,0.20)' : 'rgba(34,197,94,0.14)',
-              color: activeTab === 'study-ai' ? '#fff' : theme.success,
-              fontSize: '9px',
-              fontWeight: 950,
-              verticalAlign: 'middle',
-            }}
-          >
-            BONUS
-          </span>
-        </button>
-      </div>
-
-      {activeTab === 'videos' && (
-        <ContentList
-          items={course.videos}
-          type="video"
-          locked={locked}
-          activeTitle={activeVideo?.title}
-          onClick={handleVideoClick}
-          theme={theme}
-          completedUrls={courseProgress.completedVideoUrls}
-        />
-      )}
-
-      {activeTab === 'pdfs' && (
-        <ContentList
-          items={course.pdfs}
-          type="pdf"
-          locked={locked}
-          activeTitle={activePdf?.title}
-          onClick={handlePdfClick}
-          theme={theme}
-          completedUrls={courseProgress.completedPdfUrls}
-        />
-      )}
-
-      {locked && (
-        <motion.button
-          whileHover={{ scale: 1.018, y: -1 }}
-          whileTap={{ scale: 0.985 }}
-          transition={{ duration: 0.16, ease: 'easeOut' }}
-          onClick={() => openCheckout('sidebar locked preview')}
+          color: activeTab === 'study-ai' ? '#fff' : theme.text,
+          border: `1px solid ${
+            activeTab === 'study-ai' ? 'rgba(139,92,246,0.55)' : theme.border
+          }`,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        ✨ Study AI
+        <span
           style={{
-            ...styles.sidebarUnlockBtn,
-            background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+            marginLeft: '6px',
+            padding: '2px 6px',
+            borderRadius: '999px',
+            background:
+              activeTab === 'study-ai'
+                ? 'rgba(255,255,255,0.20)'
+                : 'rgba(34,197,94,0.14)',
+            color: activeTab === 'study-ai' ? '#fff' : theme.success,
+            fontSize: '9px',
+            fontWeight: 950,
+            verticalAlign: 'middle',
           }}
         >
-          🚀 Unlock Course Now
-        </motion.button>
-      )}
-    </aside>
-  );
+          BONUS
+        </span>
+      </button>
+    </div>
+
+    {activeTab === 'videos' && (
+      <ContentList
+        items={course.videos}
+        type="video"
+        locked={locked}
+        activeTitle={activeVideo?.title}
+        onClick={handleVideoClick}
+        theme={theme}
+        completedUrls={courseProgress.completedVideoUrls}
+      />
+    )}
+
+    {activeTab === 'pdfs' && (
+      <ContentList
+        items={course.pdfs}
+        type="pdf"
+        locked={locked}
+        activeTitle={activePdf?.title}
+        onClick={handlePdfClick}
+        theme={theme}
+        completedUrls={courseProgress.completedPdfUrls}
+      />
+    )}
+
+    {/* ✅ Study AI right sidebar mein sirf topics rahenge. Files/list left main area mein dikhegi. */}
+    {activeTab === 'study-ai' && (
+  <div style={{ display: 'grid', gap: '10px' }}>
+    <button
+      onClick={() => {
+        setActiveStudyToolType('important_questions');
+        setActiveTab('study-ai');
+      }}
+      style={{
+        width: '100%',
+        padding: '13px 14px',
+        borderRadius: '16px',
+        border: `1px solid ${
+          activeStudyToolType === 'important_questions'
+            ? 'rgba(139,92,246,0.65)'
+            : theme.border
+        }`,
+        background:
+          activeStudyToolType === 'important_questions'
+            ? 'linear-gradient(135deg, #8b5cf6, #4f46e5)'
+            : theme.isDark
+            ? 'rgba(255,255,255,0.035)'
+            : 'rgba(255,255,255,0.72)',
+        color: activeStudyToolType === 'important_questions' ? '#fff' : theme.text,
+        cursor: 'pointer',
+        fontWeight: 950,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '10px',
+      }}
+    >
+      <span>✨ Important Questions</span>
+      <span
+        style={{
+          padding: '4px 9px',
+          borderRadius: '999px',
+          background: 'rgba(255,255,255,0.18)',
+          fontSize: '12px',
+          fontWeight: 950,
+        }}
+      >
+        {studyTools.filter((tool) => tool?.type !== 'quiz').length}
+      </span>
+    </button>
+
+    <button
+      onClick={() => {
+        setActiveStudyToolType('quiz');
+        setActiveTab('study-ai');
+      }}
+      style={{
+        width: '100%',
+        padding: '13px 14px',
+        borderRadius: '16px',
+        border: `1px solid ${
+          activeStudyToolType === 'quiz'
+            ? 'rgba(6,182,212,0.65)'
+            : theme.border
+        }`,
+        background:
+          activeStudyToolType === 'quiz'
+            ? 'linear-gradient(135deg, #06b6d4, #2563eb)'
+            : theme.isDark
+            ? 'rgba(255,255,255,0.035)'
+            : 'rgba(255,255,255,0.72)',
+        color: activeStudyToolType === 'quiz' ? '#fff' : theme.text,
+        cursor: 'pointer',
+        fontWeight: 950,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '10px',
+      }}
+    >
+      <span>🧠 Quiz Practice</span>
+      <span
+        style={{
+          padding: '4px 9px',
+          borderRadius: '999px',
+          background: 'rgba(255,255,255,0.18)',
+          fontSize: '12px',
+          fontWeight: 950,
+        }}
+      >
+        {studyTools.filter((tool) => tool?.type === 'quiz').length}
+      </span>
+    </button>
+  </div>
+)}
+
+    {locked && (
+      <motion.button
+        whileHover={{ scale: 1.018, y: -1 }}
+        whileTap={{ scale: 0.985 }}
+        transition={{ duration: 0.16, ease: 'easeOut' }}
+        onClick={() => openCheckout('sidebar locked preview')}
+        style={{
+          ...styles.sidebarUnlockBtn,
+          background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
+        }}
+      >
+        🚀 Unlock Course Now
+      </motion.button>
+    )}
+  </aside>
+);
 
   return (
     <div
@@ -1782,6 +2170,7 @@ function CourseDetail() {
                       theme={theme}
                       isMobile={isMobile}
                       onUnlock={() => openCheckout('Study with AI bonus tab')}
+                      toolType={activeStudyToolType}
                     />
                   )}
                 </>
@@ -2146,153 +2535,137 @@ const styles = {
     marginTop: '24px',
     padding: isMobile ? '18px' : '22px',
     borderRadius: isMobile ? '20px' : '24px',
-    textAlign: 'center',
-    width: '100%',
   }),
 
-  pdfControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-
-  pdfBtn: {
-    padding: '7px 10px',
-    borderRadius: '10px',
-    fontWeight: 950,
-  },
-
-  zoomText: {
-    minWidth: '52px',
-    textAlign: 'center',
-    fontSize: '13px',
-    fontWeight: 950,
-  },
-
-  fitBtn: {
-    padding: '7px 12px',
-    borderRadius: '10px',
+  unlockBtn: (isMobile) => ({
+    width: isMobile ? '100%' : 'auto',
+    padding: '14px 20px',
+    borderRadius: '16px',
     border: 'none',
+    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+    color: '#fff',
     cursor: 'pointer',
-    fontWeight: 900,
-    fontSize: '12px',
-  },
-
-  pdfWatermark: {
-    position: 'absolute',
-    inset: 0,
-    zIndex: 20,
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: 'rotate(-25deg)',
-    fontSize: '22px',
-    fontWeight: 900,
-    color: 'rgba(239,68,68,0.16)',
-    textAlign: 'center',
-    padding: '20px',
-  },
+    fontWeight: 950,
+    boxShadow: '0 12px 28px rgba(34,197,94,0.24)',
+  }),
 
   lockedBadge: {
     display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '8px 14px',
+    padding: '8px 12px',
     borderRadius: '999px',
-    background: 'linear-gradient(135deg, rgba(239,68,68,0.18), rgba(251,191,36,0.16))',
-    border: '1px solid rgba(251,191,36,0.35)',
-    color: '#fbbf24',
+    background: 'linear-gradient(135deg, rgba(249,115,22,0.16), rgba(239,68,68,0.12))',
+    color: '#fb923c',
+    border: '1px solid rgba(249,115,22,0.28)',
     fontWeight: 950,
-    fontSize: '13px',
+    fontSize: '12px',
     marginBottom: '14px',
   },
 
   lockedTitle: (isMobile) => ({
-    margin: '0 0 10px',
-    fontSize: isMobile ? '23px' : '30px',
-    lineHeight: 1.2,
+    margin: '0 0 12px',
+    fontSize: isMobile ? '26px' : '36px',
     fontWeight: 950,
+    letterSpacing: '-0.6px',
+    lineHeight: 1.15,
   }),
 
   lockedText: (isMobile) => ({
-    lineHeight: 1.8,
-    maxWidth: '820px',
     margin: '0 auto',
-    fontSize: isMobile ? '13.5px' : '15px',
+    maxWidth: '780px',
+    lineHeight: 1.75,
+    fontSize: isMobile ? '14px' : '15.5px',
+    fontWeight: 750,
   }),
 
   lockedTags: {
-    marginTop: '18px',
+    marginTop: '16px',
     display: 'flex',
-    justifyContent: 'center',
     gap: '10px',
+    justifyContent: 'center',
     flexWrap: 'wrap',
   },
 
   greenTag: {
-    padding: '8px 12px',
+    padding: '8px 11px',
     borderRadius: '999px',
     background: 'rgba(34,197,94,0.14)',
-    color: '#86efac',
-    border: '1px solid rgba(34,197,94,0.25)',
+    color: '#22c55e',
     fontSize: '12px',
     fontWeight: 950,
+    border: '1px solid rgba(34,197,94,0.25)',
   },
 
   blueTag: {
-    padding: '8px 12px',
+    padding: '8px 11px',
     borderRadius: '999px',
     background: 'rgba(59,130,246,0.14)',
-    color: '#93c5fd',
-    border: '1px solid rgba(59,130,246,0.25)',
+    color: '#60a5fa',
     fontSize: '12px',
     fontWeight: 950,
+    border: '1px solid rgba(59,130,246,0.25)',
   },
 
   yellowTag: {
-    padding: '8px 12px',
+    padding: '8px 11px',
     borderRadius: '999px',
     background: 'rgba(251,191,36,0.14)',
     color: '#fbbf24',
-    border: '1px solid rgba(251,191,36,0.25)',
     fontSize: '12px',
     fontWeight: 950,
+    border: '1px solid rgba(251,191,36,0.25)',
   },
 
   previewGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(170px, 1fr))',
-    gap: '14px',
-    marginBottom: '24px',
+    gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+    gap: isMobile ? '10px' : '14px',
+    marginBottom: isMobile ? '18px' : '24px',
   }),
 
   previewCard: (isMobile) => ({
-    padding: isMobile ? '16px' : '18px',
-    borderRadius: '18px',
+    padding: isMobile ? '14px 10px' : '18px',
+    borderRadius: isMobile ? '16px' : '20px',
     textAlign: 'center',
   }),
 
   unlockBox: (isMobile) => ({
-    padding: isMobile ? '16px' : '18px',
-    borderRadius: '20px',
-    marginBottom: '22px',
+    marginTop: '18px',
+    padding: isMobile ? '16px' : '20px',
+    borderRadius: isMobile ? '18px' : '22px',
   }),
 
   unlockGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
     gap: '10px',
     fontWeight: 800,
-    fontSize: isMobile ? '13px' : '14px',
+    lineHeight: 1.5,
+  }),
+
+  aiLockedBox: (isMobile) => ({
+    marginTop: '18px',
+    padding: isMobile ? '16px' : '20px',
+    borderRadius: isMobile ? '18px' : '22px',
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 0.85fr',
+    gap: '16px',
+    alignItems: 'center',
+  }),
+
+  aiLockedPreviewGrid: (isMobile) => ({
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+    gap: '9px',
+    fontSize: '13px',
+    fontWeight: 900,
+    color: '#a78bfa',
   }),
 
   compareGrid: (isMobile) => ({
+    marginTop: '18px',
     display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: '14px',
-    marginBottom: '24px',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+    gap: '12px',
   }),
 
   compareCard: {
@@ -2303,26 +2676,26 @@ const styles = {
   compareText: {
     margin: '8px 0 0',
     lineHeight: 1.6,
+    fontWeight: 750,
     fontSize: '13px',
-    fontWeight: 700,
   },
 
   lockedListsGrid: (isMobile) => ({
+    marginTop: '18px',
     display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '18px',
-    marginBottom: '24px',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+    gap: '14px',
   }),
 
   lockedList: {
-    padding: '18px',
-    borderRadius: '20px',
+    padding: '16px',
+    borderRadius: '18px',
   },
 
   lockedItem: {
-    padding: '12px 14px',
-    borderRadius: '14px',
-    marginBottom: '10px',
+    padding: '11px 12px',
+    borderRadius: '13px',
+    marginBottom: '8px',
     display: 'flex',
     justifyContent: 'space-between',
     gap: '10px',
@@ -2330,98 +2703,109 @@ const styles = {
   },
 
   finalUnlock: (isMobile) => ({
+    marginTop: '24px',
+    padding: isMobile ? '20px 14px' : '28px',
     textAlign: 'center',
-    padding: isMobile ? '22px 16px' : '30px',
     borderRadius: isMobile ? '20px' : '24px',
-    background: 'linear-gradient(135deg, rgba(34,197,94,0.20), rgba(59,130,246,0.18), rgba(139,92,246,0.16))',
-    border: '1px solid rgba(34,197,94,0.40)',
-    boxShadow: '0 18px 50px rgba(34,197,94,0.14)',
+    background: 'linear-gradient(135deg, rgba(15,23,42,0.85), rgba(88,28,135,0.35))',
+    border: '1px solid rgba(139,92,246,0.25)',
   }),
 
   launchBadge: {
     display: 'inline-flex',
-    padding: '7px 14px',
+    padding: '8px 12px',
     borderRadius: '999px',
-    background: 'rgba(239,68,68,0.16)',
-    color: '#fca5a5',
-    fontSize: '12px',
+    background: 'rgba(251,191,36,0.14)',
+    color: '#fbbf24',
+    border: '1px solid rgba(251,191,36,0.25)',
     fontWeight: 950,
-    marginBottom: '14px',
-    border: '1px solid rgba(239,68,68,0.28)',
+    fontSize: '12px',
+    marginBottom: '12px',
   },
 
   finalUnlockTitle: (isMobile) => ({
-    margin: '0 0 10px',
     color: '#fff',
-    fontSize: isMobile ? '21px' : '26px',
-    lineHeight: 1.25,
+    margin: '0 auto 10px',
+    maxWidth: '780px',
+    fontSize: isMobile ? '24px' : '34px',
+    lineHeight: 1.15,
     fontWeight: 950,
   }),
 
   finalUnlockText: (isMobile) => ({
-    color: '#dbeafe',
-    lineHeight: 1.75,
+    color: '#cbd5e1',
     maxWidth: '780px',
-    margin: '0 auto 18px',
-    fontSize: isMobile ? '13px' : '15px',
-    fontWeight: 700,
+    margin: '0 auto',
+    lineHeight: 1.75,
+    fontWeight: 750,
+    fontSize: isMobile ? '13.5px' : '15px',
   }),
 
+  unlockSmallText: {
+    color: '#94a3b8',
+    fontSize: '12px',
+    marginTop: '12px',
+    fontWeight: 800,
+  },
+
   studyToolsCard: (isMobile) => ({
-    marginTop: '24px',
-    marginBottom: '22px',
-    padding: isMobile ? '18px' : '22px',
     borderRadius: isMobile ? '20px' : '24px',
+    padding: isMobile ? '16px' : '22px',
     width: '100%',
     overflow: 'hidden',
   }),
 
   aiFeatureGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(190px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
     gap: '10px',
-    marginTop: '14px',
+    color: '#a78bfa',
     fontWeight: 900,
     fontSize: '13px',
   }),
 
-  aiLockedBox: (isMobile) => ({
-    padding: isMobile ? '16px' : '18px',
-    borderRadius: '20px',
-    marginBottom: '22px',
-  }),
+  pdfControls: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
 
-  aiLockedPreviewGrid: (isMobile) => ({
-    display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(210px, 1fr))',
-    gap: '10px',
-    marginTop: '14px',
-    color: '#93c5fd',
-    fontSize: '13px',
-    fontWeight: 900,
-  }),
+  pdfBtn: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '10px',
+    fontWeight: 950,
+    fontSize: '18px',
+  },
 
-  unlockBtn: (isMobile) => ({
-    width: isMobile ? '100%' : 'auto',
-    padding: isMobile ? '14px 18px' : '15px 28px',
-    borderRadius: '18px',
+  fitBtn: {
+    padding: '9px 12px',
+    borderRadius: '10px',
     border: 'none',
-    background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
-    color: 'white',
     fontWeight: 950,
     cursor: 'pointer',
-    fontSize: isMobile ? '14px' : '16px',
-    boxShadow: '0 16px 42px rgba(34,197,94,0.26)',
-    marginTop: '20px',
-  }),
+  },
 
-  unlockSmallText: {
-    marginTop: '10px',
-    color: '#d1d5db',
-    fontSize: '12px',
-    fontWeight: 800,
+  zoomText: {
+    minWidth: '46px',
+    textAlign: 'center',
+    fontWeight: 950,
+    fontSize: '13px',
+  },
+
+  pdfWatermark: {
+    position: 'sticky',
+    top: '58px',
+    zIndex: 20,
+    textAlign: 'center',
+    color: 'rgba(139,92,246,0.38)',
+    fontWeight: 950,
+    fontSize: '13px',
+    pointerEvents: 'none',
+    letterSpacing: '0.5px',
+    marginBottom: '10px',
   },
 };
 
 export default CourseDetail;
-
