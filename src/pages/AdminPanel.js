@@ -47,6 +47,7 @@ function AdminPanel() {
   const [aiSelectedCourse, setAiSelectedCourse] = useState(null);
   const [aiSourceText, setAiSourceText] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGenerationType, setAiGenerationType] = useState('important_questions'); // important_questions | quiz
   const [aiSelectedPdfIndexes, setAiSelectedPdfIndexes] = useState([]);
 
   // ✅ AI Study Tools review states
@@ -668,11 +669,16 @@ function AdminPanel() {
   };
 
   // ✅ Open AI Important Questions Modal
-  const openImportantQuestionsModal = (course) => {
+  const openStudyToolGeneratorModal = (course, type = 'important_questions') => {
     setAiSelectedCourse(course);
+    setAiGenerationType(type);
     setAiSourceText('');
     setAiSelectedPdfIndexes((course?.pdfs || []).map((_, index) => index));
     setAiModalOpen(true);
+  };
+
+  const openImportantQuestionsModal = (course) => {
+    openStudyToolGeneratorModal(course, 'important_questions');
   };
 
   // ✅ Close AI Important Questions Modal
@@ -680,6 +686,7 @@ function AdminPanel() {
     if (aiGenerating) return;
     setAiModalOpen(false);
     setAiSelectedCourse(null);
+    setAiGenerationType('important_questions');
     setAiSourceText('');
     setAiSelectedPdfIndexes([]);
   };
@@ -705,7 +712,8 @@ function AdminPanel() {
 
   // ✅ Generate AI Important Questions directly from selected uploaded course PDFs
   // ✅ Generate AI Important Questions automatically for selected PDFs one-by-one
-const generateImportantQuestions = async () => {
+// ✅ Generate selected AI study tool automatically for selected PDFs one-by-one
+const generateStudyTool = async () => {
   if (!aiSelectedCourse?._id) {
     toast.error('❌ Course select nahi hua!');
     return;
@@ -713,7 +721,7 @@ const generateImportantQuestions = async () => {
 
   if (!aiSelectedCourse?.pdfs || aiSelectedCourse.pdfs.length === 0) {
     toast.error('❌ Is course mein koi PDF uploaded nahi hai!');
-    setMsg('❌ Pehle is course mein PDF upload karo, phir AI Questions generate honge.');
+    setMsg('❌ Pehle is course mein PDF upload karo, phir AI Study Tool generate hoga.');
     setTimeout(() => setMsg(''), 4000);
     return;
   }
@@ -725,6 +733,12 @@ const generateImportantQuestions = async () => {
     return;
   }
 
+  const isQuiz = aiGenerationType === 'quiz';
+  const toolName = isQuiz ? 'Quiz Practice' : 'Important Questions';
+  const endpoint = isQuiz
+    ? '/api/study-tools/generate-quiz-from-pdf'
+    : '/api/study-tools/generate-important-questions-from-pdf';
+
   try {
     setAiGenerating(true);
 
@@ -733,28 +747,21 @@ const generateImportantQuestions = async () => {
     let failedCount = 0;
     const failedPdfs = [];
 
-    toast.info(`⏳ ${total} PDF(s) ke liye AI drafts generate ho rahe hain...`);
-    setMsg(`⏳ AI selected ${total} PDF(s) ko one-by-one generate kar raha hai. Page close mat karna.`);
+    toast.info(`⏳ ${total} PDF(s) ke liye ${toolName} drafts generate ho rahe hain...`);
+    setMsg(`⏳ AI selected ${total} PDF(s) se ${toolName} one-by-one generate kar raha hai. Page close mat karna.`);
 
     for (let i = 0; i < aiSelectedPdfIndexes.length; i++) {
       const pdfIndex = aiSelectedPdfIndexes[i];
       const pdf = aiSelectedCourse.pdfs[pdfIndex];
+      const pdfTitle = pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`;
 
       try {
-        setMsg(
-          `⏳ Generating ${i + 1}/${total}: ${
-            pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`
-          }`
-        );
+        setMsg(`⏳ Generating ${toolName} ${i + 1}/${total}: ${pdfTitle}`);
 
         await axios.post(
-          `${API}/api/study-tools/generate-important-questions-from-pdf`,
+          `${API}${endpoint}`,
           {
             courseId: aiSelectedCourse._id,
-
-            // ✅ IMPORTANT:
-            // Ek time pe sirf ek PDF bhej rahe hain.
-            // Isse har PDF ka separate draft banega.
             pdfIndexes: [pdfIndex],
           },
           {
@@ -763,12 +770,7 @@ const generateImportantQuestions = async () => {
         );
 
         successCount += 1;
-
-        toast.success(
-          `✅ Generated ${i + 1}/${total}: ${
-            pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`
-          }`
-        );
+        toast.success(`✅ ${toolName} generated ${i + 1}/${total}: ${pdfTitle}`);
       } catch (singleErr) {
         failedCount += 1;
 
@@ -778,54 +780,49 @@ const generateImportantQuestions = async () => {
           singleErr.message ||
           'Generation failed';
 
-        failedPdfs.push({
-          title: pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`,
-          error: singleErrorMsg,
-        });
+        failedPdfs.push({ title: pdfTitle, error: singleErrorMsg });
 
-        console.log('SINGLE PDF AI GENERATION ERROR:', {
+        console.log('SINGLE PDF AI TOOL GENERATION ERROR:', {
+          type: aiGenerationType,
           pdfIndex,
           pdf,
           error: singleErr,
         });
 
-        toast.error(
-          `❌ Failed ${i + 1}/${total}: ${
-            pdf?.title || pdf?.filename || `PDF ${pdfIndex + 1}`
-          }`
-        );
+        toast.error(`❌ Failed ${i + 1}/${total}: ${pdfTitle}`);
       }
     }
 
     if (successCount > 0) {
-      toast.success(`✅ ${successCount} AI draft(s) generated successfully!`);
+      toast.success(`✅ ${successCount} ${toolName} draft(s) generated successfully!`);
       setMsg(
-        `✅ Done! ${successCount} draft(s) generated${
+        `✅ Done! ${successCount} ${toolName} draft(s) generated${
           failedCount ? `, ${failedCount} failed.` : '.'
         } Review AI mein check karo.`
       );
     } else {
-      toast.error('❌ Koi bhi AI draft generate nahi hua.');
-      setMsg('❌ Koi bhi AI draft generate nahi hua. Render logs check karo.');
+      toast.error(`❌ Koi bhi ${toolName} draft generate nahi hua.`);
+      setMsg(`❌ Koi bhi ${toolName} draft generate nahi hua. Render logs check karo.`);
     }
 
     if (failedPdfs.length > 0) {
-      console.log('FAILED AI PDFS:', failedPdfs);
+      console.log('FAILED AI TOOL PDFS:', failedPdfs);
     }
 
     setAiModalOpen(false);
     setAiSelectedCourse(null);
+    setAiGenerationType('important_questions');
     setAiSourceText('');
     setAiSelectedPdfIndexes([]);
 
     setTimeout(() => setMsg(''), 7000);
   } catch (err) {
-    console.log('AI IMPORTANT QUESTIONS BULK ERROR:', err);
+    console.log('AI STUDY TOOL BULK ERROR:', err);
 
     const errorMsg =
       err.response?.data?.message ||
       err.response?.data?.error ||
-      'AI PDF generation failed';
+      'AI study tool generation failed';
 
     toast.error('❌ ' + errorMsg);
     setMsg('❌ ' + errorMsg);
@@ -835,6 +832,8 @@ const generateImportantQuestions = async () => {
   }
 };
 
+// ✅ Old function kept for old button safety
+const generateImportantQuestions = generateStudyTool;
   // ✅ Fetch AI generated drafts/published study tools for review
   const fetchStudyToolsForCourse = async (course) => {
     if (!course?._id) return;
@@ -1087,17 +1086,25 @@ const generateImportantQuestions = async () => {
   };
 
   const renderStudyToolContent = (tool) => {
-    const content = tool?.content || {};
+  const content = tool?.content || {};
 
+  if (tool?.type === 'quiz') {
     return (
       <div style={{ marginTop: '14px' }}>
-        {renderQuestionList('Short Questions', content.shortQuestions, '✍️')}
-        {renderQuestionList('Long Questions', content.longQuestions, '📚')}
-        {renderQuestionList('MCQs', content.mcqs, '✅')}
-        {renderQuestionList('Most Expected Questions', content.mostExpectedQuestions, '🔥')}
+        {renderQuestionList('Quiz Questions', content.quizQuestions, '🧠')}
       </div>
     );
-  };
+  }
+
+  return (
+    <div style={{ marginTop: '14px' }}>
+      {renderQuestionList('Short Questions', content.shortQuestions, '✍️')}
+      {renderQuestionList('Long Questions', content.longQuestions, '📚')}
+      {renderQuestionList('MCQs', content.mcqs, '✅')}
+      {renderQuestionList('Most Expected Questions', content.mostExpectedQuestions, '🔥')}
+    </div>
+  );
+};
 
   const renderCouponSection = () => (
     <div>
@@ -1830,7 +1837,7 @@ const generateImportantQuestions = async () => {
                     fontWeight: 950,
                   }}
                 >
-                  Generate Important Questions
+                  {aiGenerationType === 'quiz' ? 'Generate Quiz Practice' : 'Generate Important Questions'}
                 </h3>
 
                 <p
@@ -2076,7 +2083,7 @@ const generateImportantQuestions = async () => {
                 </button>
 
                 <button
-                  onClick={generateImportantQuestions}
+                  onClick={generateStudyTool}
                   disabled={aiGenerating}
                   style={{
                     padding: '11px 18px',
@@ -2091,7 +2098,11 @@ const generateImportantQuestions = async () => {
                     boxShadow: theme.shadow,
                   }}
                 >
-                  {aiGenerating ? '⏳ Generating...' : '✨ Generate Questions'}
+                  {aiGenerating
+                    ? '⏳ Generating...'
+                    : aiGenerationType === 'quiz'
+                    ? '🧠 Generate Quiz'
+                    : '✨ Generate Questions'}
                 </button>
               </div>
             </div>
@@ -2235,10 +2246,11 @@ const generateImportantQuestions = async () => {
                   const isPublished = tool.status === 'published';
                   const content = tool.content || {};
                   const totalQuestions =
-                    (content.shortQuestions?.length || 0) +
-                    (content.longQuestions?.length || 0) +
-                    (content.mcqs?.length || 0) +
-                    (content.mostExpectedQuestions?.length || 0);
+                   (content.shortQuestions?.length || 0) +
+                   (content.longQuestions?.length || 0) +
+                   (content.mcqs?.length || 0) +
+                   (content.mostExpectedQuestions?.length || 0) +
+                   (content.quizQuestions?.length || 0);
 
                   return (
                     <div key={tool._id} style={smallCardStyle}>
@@ -2832,7 +2844,7 @@ const generateImportantQuestions = async () => {
                       </button>
 
                       <button
-                        onClick={() => openImportantQuestionsModal(course)}
+                        onClick={() => openStudyToolGeneratorModal(course, 'important_questions')}
                         style={{
                           padding: '9px 14px',
                           background: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
@@ -2845,6 +2857,22 @@ const generateImportantQuestions = async () => {
                         }}
                       >
                         ✨ AI Questions
+                      </button>
+
+                      <button
+                        onClick={() => openStudyToolGeneratorModal(course, 'quiz')}
+                        style={{
+                          padding: '9px 14px',
+                          background: 'linear-gradient(135deg, #06b6d4, #2563eb)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '900',
+                          boxShadow: theme.shadow,
+                        }} 
+                      >
+                        🧠 AI Quiz
                       </button>
 
                       <button
