@@ -296,6 +296,7 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
     { icon: '🎥', count: videosCount, label: 'Video Lectures' },
     { icon: '📄', count: pdfsCount, label: 'Premium PDFs' },
     { icon: '🔴', count: 'Live', label: 'Class Access' },
+    { icon: '✨', count: 'AI', label: 'Study Tools' },
   ];
 
   return (
@@ -318,7 +319,7 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
 
         <p style={{ ...styles.lockedText(isMobile), color: theme.muted }}>
           Tum abhi preview dekh rahe ho. Full access ke baad videos, premium PDFs,
-          live classes aur complete unit-wise material unlock hoga — sab kuch ek jagah.
+          live classes, AI study tools aur complete unit-wise material unlock hoga — sab kuch ek jagah.
         </p>
 
         <div style={styles.lockedTags}>
@@ -370,8 +371,41 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
           <span>✅ Premium protected notes</span>
           <span>✅ Videos + PDFs in one place</span>
           <span>✅ Live class access</span>
+          <span>✅ AI important questions</span>
+          <span>✅ MCQ + expected questions</span>
           <span>✅ Structured unit-wise learning</span>
           <span>✅ Lifetime course access</span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          ...styles.aiLockedBox(isMobile),
+          background: theme.isDark
+            ? 'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(14,165,233,0.10))'
+            : 'linear-gradient(135deg, rgba(245,243,255,0.92), rgba(224,242,254,0.85))',
+          border: `1px solid ${theme.border}`,
+          boxShadow: theme.shadow,
+        }}
+      >
+        <div>
+          <p style={{ margin: '0 0 8px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+            ✨ AI STUDY TOOLS LOCKED
+          </p>
+          <h3 style={{ margin: '0 0 8px', color: theme.text }}>
+            AI Important Questions bhi course ke andar locked hain
+          </h3>
+          <p style={{ margin: 0, color: theme.muted, lineHeight: 1.65, fontWeight: 750 }}>
+            Enrolled students ko notes/PDFs ke basis par AI-generated short questions,
+            long questions, MCQs aur most expected questions milte hain — exam prep ke liye direct shortcut.
+          </p>
+        </div>
+
+        <div style={styles.aiLockedPreviewGrid(isMobile)}>
+          <span>🔒 Unit-wise Important Questions</span>
+          <span>🔒 MCQ Practice Sets</span>
+          <span>🔒 Most Expected Questions</span>
+          <span>🔒 Smart Revision Support</span>
         </div>
       </div>
 
@@ -400,7 +434,7 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
             ✅ With REHANVERSE
           </strong>
           <p style={{ ...styles.compareText, color: theme.muted }}>
-            Proper structure, premium PDFs, videos, live access, aur clean dashboard me complete material.
+            Proper structure, premium PDFs, videos, live access, AI revision tools, aur clean dashboard me complete material.
           </p>
         </div>
       </div>
@@ -418,7 +452,7 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
         </h2>
 
         <p style={styles.finalUnlockText(isMobile)}>
-          Unit-wise PDFs, videos, live class access aur protected premium notes ek hi jagah
+          Unit-wise PDFs, videos, live class access, AI important questions aur protected premium notes ek hi jagah
           milenge — clean, organized aur ready-to-study.
         </p>
 
@@ -439,7 +473,7 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
         </motion.button>
 
         <div style={styles.unlockSmallText}>
-          🔐 Videos, PDFs and live classes unlock only after enrollment/payment approval.
+          🔐 Videos, PDFs, AI study tools and live classes unlock only after enrollment/payment approval.
         </div>
       </div>
     </div>
@@ -482,6 +516,244 @@ function LockedList({ title, items, type, theme }) {
   );
 }
 
+function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
+  const [expandedTool, setExpandedTool] = useState(null);
+
+  const renderQuestionList = (title, items, icon) => {
+    const safeItems = Array.isArray(items) ? items : [];
+    if (safeItems.length === 0) return null;
+
+    return (
+      <div
+        style={{
+          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.76)',
+          border: `1px solid ${theme.border}`,
+          borderRadius: '16px',
+          padding: '14px',
+          marginTop: '12px',
+        }}
+      >
+        <h4 style={{ color: theme.text, margin: '0 0 12px', fontWeight: 950 }}>
+          {icon} {title} ({safeItems.length})
+        </h4>
+
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {safeItems.map((item, index) => (
+            <div
+              key={index}
+              style={{
+                border: `1px solid ${theme.border}`,
+                borderRadius: '13px',
+                padding: '12px',
+                background: theme.isDark ? 'rgba(15,23,42,0.52)' : '#ffffff',
+              }}
+            >
+              <p style={{ color: theme.text, margin: '0 0 8px', fontWeight: 900, lineHeight: 1.55 }}>
+                {index + 1}. {item?.question || 'Question missing'}
+              </p>
+
+              {Array.isArray(item?.options) && item.options.length > 0 && (
+                <div style={{ display: 'grid', gap: '5px', marginBottom: '8px' }}>
+                  {item.options.map((opt, optIndex) => (
+                    <p key={optIndex} style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
+                      {String.fromCharCode(65 + optIndex)}. {opt}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {item?.correctAnswer && (
+                <p style={{ color: theme.success, margin: '6px 0', fontSize: '13px', fontWeight: 900 }}>
+                  ✅ Correct: {item.correctAnswer}
+                </p>
+              )}
+
+              {item?.answerHint && (
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px', lineHeight: 1.5 }}>
+                  💡 Hint: {item.answerHint}
+                </p>
+              )}
+
+              {item?.explanation && (
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px', lineHeight: 1.5 }}>
+                  🧠 Explanation: {item.explanation}
+                </p>
+              )}
+
+              {item?.reason && (
+                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px', lineHeight: 1.5 }}>
+                  🎯 Reason: {item.reason}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  if (locked) {
+    return (
+      <div
+        style={{
+          ...styles.studyToolsCard(isMobile),
+          background: theme.card,
+          border: `1px solid ${theme.border}`,
+          boxShadow: theme.shadow,
+        }}
+      >
+        <p style={{ margin: '0 0 8px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+          ✨ PREMIUM AI STUDY TOOLS
+        </p>
+
+        <h2 style={{ color: theme.text, margin: '0 0 10px', fontWeight: 950 }}>
+          🔒 AI Important Questions Locked
+        </h2>
+
+        <p style={{ color: theme.muted, lineHeight: 1.75, fontWeight: 750, margin: '0 0 16px' }}>
+          This course includes AI-generated exam practice based on actual uploaded notes —
+          important questions, MCQs and expected questions. Enroll to unlock smarter revision.
+        </p>
+
+        <div style={styles.aiFeatureGrid(isMobile)}>
+          <span>🔒 AI Important Questions</span>
+          <span>🔒 Unit-wise MCQs</span>
+          <span>🔒 Long Answer Practice</span>
+          <span>🔒 Most Expected Questions</span>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.018, y: -1 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+          onClick={onUnlock}
+          style={{ ...styles.unlockBtn(isMobile), marginTop: '18px' }}
+        >
+          🚀 Unlock AI Study Tools
+        </motion.button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        ...styles.studyToolsCard(isMobile),
+        background: theme.card,
+        border: `1px solid ${theme.border}`,
+        boxShadow: theme.shadow,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <div>
+          <p style={{ margin: '0 0 8px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+            ✨ AI STUDY TOOLS
+          </p>
+          <h2 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
+            AI Important Questions
+          </h2>
+          <p style={{ color: theme.muted, margin: '8px 0 0', lineHeight: 1.65, fontWeight: 750 }}>
+            Published AI questions by admin. Use this for quick exam revision.
+          </p>
+        </div>
+
+        <span
+          style={{
+            padding: '8px 12px',
+            borderRadius: '999px',
+            background: theme.isDark ? 'rgba(34,197,94,0.13)' : '#dcfce7',
+            color: theme.success,
+            border: `1px solid ${theme.border}`,
+            fontSize: '12px',
+            fontWeight: 950,
+          }}
+        >
+          {tools?.length || 0} Published
+        </span>
+      </div>
+
+      {loading ? (
+        <p style={{ color: theme.muted, fontWeight: 900, marginTop: '16px' }}>⏳ Loading AI study tools...</p>
+      ) : !tools?.length ? (
+        <div
+          style={{
+            marginTop: '16px',
+            padding: '14px',
+            borderRadius: '16px',
+            background: theme.isDark ? 'rgba(251,191,36,0.10)' : '#fef3c7',
+            border: `1px solid ${theme.border}`,
+            color: theme.muted,
+            fontWeight: 800,
+            lineHeight: 1.6,
+          }}
+        >
+          ⚠️ Admin ne abhi AI questions publish nahi kiye. Course content available hai,
+          AI study tools publish hote hi yahan dikh jayenge.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '12px', marginTop: '18px' }}>
+          {tools.map((tool) => {
+            const isExpanded = expandedTool === tool._id;
+            const content = tool.content || {};
+            const totalQuestions =
+              (content.shortQuestions?.length || 0) +
+              (content.longQuestions?.length || 0) +
+              (content.mcqs?.length || 0) +
+              (content.mostExpectedQuestions?.length || 0);
+
+            return (
+              <div
+                key={tool._id}
+                style={{
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '18px',
+                  padding: '14px',
+                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ color: theme.text, margin: '0 0 6px', fontWeight: 950 }}>
+                      ✨ {tool.title || 'Important Questions'}
+                    </h3>
+                    <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
+                      {totalQuestions} questions • Source: {tool.sourcePdf?.title || 'Course PDFs'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setExpandedTool(isExpanded ? null : tool._id)}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '13px',
+                      border: 'none',
+                      background: theme.primary,
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontWeight: 950,
+                    }}
+                  >
+                    {isExpanded ? 'Hide' : 'Open'}
+                  </button>
+                </div>
+
+                {isExpanded && (
+                  <div style={{ marginTop: '14px' }}>
+                    {renderQuestionList('Short Questions', content.shortQuestions, '✍️')}
+                    {renderQuestionList('Long Questions', content.longQuestions, '📚')}
+                    {renderQuestionList('MCQs', content.mcqs, '✅')}
+                    {renderQuestionList('Most Expected Questions', content.mostExpectedQuestions, '🔥')}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CourseDetail() {
   const { id } = useParams();
   const theme = useTheme();
@@ -498,6 +770,8 @@ function CourseDetail() {
   const [doneMsg, setDoneMsg] = useState('');
   const [loadingFreeEnroll, setLoadingFreeEnroll] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [studyTools, setStudyTools] = useState([]);
+  const [studyToolsLoading, setStudyToolsLoading] = useState(false);
 
   const [courseProgress, setCourseProgress] = useState({
     progressPercent: 0,
@@ -515,6 +789,40 @@ function CourseDetail() {
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!token || !course?._id) return;
+
+    const canAccessStudyTools =
+      isEnrolled || course.isFree || Number(course.price || 0) === 0;
+
+    if (!canAccessStudyTools) {
+      setStudyTools([]);
+      return;
+    }
+
+    fetchPublishedStudyTools();
+    // eslint-disable-next-line
+  }, [token, id, course?._id, isEnrolled]);
+
+  const fetchPublishedStudyTools = async () => {
+    try {
+      if (!token || !id) return;
+
+      setStudyToolsLoading(true);
+
+      const res = await axios.get(`${API}/api/study-tools/course/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setStudyTools(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.log('FETCH STUDY TOOLS ERROR:', err.response?.data || err.message);
+      setStudyTools([]);
+    } finally {
+      setStudyToolsLoading(false);
+    }
+  };
 
   const fetchCourseProgress = async () => {
     try {
@@ -679,12 +987,11 @@ function CourseDetail() {
   const getEmbedUrl = (url) => {
     if (!url) return null;
 
-    const ytMatch = url.match(
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/
-    );
+    // ✅ Regex literal line-break issue avoid karne ke liye RegExp constructor use kiya hai
+    const ytMatch = url.match(new RegExp('(?:youtube\\.com/watch\\?v=|youtu\\.be/)([^&\\n?#]+)'));
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
 
-    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    const driveMatch = url.match(new RegExp('drive\\.google\\.com/file/d/([^/]+)'));
     if (driveMatch) {
       return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
     }
@@ -909,7 +1216,7 @@ function CourseDetail() {
             color: theme.muted,
           }}
         >
-          🔒 Preview only. Unlock karne ke baad actual videos, PDFs aur live classes open honge.
+          🔒 Preview only. Unlock karne ke baad actual videos, PDFs, AI study tools aur live classes open honge.
         </div>
       )}
 
@@ -936,6 +1243,36 @@ function CourseDetail() {
           }}
         >
           PDFs
+        </button>
+
+        <button
+          onClick={() => handleTabChange('study-ai')}
+          style={{
+            ...styles.tabBtn,
+            background: activeTab === 'study-ai'
+              ? 'linear-gradient(135deg, #8b5cf6, #06b6d4)'
+              : theme.bgSecondary,
+            color: activeTab === 'study-ai' ? '#fff' : theme.text,
+            border: `1px solid ${activeTab === 'study-ai' ? 'rgba(139,92,246,0.55)' : theme.border}`,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          ✨ Study AI
+          <span
+            style={{
+              marginLeft: '6px',
+              padding: '2px 6px',
+              borderRadius: '999px',
+              background: activeTab === 'study-ai' ? 'rgba(255,255,255,0.20)' : 'rgba(34,197,94,0.14)',
+              color: activeTab === 'study-ai' ? '#fff' : theme.success,
+              fontSize: '9px',
+              fontWeight: 950,
+              verticalAlign: 'middle',
+            }}
+          >
+            BONUS
+          </span>
         </button>
       </div>
 
@@ -1062,6 +1399,17 @@ function CourseDetail() {
                 📄 {totalPdfs} PDFs
               </span>
 
+              <span
+                style={{
+                  ...styles.heroTag,
+                  background: theme.isDark ? 'rgba(139,92,246,0.13)' : '#f5f3ff',
+                  color: theme.primary,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                ✨ AI Study Tools
+              </span>
+
               {isEnrolled && (
                 <span
                   style={{
@@ -1081,7 +1429,7 @@ function CourseDetail() {
             </h1>
 
             <p style={{ ...styles.heroText(isMobile), color: theme.muted }}>
-              {course.description || 'Access structured content, videos, PDFs and course resources in one clean learning page.'}
+              {course.description || 'Access structured content, videos, PDFs, AI study tools and course resources in one clean learning page.'}
             </p>
           </div>
 
@@ -1110,7 +1458,7 @@ function CourseDetail() {
                 ? 'You already own this course.'
                 : isFreeCourse
                 ? 'Enroll free and start learning.'
-                : 'Unlock after payment approval.'}
+                : 'Unlock videos, PDFs, live classes and AI study tools after payment approval.'}
             </p>
 
             {isEnrolled ? (
@@ -1313,13 +1661,23 @@ function CourseDetail() {
                       )}
                     </div>
                   )}
+
+                  {activeTab === 'study-ai' && (
+                    <StudyToolsBox
+                      tools={studyTools}
+                      loading={studyToolsLoading}
+                      locked={locked}
+                      theme={theme}
+                      isMobile={isMobile}
+                      onUnlock={() => openCheckout('Study with AI bonus tab')}
+                    />
+                  )}
                 </>
               )}
             </motion.div>
 
             {/* ✅ Mobile: Course Content comes immediately after viewer + Mark Done */}
             {isMobile && <CourseContentPanel />}
-
             <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
 
             {course.price > 0 && isEnrolled && (
@@ -1897,6 +2255,40 @@ const styles = {
     fontWeight: 700,
   }),
 
+  studyToolsCard: (isMobile) => ({
+    marginTop: '24px',
+    marginBottom: '22px',
+    padding: isMobile ? '18px' : '22px',
+    borderRadius: isMobile ? '20px' : '24px',
+    width: '100%',
+    overflow: 'hidden',
+  }),
+
+  aiFeatureGrid: (isMobile) => ({
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(190px, 1fr))',
+    gap: '10px',
+    marginTop: '14px',
+    fontWeight: 900,
+    fontSize: '13px',
+  }),
+
+  aiLockedBox: (isMobile) => ({
+    padding: isMobile ? '16px' : '18px',
+    borderRadius: '20px',
+    marginBottom: '22px',
+  }),
+
+  aiLockedPreviewGrid: (isMobile) => ({
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(210px, 1fr))',
+    gap: '10px',
+    marginTop: '14px',
+    color: '#93c5fd',
+    fontSize: '13px',
+    fontWeight: 900,
+  }),
+
   unlockBtn: (isMobile) => ({
     width: isMobile ? '100%' : 'auto',
     padding: isMobile ? '14px 18px' : '15px 28px',
@@ -1920,3 +2312,4 @@ const styles = {
 };
 
 export default CourseDetail;
+
