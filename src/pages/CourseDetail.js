@@ -302,7 +302,7 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
   return (
     <div
       style={{
-        padding: isMobile ? '18px' : '24px',
+        padding: isMobile ? '16px' : '28px',
         borderRadius: isMobile ? '20px' : '24px',
         background: theme.isDark ? 'rgba(2,6,23,0.35)' : 'rgba(255,255,255,0.68)',
         border: `1px solid ${theme.border}`,
@@ -517,7 +517,9 @@ function LockedList({ title, items, type, theme }) {
 }
 
 function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
-  const [expandedTool, setExpandedTool] = useState(null);
+  const [selectedTool, setSelectedTool] = useState(null);
+
+  const closeToolModal = () => setSelectedTool(null);
 
   const renderQuestionList = (title, items, icon) => {
     const safeItems = Array.isArray(items) ? items : [];
@@ -592,6 +594,29 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
     );
   };
 
+  const getTotalQuestions = (tool) => {
+    const content = tool?.content || {};
+    return (
+      (content.shortQuestions?.length || 0) +
+      (content.longQuestions?.length || 0) +
+      (content.mcqs?.length || 0) +
+      (content.mostExpectedQuestions?.length || 0)
+    );
+  };
+
+  const renderToolContent = (tool) => {
+    const content = tool?.content || {};
+
+    return (
+      <div style={{ marginTop: '14px' }}>
+        {renderQuestionList('Short Questions', content.shortQuestions, '✍️')}
+        {renderQuestionList('Long Questions', content.longQuestions, '📚')}
+        {renderQuestionList('MCQs', content.mcqs, '✅')}
+        {renderQuestionList('Most Expected Questions', content.mostExpectedQuestions, '🔥')}
+      </div>
+    );
+  };
+
   if (locked) {
     return (
       <div
@@ -636,121 +661,208 @@ function StudyToolsBox({ tools, loading, locked, theme, isMobile, onUnlock }) {
   }
 
   return (
-    <div
-      style={{
-        ...styles.studyToolsCard(isMobile),
-        background: theme.card,
-        border: `1px solid ${theme.border}`,
-        boxShadow: theme.shadow,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <div>
-          <p style={{ margin: '0 0 8px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
-            ✨ AI STUDY TOOLS
-          </p>
-          <h2 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
-            AI Important Questions
-          </h2>
-          <p style={{ color: theme.muted, margin: '8px 0 0', lineHeight: 1.65, fontWeight: 750 }}>
-            Published AI questions by admin. Use this for quick exam revision.
-          </p>
+    <>
+      <div
+        style={{
+          ...styles.studyToolsCard(isMobile),
+          background: theme.card,
+          border: `1px solid ${theme.border}`,
+          boxShadow: theme.shadow,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div>
+            <p style={{ margin: '0 0 8px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+              ✨ AI STUDY TOOLS
+            </p>
+            <h2 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
+              Study With AI <span style={{ color: theme.primary }}>BONUS</span>
+            </h2>
+            <p style={{ color: theme.muted, margin: '8px 0 0', lineHeight: 1.65, fontWeight: 750 }}>
+              Open AI questions in a premium focus window. Flashcards, quizzes and audio podcast will live here next.
+            </p>
+          </div>
+
+          <span
+            style={{
+              padding: '8px 12px',
+              borderRadius: '999px',
+              background: theme.isDark ? 'rgba(34,197,94,0.13)' : '#dcfce7',
+              color: theme.success,
+              border: `1px solid ${theme.border}`,
+              fontSize: '12px',
+              fontWeight: 950,
+            }}
+          >
+            {tools?.length || 0} Published
+          </span>
         </div>
 
-        <span
-          style={{
-            padding: '8px 12px',
-            borderRadius: '999px',
-            background: theme.isDark ? 'rgba(34,197,94,0.13)' : '#dcfce7',
-            color: theme.success,
-            border: `1px solid ${theme.border}`,
-            fontSize: '12px',
-            fontWeight: 950,
-          }}
-        >
-          {tools?.length || 0} Published
-        </span>
-      </div>
-
-      {loading ? (
-        <p style={{ color: theme.muted, fontWeight: 900, marginTop: '16px' }}>⏳ Loading AI study tools...</p>
-      ) : !tools?.length ? (
-        <div
-          style={{
-            marginTop: '16px',
-            padding: '14px',
-            borderRadius: '16px',
-            background: theme.isDark ? 'rgba(251,191,36,0.10)' : '#fef3c7',
-            border: `1px solid ${theme.border}`,
-            color: theme.muted,
-            fontWeight: 800,
-            lineHeight: 1.6,
-          }}
-        >
-          ⚠️ Admin ne abhi AI questions publish nahi kiye. Course content available hai,
-          AI study tools publish hote hi yahan dikh jayenge.
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '12px', marginTop: '18px' }}>
-          {tools.map((tool) => {
-            const isExpanded = expandedTool === tool._id;
-            const content = tool.content || {};
-            const totalQuestions =
-              (content.shortQuestions?.length || 0) +
-              (content.longQuestions?.length || 0) +
-              (content.mcqs?.length || 0) +
-              (content.mostExpectedQuestions?.length || 0);
-
-            return (
-              <div
+        {loading ? (
+          <p style={{ color: theme.muted, fontWeight: 900, marginTop: '16px' }}>⏳ Loading AI study tools...</p>
+        ) : !tools?.length ? (
+          <div
+            style={{
+              marginTop: '16px',
+              padding: '14px',
+              borderRadius: '16px',
+              background: theme.isDark ? 'rgba(251,191,36,0.10)' : '#fef3c7',
+              border: `1px solid ${theme.border}`,
+              color: theme.muted,
+              fontWeight: 800,
+              lineHeight: 1.6,
+            }}
+          >
+            ⚠️ Admin ne abhi AI questions publish nahi kiye. Course content available hai,
+            AI study tools publish hote hi yahan dikh jayenge.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px', marginTop: '18px' }}>
+            {tools.map((tool) => (
+              <motion.div
                 key={tool._id}
+                whileHover={{ y: -2 }}
+                transition={{ duration: 0.16, ease: 'easeOut' }}
                 style={{
                   border: `1px solid ${theme.border}`,
                   borderRadius: '18px',
                   padding: '14px',
                   background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <h3 style={{ color: theme.text, margin: '0 0 6px', fontWeight: 950 }}>
-                      ✨ {tool.title || 'Important Questions'}
-                    </h3>
-                    <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
-                      {totalQuestions} questions • Source: {tool.sourcePdf?.title || 'Course PDFs'}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setExpandedTool(isExpanded ? null : tool._id)}
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: '13px',
-                      border: 'none',
-                      background: theme.primary,
-                      color: '#fff',
-                      cursor: 'pointer',
-                      fontWeight: 950,
-                    }}
-                  >
-                    {isExpanded ? 'Hide' : 'Open'}
-                  </button>
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ color: theme.text, margin: '0 0 6px', fontWeight: 950 }}>
+                    ✨ {tool.title || 'Important Questions'}
+                  </h3>
+                  <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
+                    {getTotalQuestions(tool)} questions • Source: {tool.sourcePdf?.title || 'Course PDFs'}
+                  </p>
                 </div>
 
-                {isExpanded && (
-                  <div style={{ marginTop: '14px' }}>
-                    {renderQuestionList('Short Questions', content.shortQuestions, '✍️')}
-                    {renderQuestionList('Long Questions', content.longQuestions, '📚')}
-                    {renderQuestionList('MCQs', content.mcqs, '✅')}
-                    {renderQuestionList('Most Expected Questions', content.mostExpectedQuestions, '🔥')}
-                  </div>
-                )}
+                <button
+                  onClick={() => setSelectedTool(tool)}
+                  style={{
+                    padding: '12px 18px',
+                    borderRadius: '15px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: 950,
+                    boxShadow: '0 12px 28px rgba(139,92,246,0.28)',
+                  }}
+                >
+                  Open
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedTool && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(2, 6, 23, 0.86)',
+            // ✅ Heavy backdrop blur modal scroll ko laggy bana deta hai, isliye blur remove.
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: isMobile ? '12px' : '20px',
+          }}
+          onClick={closeToolModal}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 18 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 18 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: isMobile ? 'calc(100vw - 20px)' : 'min(1180px, calc(100vw - 64px))',
+              height: isMobile ? 'calc(100vh - 24px)' : 'min(92vh, 900px)',
+              maxHeight: isMobile ? 'calc(100vh - 24px)' : '92vh',
+              overflow: 'hidden',
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              borderRadius: isMobile ? '20px' : '26px',
+              padding: isMobile ? '18px' : '24px',
+              boxShadow: '0 20px 70px rgba(0,0,0,0.45)',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              willChange: 'transform',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '12px',
+                flexWrap: 'wrap',
+                alignItems: 'flex-start',
+                paddingBottom: '16px',
+                marginBottom: '16px',
+                borderBottom: `1px solid ${theme.border}`,
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: '0 0 7px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+                  ✨ STUDY WITH AI • BONUS
+                </p>
+                <h2 style={{ margin: 0, color: theme.text, fontWeight: 950, lineHeight: 1.25 }}>
+                  {selectedTool.title || 'AI Important Questions'}
+                </h2>
+                <p style={{ margin: '8px 0 0', color: theme.muted, fontWeight: 750, fontSize: '13px' }}>
+                  {getTotalQuestions(selectedTool)} questions • Source: {selectedTool.sourcePdf?.title || 'Course PDFs'}
+                </p>
               </div>
-            );
-          })}
+
+              <button
+                onClick={closeToolModal}
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '14px',
+                  border: `1px solid ${theme.border}`,
+                  background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
+                  color: theme.text,
+                  cursor: 'pointer',
+                  fontSize: '22px',
+                  fontWeight: 950,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                paddingRight: isMobile ? '2px' : '10px',
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarGutter: 'stable',
+              }}
+            >
+              {renderToolContent(selectedTool)}
+            </div>
+          </motion.div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -988,10 +1100,10 @@ function CourseDetail() {
     if (!url) return null;
 
     // ✅ Regex literal line-break issue avoid karne ke liye RegExp constructor use kiya hai
-    const ytMatch = url.match(new RegExp('(?:youtube\\.com/watch\\?v=|youtu\\.be/)([^&\\n?#]+)'));
+    const ytMatch = url.match(new RegExp('(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)'));
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
 
-    const driveMatch = url.match(new RegExp('drive\\.google\\.com/file/d/([^/]+)'));
+    const driveMatch = url.match(new RegExp('drive\.google\.com/file/d/([^/]+)'));
     if (driveMatch) {
       return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
     }
