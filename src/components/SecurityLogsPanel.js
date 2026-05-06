@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import API from '../api';
 import { motion } from 'framer-motion';
+import { useTheme } from '../context/ThemeContext';
 
-function SecurityLogsPanel({ theme }) {
+function SecurityLogsPanel({ theme: themeProp }) {
+  const fallbackTheme = useTheme();
+  const theme = themeProp || fallbackTheme;
   const [activities, setActivities] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const previousLogCount = useRef(0);
