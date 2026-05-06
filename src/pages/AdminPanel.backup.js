@@ -47,7 +47,7 @@ function AdminPanel() {
   const [aiSelectedCourse, setAiSelectedCourse] = useState(null);
   const [aiSourceText, setAiSourceText] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiGenerationType, setAiGenerationType] = useState('important_questions'); // important_questions | quiz | summary | flashcards
+  const [aiGenerationType, setAiGenerationType] = useState('important_questions'); // important_questions | quiz
   const [aiSelectedPdfIndexes, setAiSelectedPdfIndexes] = useState([]);
   const [aiCustomTitle, setAiCustomTitle] = useState(''); // ✅ NEW: Custom title state
 
@@ -643,7 +643,7 @@ function AdminPanel() {
     }
   };
 
-    const deleteLiveClass = async (id) => {
+  const deleteLiveClass = async (id) => {
     showConfirmToast({
       title: 'Delete Live Class?',
       message: 'Ye live class permanently delete karni hai?',
@@ -681,88 +681,6 @@ function AdminPanel() {
 
   const openImportantQuestionsModal = (course) => {
     openStudyToolGeneratorModal(course, 'important_questions');
-  };
-
-  const getStudyToolMeta = (type) => {
-    if (type === 'quiz') {
-      return {
-        name: 'Quiz Practice',
-        shortName: 'Quiz',
-        icon: '🧠',
-        heading: 'Generate Quiz Practice',
-        buttonText: '🧠 Generate Quiz',
-        placeholder: 'Example: Unit 1 Quiz / Laser Quiz Practice',
-        endpoint: '/api/study-tools/generate-quiz-from-pdf',
-        gradient: 'linear-gradient(135deg, #06b6d4, #2563eb)',
-      };
-    }
-
-    if (type === 'summary') {
-      return {
-        name: 'AI Summary',
-        shortName: 'Summary',
-        icon: '📝',
-        heading: 'Generate AI Summary',
-        buttonText: '📝 Generate Summary',
-        placeholder: 'Example: Unit 1 Summary / Laser Quick Revision',
-        endpoint: '/api/study-tools/generate-summary-from-pdf',
-        gradient: 'linear-gradient(135deg, #22c55e, #0ea5e9)',
-      };
-    }
-
-    if (type === 'flashcards') {
-      return {
-        name: 'Flashcards',
-        shortName: 'Flashcards',
-        icon: '🃏',
-        heading: 'Generate Flashcards',
-        buttonText: '🃏 Generate Flashcards',
-        placeholder: 'Example: Unit 1 Flashcards / Laser Revision Cards',
-        endpoint: '/api/study-tools/generate-flashcards-from-pdf',
-        gradient: 'linear-gradient(135deg, #f97316, #ec4899)',
-      };
-    }
-
-    return {
-      name: 'Important Questions',
-      shortName: 'Questions',
-      icon: '✨',
-      heading: 'Generate Important Questions',
-      buttonText: '✨ Generate Questions',
-      placeholder: 'Example: Unit 1 Important Questions / Laser Most Expected',
-      endpoint: '/api/study-tools/generate-important-questions-from-pdf',
-      gradient: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
-    };
-  };
-
-  const getStudyToolStats = (tool) => {
-    const content = tool?.content || {};
-
-    if (tool?.type === 'quiz') {
-      return content.quizQuestions?.length || content.questions?.length || content.mcqs?.length || 0;
-    }
-
-    if (tool?.type === 'summary') {
-      return (
-        (content.definitions?.length || 0) +
-        (content.keyPoints?.length || 0) +
-        (content.examAnswer?.length || 0) +
-        (content.quickRevision?.length || 0) +
-        (content.importantTerms?.length || 0) +
-        (content.summary ? 1 : 0)
-      );
-    }
-
-    if (tool?.type === 'flashcards') {
-      return content.flashcards?.length || content.cards?.length || 0;
-    }
-
-    return (
-      (content.shortQuestions?.length || 0) +
-      (content.longQuestions?.length || 0) +
-      (content.mcqs?.length || 0) +
-      (content.mostExpectedQuestions?.length || 0)
-    );
   };
 
   // ✅ Close AI Modal — reset aiCustomTitle on close
@@ -817,9 +735,11 @@ function AdminPanel() {
       return;
     }
 
-    const toolMeta = getStudyToolMeta(aiGenerationType);
-    const toolName = toolMeta.name;
-    const endpoint = toolMeta.endpoint;
+    const isQuiz = aiGenerationType === 'quiz';
+    const toolName = isQuiz ? 'Quiz Practice' : 'Important Questions';
+    const endpoint = isQuiz
+      ? '/api/study-tools/generate-quiz-from-pdf'
+      : '/api/study-tools/generate-important-questions-from-pdf';
 
     // ✅ Determine if multiple PDFs selected — for title appending logic
     const isMultiplePdfs = aiSelectedPdfIndexes.length > 1;
@@ -980,7 +900,7 @@ function AdminPanel() {
       );
 
       toast.success(res.data?.message || '✅ Study tool published!');
-      setMsg('✅ AI Study Tool published! Students ko ab dikhega.');
+      setMsg('✅ AI Questions published! Students ko ab dikhega.');
       await fetchStudyToolsForCourse(aiReviewCourse);
       setTimeout(() => setMsg(''), 3500);
     } catch (err) {
@@ -999,7 +919,7 @@ function AdminPanel() {
       );
 
       toast.success(res.data?.message || '✅ Study tool moved to draft!');
-      setMsg('✅ AI Study Tool draft mein move ho gaya.');
+      setMsg('✅ AI Questions draft mein move ho gaye.');
       await fetchStudyToolsForCourse(aiReviewCourse);
       setTimeout(() => setMsg(''), 3500);
     } catch (err) {
@@ -1009,7 +929,7 @@ function AdminPanel() {
   };
 
   // ✅ Delete AI study tool
-  const deleteStudyTool = async (toolId, title = 'AI Study Tool') => {
+  const deleteStudyTool = async (toolId, title = 'AI Questions') => {
     showConfirmToast({
       title: 'Delete AI Draft?',
       message: `${title} permanently delete karna hai?`,
@@ -1110,7 +1030,7 @@ function AdminPanel() {
     WebkitBackdropFilter: theme.glass,
   };
 
-    const renderQuestionList = (title, items, icon) => {
+  const renderQuestionList = (title, items, icon) => {
     const safeItems = Array.isArray(items) ? items : [];
 
     if (safeItems.length === 0) return null;
@@ -1184,151 +1104,13 @@ function AdminPanel() {
     );
   };
 
-  const renderBulletSection = (title, items, icon) => {
-    const safeItems = Array.isArray(items) ? items : [];
-
-    if (safeItems.length === 0) return null;
-
-    return (
-      <div
-        style={{
-          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-          border: `1px solid ${theme.border}`,
-          borderRadius: '16px',
-          padding: '14px',
-          marginBottom: '12px',
-        }}
-      >
-        <h4 style={{ color: theme.text, margin: '0 0 12px', fontWeight: 950 }}>
-          {icon} {title} ({safeItems.length})
-        </h4>
-
-        <div style={{ display: 'grid', gap: '9px' }}>
-          {safeItems.map((item, index) => (
-            <div
-              key={index}
-              style={{
-                border: `1px solid ${theme.border}`,
-                borderRadius: '13px',
-                padding: '11px 12px',
-                background: theme.isDark ? 'rgba(15,23,42,0.55)' : '#ffffff',
-                color: theme.text,
-                fontWeight: 800,
-                lineHeight: 1.6,
-              }}
-            >
-              <span style={{ color: theme.primary, fontWeight: 950 }}>{index + 1}.</span>{' '}
-              {String(item || '')}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderFlashcardsList = (cards) => {
-    const safeCards = Array.isArray(cards) ? cards : [];
-
-    if (safeCards.length === 0) return null;
-
-    return (
-      <div
-        style={{
-          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-          border: `1px solid ${theme.border}`,
-          borderRadius: '16px',
-          padding: '14px',
-          marginBottom: '12px',
-        }}
-      >
-        <h4 style={{ color: theme.text, margin: '0 0 12px', fontWeight: 950 }}>
-          🃏 Flashcards ({safeCards.length})
-        </h4>
-
-        <div style={{ display: 'grid', gap: '10px' }}>
-          {safeCards.map((card, index) => (
-            <div
-              key={index}
-              style={{
-                border: `1px solid ${theme.border}`,
-                borderRadius: '13px',
-                padding: '12px',
-                background: theme.isDark ? 'rgba(15,23,42,0.55)' : '#ffffff',
-              }}
-            >
-              <p style={{ color: theme.text, margin: '0 0 8px', fontWeight: 950, lineHeight: 1.5 }}>
-                {index + 1}. {card?.front || card?.question || 'Front missing'}
-              </p>
-
-              <p style={{ color: theme.muted, margin: '0 0 6px', fontSize: '13px', lineHeight: 1.5, fontWeight: 800 }}>
-                ✅ {card?.back || card?.answer || 'Back missing'}
-              </p>
-
-              {card?.hint && (
-                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px', lineHeight: 1.5 }}>
-                  💡 Hint: {card.hint}
-                </p>
-              )}
-
-              {card?.tag && (
-                <p style={{ color: theme.primary, margin: '6px 0 0', fontSize: '12px', fontWeight: 950 }}>
-                  🏷️ {card.tag}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   const renderStudyToolContent = (tool) => {
     const content = tool?.content || {};
 
     if (tool?.type === 'quiz') {
       return (
         <div style={{ marginTop: '14px' }}>
-          {renderQuestionList('Quiz Questions', content.quizQuestions || content.questions || content.mcqs, '🧠')}
-        </div>
-      );
-    }
-
-    if (tool?.type === 'summary') {
-      return (
-        <div style={{ marginTop: '14px' }}>
-          {content.summary && (
-            <div
-              style={{
-                background: theme.isDark ? 'rgba(34,197,94,0.10)' : '#dcfce7',
-                border: `1px solid ${theme.border}`,
-                borderRadius: '16px',
-                padding: '14px',
-                marginBottom: '12px',
-              }}
-            >
-              <h4 style={{ color: theme.text, margin: '0 0 10px', fontWeight: 950 }}>
-                📝 Quick Summary
-              </h4>
-
-              <p style={{ color: theme.text, margin: 0, lineHeight: 1.6, fontWeight: 800 }}>
-                {content.summary}
-              </p>
-            </div>
-          )}
-
-          {renderBulletSection('Definitions', content.definitions, '📌')}
-          {renderBulletSection('Key Points', content.keyPoints, '⚡')}
-          {renderBulletSection('Exam Answer Points', content.examAnswer, '📚')}
-          {renderBulletSection('Quick Revision', content.quickRevision, '🚀')}
-          {renderBulletSection('Important Terms', content.importantTerms, '🏷️')}
-        </div>
-      );
-    }
-
-    if (tool?.type === 'flashcards') {
-      return (
-        <div style={{ marginTop: '14px' }}>
-          {renderFlashcardsList(content.flashcards || content.cards)}
+          {renderQuestionList('Quiz Questions', content.quizQuestions, '🧠')}
         </div>
       );
     }
@@ -1596,7 +1378,7 @@ function AdminPanel() {
                       </strong>
                     </p>
 
-                                        <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
+                    <p style={{ color: theme.muted, fontSize: '13px', margin: '4px 0' }}>
                       Used:{' '}
                       <strong style={{ color: theme.text }}>
                         {coupon.usedCount || 0} /{' '}
@@ -2076,7 +1858,7 @@ function AdminPanel() {
                     fontWeight: 950,
                   }}
                 >
-                  {getStudyToolMeta(aiGenerationType).heading}
+                  {aiGenerationType === 'quiz' ? 'Generate Quiz Practice' : 'Generate Important Questions'}
                 </h3>
 
                 <p
@@ -2112,7 +1894,8 @@ function AdminPanel() {
                 ×
               </button>
             </div>
-                        {/* How to use info box */}
+
+            {/* How to use info box */}
             <div
               style={{
                 background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
@@ -2141,7 +1924,7 @@ function AdminPanel() {
                   lineHeight: 1.5,
                 }}
               >
-                AI selected tool ke hisaab se draft banayega: important questions, quiz, summary ya flashcards. Draft pehle Review AI mein save hoga, publish karne ke baad students ko dikhega.
+                AI sirf un PDFs se questions banayega jo tum select karoge. Notes, cheat sheet, unit PDFs — jo useful ho bas wahi tick karo. AI 10 short questions, 10 long questions, 15 MCQs aur 5 most expected questions draft mein save karega.
               </p>
             </div>
 
@@ -2170,7 +1953,11 @@ function AdminPanel() {
                   ...inputStyle,
                   marginBottom: 0,
                 }}
-                placeholder={getStudyToolMeta(aiGenerationType).placeholder}
+                placeholder={
+                  aiGenerationType === 'quiz'
+                    ? 'Example: Unit 1 Quiz / Laser Quiz Practice'
+                    : 'Example: Unit 1 Important Questions / Laser Most Expected'
+                }
                 value={aiCustomTitle}
                 disabled={aiGenerating}
                 onChange={(e) => setAiCustomTitle(e.target.value)}
@@ -2376,7 +2163,7 @@ function AdminPanel() {
                     padding: '11px 18px',
                     background: aiGenerating
                       ? 'linear-gradient(135deg, #64748b, #334155)'
-                      : getStudyToolMeta(aiGenerationType).gradient,
+                      : 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '13px',
@@ -2385,7 +2172,11 @@ function AdminPanel() {
                     boxShadow: theme.shadow,
                   }}
                 >
-                  {aiGenerating ? '⏳ Generating...' : getStudyToolMeta(aiGenerationType).buttonText}
+                  {aiGenerating
+                    ? '⏳ Generating...'
+                    : aiGenerationType === 'quiz'
+                    ? '🧠 Generate Quiz'
+                    : '✨ Generate Questions'}
                 </button>
               </div>
             </div>
@@ -2451,7 +2242,7 @@ function AdminPanel() {
                 </p>
 
                 <h3 style={{ color: theme.text, margin: 0, fontSize: '24px', fontWeight: 950 }}>
-                  Review / Publish AI Study Tools
+                  Review / Publish AI Questions
                 </h3>
 
                 <p style={{ color: theme.muted, margin: '8px 0 0', fontWeight: 750, lineHeight: 1.5 }}>
@@ -2500,7 +2291,7 @@ function AdminPanel() {
 
             <div
               style={{
-                background: theme.isDark ? 'rgba(34,197,94,0.08)' : '#ecfdf5',
+                background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
                 border: `1px solid ${theme.border}`,
                 borderRadius: '16px',
                 padding: '14px',
@@ -2508,58 +2299,36 @@ function AdminPanel() {
               }}
             >
               <p style={{ color: theme.text, margin: '0 0 6px', fontWeight: 900 }}>
-                Publish kaise karna hai?
+                Kaise use karna hai?
               </p>
-
               <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750, lineHeight: 1.5 }}>
-                Pehle "Review" se generated study tool check karo. Sahi lage toh "Publish" dabao. Published tools students ko CourseDetail ke Study AI tabs mein dikhenge.
+                Pehle "Review" se generated questions check karo. Sahi lage toh "Publish" dabao. Published questions students ko CourseDetail mein dikhenge.
               </p>
             </div>
 
             {aiToolsLoading ? (
-              <div
-                style={{
-                  padding: '18px',
-                  borderRadius: '16px',
-                  border: `1px solid ${theme.border}`,
-                  color: theme.muted,
-                  fontWeight: 900,
-                  textAlign: 'center',
-                }}
-              >
-                ⏳ Loading AI drafts...
+              <div style={{ ...smallCardStyle, color: theme.muted, fontWeight: 900, textAlign: 'center' }}>
+                ⏳ AI drafts loading...
               </div>
             ) : aiStudyTools.length === 0 ? (
-              <div
-                style={{
-                  padding: '18px',
-                  borderRadius: '16px',
-                  border: `1px solid ${theme.border}`,
-                  color: theme.muted,
-                  fontWeight: 900,
-                  textAlign: 'center',
-                }}
-              >
-                Abhi is course ke liye koi AI draft nahi mila. Pehle AI tool generate karo: Questions, Quiz, Summary ya Flashcards.
+              <div style={{ ...smallCardStyle, color: theme.muted, fontWeight: 900, textAlign: 'center' }}>
+                Abhi is course ke liye koi AI draft nahi mila. Pehle "✨ AI Questions" se generate karo.
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '14px' }}>
                 {aiStudyTools.map((tool) => {
                   const isExpanded = expandedStudyTool === tool._id;
+                  const isPublished = tool.status === 'published';
                   const content = tool.content || {};
-                  const totalItems = getStudyToolStats(tool);
-                  const toolMeta = getStudyToolMeta(tool.type);
+                  const totalQuestions =
+                    (content.shortQuestions?.length || 0) +
+                    (content.longQuestions?.length || 0) +
+                    (content.mcqs?.length || 0) +
+                    (content.mostExpectedQuestions?.length || 0) +
+                    (content.quizQuestions?.length || 0);
 
                   return (
-                    <div
-                      key={tool._id}
-                      style={{
-                        background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: '18px',
-                        padding: '16px',
-                      }}
-                    >
+                    <div key={tool._id} style={smallCardStyle}>
                       <div
                         style={{
                           display: 'flex',
@@ -2569,37 +2338,34 @@ function AdminPanel() {
                           alignItems: 'flex-start',
                         }}
                       >
-                        <div style={{ flex: 1, minWidth: '240px' }}>
-                          <h4 style={{ color: theme.text, margin: '0 0 8px', fontWeight: 950 }}>
-                            {toolMeta.icon} {tool.title || toolMeta.name}
-                          </h4>
+                        <div style={{ flex: 1, minWidth: '260px' }}>
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <h4 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
+                              ✨ {tool.title || 'AI Important Questions'}
+                            </h4>
+                            <span
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '999px',
+                                fontSize: '12px',
+                                fontWeight: 950,
+                                background: isPublished ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                                color: isPublished ? theme.success : theme.warning,
+                                border: `1px solid ${theme.border}`,
+                              }}
+                            >
+                              {isPublished ? 'Published' : 'Draft'}
+                            </span>
+                          </div>
 
-                          <p style={{ color: theme.muted, margin: '0 0 6px', fontSize: '13px', fontWeight: 750 }}>
-                            Items: <strong style={{ color: theme.text }}>{totalItems}</strong> | Type:{' '}
-                            <strong style={{ color: theme.text }}>{toolMeta.name}</strong> | Source:{' '}
+                          <p style={{ color: theme.muted, margin: '8px 0 0', fontSize: '13px', fontWeight: 750 }}>
+                            Questions: <strong style={{ color: theme.text }}>{totalQuestions}</strong> | Source:{' '}
                             <strong style={{ color: theme.text }}>{tool.sourcePdf?.title || 'PDF'}</strong>
                           </p>
 
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              padding: '5px 10px',
-                              borderRadius: '999px',
-                              fontSize: '12px',
-                              fontWeight: 950,
-                              background:
-                                tool.status === 'published'
-                                  ? 'rgba(34,197,94,0.14)'
-                                  : 'rgba(251,191,36,0.14)',
-                              color:
-                                tool.status === 'published'
-                                  ? theme.success
-                                  : theme.warning,
-                              border: `1px solid ${theme.border}`,
-                            }}
-                          >
-                            {tool.status === 'published' ? 'Published' : 'Draft'}
-                          </span>
+                          <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '12px', fontWeight: 700 }}>
+                            Created: {tool.createdAt ? new Date(tool.createdAt).toLocaleString('en-IN') : 'Not available'}
+                          </p>
                         </div>
 
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -2610,7 +2376,7 @@ function AdminPanel() {
                             {isExpanded ? 'Hide' : 'Review'}
                           </button>
 
-                          {tool.status === 'published' ? (
+                          {isPublished ? (
                             <button
                               onClick={() => unpublishStudyTool(tool._id)}
                               style={adminStyles.warningBtn(theme)}
@@ -2644,148 +2410,210 @@ function AdminPanel() {
           </motion.div>
         </div>
       )}
-            <div style={{ position: 'relative', zIndex: 2, maxWidth: '1320px', margin: '0 auto', padding: '28px 18px' }}>
+
+      <div
+        style={{
+          maxWidth: '1160px',
+          margin: '0 auto',
+          padding: '40px 20px',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.28, ease: 'easeOut' }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{
-            ...panelStyle,
-            padding: '26px',
-            marginBottom: '22px',
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius,
+            padding: '28px',
+            marginBottom: '24px',
+            boxShadow: theme.shadow,
+            backdropFilter: theme.glass,
+            WebkitBackdropFilter: theme.glass,
           }}
         >
-          <div
+          <p
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: '16px',
-              flexWrap: 'wrap',
-              alignItems: 'center',
+              color: theme.primary,
+              margin: '0 0 8px',
+              fontWeight: 950,
+              fontSize: '13px',
+              letterSpacing: '0.5px',
             }}
           >
-            <div>
-              <p style={{ color: theme.primary, margin: '0 0 8px', fontWeight: 950, fontSize: '13px' }}>
-                ⚡ REHANVERSE ADMIN
-              </p>
+            ⚙️ ADMIN CONTROL CENTER
+          </p>
 
-              <h1 style={{ color: theme.text, margin: 0, fontWeight: 950, fontSize: '34px' }}>
-                Admin Panel
-              </h1>
+          <h2
+            style={{
+              color: theme.text,
+              margin: '0 0 8px',
+              fontSize: 'clamp(30px, 4vw, 46px)',
+              fontWeight: 950,
+              letterSpacing: '-0.8px',
+            }}
+          >
+            Admin Panel
+          </h2>
 
-              <p style={{ color: theme.muted, margin: '8px 0 0', fontWeight: 750 }}>
-                Courses, users, payments, live classes, coupons, notifications and AI study tools manage karo.
-              </p>
-            </div>
-
-            <button
-              onClick={() => navigate('/')}
-              style={{
-                padding: '11px 16px',
-                background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
-                color: theme.text,
-                border: `1px solid ${theme.border}`,
-                borderRadius: '14px',
-                cursor: 'pointer',
-                fontWeight: 900,
-              }}
-            >
-              🏠 Go Home
-            </button>
-          </div>
-
-          {msg && (
-            <div
-              style={{
-                marginTop: '18px',
-                padding: '13px 14px',
-                borderRadius: '14px',
-                border: `1px solid ${theme.border}`,
-                background: msg.includes('❌')
-                  ? theme.isDark
-                    ? 'rgba(239,68,68,0.12)'
-                    : '#fee2e2'
-                  : msg.includes('⏳')
-                  ? theme.isDark
-                    ? 'rgba(251,191,36,0.12)'
-                    : '#fef3c7'
-                  : theme.isDark
-                  ? 'rgba(34,197,94,0.12)'
-                  : '#dcfce7',
-                color: msg.includes('❌') ? theme.danger : msg.includes('⏳') ? theme.warning : theme.success,
-                fontWeight: 900,
-              }}
-            >
-              {msg}
-            </div>
-          )}
+          <p style={{ color: theme.muted, margin: 0, fontWeight: 750 }}>
+            Welcome, {user?.name}! Manage courses, payments, coupons, users, live classes, activity logs and assistant logs.
+          </p>
         </motion.div>
+
+        {msg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              padding: '13px 16px',
+              borderRadius: '16px',
+              marginBottom: '20px',
+              fontWeight: 900,
+              boxShadow: theme.shadow,
+              backdropFilter: theme.glass,
+              WebkitBackdropFilter: theme.glass,
+              background: msg.includes('✅')
+                ? theme.mode === 'dark'
+                  ? 'rgba(34, 197, 94, 0.12)'
+                  : '#d1fae5'
+                : msg.includes('⚠️')
+                ? theme.mode === 'dark'
+                  ? 'rgba(245, 158, 11, 0.12)'
+                  : '#fef3c7'
+                : theme.mode === 'dark'
+                ? 'rgba(239, 68, 68, 0.12)'
+                : '#fee2e2',
+              color: msg.includes('✅')
+                ? theme.success
+                : msg.includes('⚠️')
+                ? theme.warning
+                : theme.danger,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            {msg}
+          </motion.div>
+        )}
+
+        <AdminDashboardStats
+          theme={theme}
+          users={users}
+          courses={courses}
+          payments={payments}
+        />
 
         <div
           style={{
             display: 'flex',
             gap: '10px',
+            marginBottom: '32px',
             flexWrap: 'wrap',
-            marginBottom: '24px',
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: '22px',
+            padding: '14px',
+            boxShadow: theme.shadow,
+            backdropFilter: theme.glass,
+            WebkitBackdropFilter: theme.glass,
           }}
         >
-          <button style={tabStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
-            📊 Dashboard
+          <button onClick={() => setActiveTab('courses')} style={tabStyle('courses')}>
+            📚 Courses ({courses.length})
           </button>
 
-          <button style={tabStyle('courses')} onClick={() => setActiveTab('courses')}>
-            📚 Courses
+          <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>
+            👥 Users ({users.length})
           </button>
 
-          <button style={tabStyle('payments')} onClick={() => setActiveTab('payments')}>
-            💳 Payments
+          <button onClick={() => setActiveTab('payments')} style={tabStyle('payments')}>
+            💸 Payments ({payments.filter((p) => p.status === 'pending').length})
           </button>
 
-          <button style={tabStyle('users')} onClick={() => setActiveTab('users')}>
-            👥 Users
+          <button onClick={() => setActiveTab('coupons')} style={tabStyle('coupons')}>
+            🎟️ Coupons ({coupons.length})
           </button>
 
-          <button style={tabStyle('coupons')} onClick={() => setActiveTab('coupons')}>
-            🎟️ Coupons
-          </button>
-
-          <button style={tabStyle('live')} onClick={() => setActiveTab('live')}>
+          <button onClick={() => setActiveTab('live')} style={tabStyle('live')}>
             🔴 Live Classes
           </button>
 
-          <button style={tabStyle('notifications')} onClick={() => setActiveTab('notifications')}>
+          <button onClick={() => setActiveTab('notifications')} style={tabStyle('notifications')}>
             🔔 Notifications
           </button>
 
-          <button style={tabStyle('assistant')} onClick={() => setActiveTab('assistant')}>
-            🤖 Assistant Logs
+          <button onClick={() => setActiveTab('activity')} style={tabStyle('activity')}>
+            🕶️ Activity Logs
           </button>
 
-          <button style={tabStyle('security')} onClick={() => setActiveTab('security')}>
-            🛡️ Security
+          <button
+            onClick={() => {
+              setActiveTab('assistant');
+              fetchAssistantLogs();
+            }}
+            style={tabStyle('assistant')}
+          >
+            🤖 Assistant Logs ({assistantLogs.length})
           </button>
         </div>
-        {activeTab === 'dashboard' && (
-          <div>
-            <AdminDashboardStats
-              theme={theme}
-              users={users}
-              courses={courses}
-              payments={payments}
-            />
-          </div>
-        )}
 
         {activeTab === 'courses' && (
           <div>
             <div style={panelStyle}>
-              <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '8px' }}>
-                {editingId ? '✏️ Edit Course' : '➕ Create Course'}
-              </h3>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '20px',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <h3 style={{ color: theme.text, margin: 0 }}>
+                  {editingId ? '✏️ Course Edit Karo' : '➕ Naya Course Banao'}
+                </h3>
 
-              <p style={{ color: theme.muted, marginTop: 0, marginBottom: '22px' }}>
-                Course details, videos, PDFs aur AI study tools ke source PDFs yahin manage honge.
-              </p>
+                {editingId && (
+                  <button
+                    onClick={cancelEdit}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'transparent',
+                      color: theme.muted,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      fontWeight: 800,
+                    }}
+                  >
+                    ✕ Cancel
+                  </button>
+                )}
+              </div>
+
+              {editingId && (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    background:
+                      theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
+                    border: `1px solid ${
+                      theme.mode === 'dark' ? 'rgba(245, 158, 11, 0.35)' : '#fcd34d'
+                    }`,
+                    borderRadius: '14px',
+                    marginBottom: '16px',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    color: theme.mode === 'dark' ? '#fcd34d' : '#92400e',
+                  }}
+                >
+                  ✏️ Tum <strong>"{form.title}"</strong> ko edit kar rahe ho
+                </div>
+              )}
 
               <input
                 style={inputStyle}
@@ -2795,428 +2623,617 @@ function AdminPanel() {
               />
 
               <textarea
-                style={{ ...inputStyle, minHeight: '95px', resize: 'vertical' }}
+                style={{ ...inputStyle, height: '90px', resize: 'vertical' }}
                 placeholder="Course Description *"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
 
+              <input
+                style={inputStyle}
+                placeholder="Thumbnail Image URL (optional)"
+                value={form.thumbnail}
+                onChange={(e) => setForm({ ...form, thumbnail: e.target.value })}
+              />
+
               <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                  gap: '12px',
-                }}
-              >
-                <input
-                  style={inputStyle}
-                  type="number"
-                  placeholder="Price"
-                  value={form.price}
-                  disabled={form.isFree}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
-                />
-
-                <input
-                  style={inputStyle}
-                  placeholder="Thumbnail URL"
-                  value={form.thumbnail}
-                  onChange={(e) => setForm({ ...form, thumbnail: e.target.value })}
-                />
-              </div>
-
-              <label
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  color: theme.text,
-                  marginBottom: '18px',
-                  cursor: 'pointer',
-                  fontWeight: 850,
+                  gap: '12px',
+                  marginBottom: '14px',
+                  flexWrap: 'wrap',
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={form.isFree}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      isFree: e.target.checked,
-                      price: e.target.checked ? 0 : form.price || 39,
-                    })
-                  }
-                />
-                Free Course
-              </label>
+                <label style={{ color: theme.text, fontWeight: 800 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.isFree}
+                    onChange={(e) =>
+                      setForm({ ...form, isFree: e.target.checked, price: 0 })
+                    }
+                    style={{ marginRight: '6px' }}
+                  />
+                  Free Course
+                </label>
 
-              <div
-                style={{
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: '18px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                }}
-              >
-                <h4 style={{ color: theme.text, marginTop: 0 }}>🎥 Add Video</h4>
-
-                <input
-                  style={inputStyle}
-                  placeholder="Video Title"
-                  value={form.videoTitle}
-                  onChange={(e) => setForm({ ...form, videoTitle: e.target.value })}
-                />
-
-                <input
-                  style={inputStyle}
-                  placeholder="Video URL - YouTube / Drive / Direct"
-                  value={form.videoUrl}
-                  onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-                />
-
-                <button
-                  onClick={addVideo}
-                  style={adminStyles.blueBtn(theme)}
-                >
-                  ➕ Add Video
-                </button>
-
-                {videos.length > 0 && (
-                  <div style={{ marginTop: '14px', display: 'grid', gap: '8px' }}>
-                    {videos.map((video, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: '13px',
-                          border: `1px solid ${theme.border}`,
-                          background: theme.isDark ? 'rgba(15,23,42,0.55)' : '#fff',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          gap: '10px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <span style={{ color: theme.text, fontWeight: 850 }}>
-                          {index + 1}. {video.title}
-                        </span>
-
-                        <button
-                          onClick={() => setVideos(videos.filter((_, i) => i !== index))}
-                          style={adminStyles.dangerBtn(theme)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                {!form.isFree && (
+                  <input
+                    style={{ ...inputStyle, width: '200px', marginBottom: 0 }}
+                    type="number"
+                    placeholder="Price (₹)"
+                    value={form.price}
+                    onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  />
                 )}
               </div>
 
               <div
                 style={{
                   background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  border: `1px solid ${theme.border}`,
                   borderRadius: '18px',
                   padding: '16px',
-                  marginBottom: '16px',
+                  marginBottom: '14px',
+                  border: `1px solid ${theme.border}`,
                 }}
               >
-                <h4 style={{ color: theme.text, marginTop: 0 }}>📄 Add PDF</h4>
+                <p style={{ color: theme.text, fontWeight: '900', marginBottom: '10px' }}>
+                  📹 Videos
+                </p>
 
-                <input
-                  style={inputStyle}
-                  placeholder="PDF Title"
-                  value={form.pdfTitle}
-                  onChange={(e) => setForm({ ...form, pdfTitle: e.target.value })}
-                />
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    style={{ ...inputStyle, marginBottom: 0, flex: 1, minWidth: '200px' }}
+                    placeholder="Video Title"
+                    value={form.videoTitle}
+                    onChange={(e) => setForm({ ...form, videoTitle: e.target.value })}
+                  />
 
-                <input
-                  id="pdfFileInput"
-                  style={inputStyle}
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-                />
+                  <input
+                    style={{ ...inputStyle, marginBottom: 0, flex: 1, minWidth: '220px' }}
+                    placeholder="YouTube / Drive URL"
+                    value={form.videoUrl}
+                    onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+                  />
 
-                <button
-                  onClick={addPdf}
-                  style={adminStyles.successBtn(theme)}
-                >
-                  📤 Upload + Add PDF
-                </button>
-
-                {pdfs.length > 0 && (
-                  <div style={{ marginTop: '14px', display: 'grid', gap: '8px' }}>
-                    {pdfs.map((pdf, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: '13px',
-                          border: `1px solid ${theme.border}`,
-                          background: theme.isDark ? 'rgba(15,23,42,0.55)' : '#fff',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          gap: '10px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <span style={{ color: theme.text, fontWeight: 850 }}>
-                          {index + 1}. {pdf.title}
-                        </span>
-
-                        <button
-                          onClick={() => setPdfs(pdfs.filter((_, i) => i !== index))}
-                          style={adminStyles.dangerBtn(theme)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={handleSubmit}
-                  style={{
-                    padding: '13px 18px',
-                    background: editingId
-                      ? 'linear-gradient(135deg, #f59e0b, #d97706)'
-                      : 'linear-gradient(135deg, #22c55e, #15803d)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '14px',
-                    cursor: 'pointer',
-                    fontWeight: 950,
-                    boxShadow: theme.shadow,
-                  }}
-                >
-                  {editingId ? '✅ Update Course' : '🚀 Create Course'}
-                </button>
-
-                {editingId && (
                   <button
-                    onClick={cancelEdit}
+                    onClick={addVideo}
                     style={{
-                      padding: '13px 18px',
-                      background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
-                      color: theme.text,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: '14px',
+                      padding: '0 16px',
+                      background: theme.primary,
+                      color: theme.buttonText,
+                      border: 'none',
+                      borderRadius: '12px',
                       cursor: 'pointer',
-                      fontWeight: 950,
+                      whiteSpace: 'nowrap',
+                      minHeight: '44px',
+                      fontWeight: 900,
                     }}
                   >
-                    Cancel Edit
+                    + Add
                   </button>
+                </div>
+
+                {videos.map((v, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      background: theme.cardSolid,
+                      borderRadius: '12px',
+                      marginBottom: '6px',
+                      border: `1px solid ${theme.border}`,
+                    }}
+                  >
+                    <span style={{ color: theme.text, fontSize: '13px', fontWeight: 800 }}>
+                      📹 {v.title}
+                    </span>
+                    <button
+                      onClick={() => setVideos(videos.filter((_, idx) => idx !== i))}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: theme.danger,
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        fontWeight: 900,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+
+                {videos.length === 0 && (
+                  <p style={{ color: theme.muted, fontSize: '12px', fontWeight: 800 }}>
+                    Abhi koi video nahi
+                  </p>
                 )}
               </div>
+
+              <div
+                style={{
+                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  borderRadius: '18px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                <p style={{ color: theme.text, fontWeight: '900', marginBottom: '10px' }}>
+                  📄 PDFs / Notes
+                </p>
+
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    style={{ ...inputStyle, marginBottom: 0, flex: 1, minWidth: '200px' }}
+                    placeholder="PDF Title"
+                    value={form.pdfTitle}
+                    onChange={(e) => setForm({ ...form, pdfTitle: e.target.value })}
+                  />
+
+                  <input
+                    id="pdfFileInput"
+                    style={{ ...inputStyle, marginBottom: 0, flex: 1, minWidth: '220px' }}
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setPdfFile(e.target.files[0])}
+                  />
+
+                  <button
+                    onClick={addPdf}
+                    style={{
+                      padding: '0 16px',
+                      background: theme.primary,
+                      color: theme.buttonText,
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      minHeight: '44px',
+                      fontWeight: 900,
+                    }}
+                  >
+                    Upload PDF
+                  </button>
+                </div>
+
+                {pdfs.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      background: theme.cardSolid,
+                      borderRadius: '12px',
+                      marginBottom: '6px',
+                      border: `1px solid ${theme.border}`,
+                    }}
+                  >
+                    <span style={{ color: theme.text, fontSize: '13px', fontWeight: 800 }}>
+                      📄 {p.title} {p.filename ? '✅' : '⚠️ old link'}
+                    </span>
+                    <button
+                      onClick={() => setPdfs(pdfs.filter((_, idx) => idx !== i))}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: theme.danger,
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        fontWeight: 900,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+
+                {pdfs.length === 0 && (
+                  <p style={{ color: theme.muted, fontSize: '12px', fontWeight: 800 }}>
+                    Abhi koi PDF nahi
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: editingId ? theme.success : theme.primary,
+                  color: theme.buttonText,
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  fontWeight: '900',
+                  boxShadow: theme.shadow,
+                }}
+              >
+                {editingId ? '💾 Changes Save Karo' : '🚀 Course Publish Karo'}
+              </button>
             </div>
 
             <h3 style={{ color: theme.text, marginBottom: '16px' }}>
-              📚 All Courses ({courses.length})
+              📚 Mere Courses ({courses.length})
             </h3>
 
             {courses.length === 0 ? (
-              <div style={{ ...smallCardStyle, color: theme.muted, fontWeight: 900 }}>
-                Abhi koi course nahi hai.
-              </div>
+              <p style={{ color: theme.muted }}>Abhi koi course nahi!</p>
             ) : (
-              <div style={{ display: 'grid', gap: '16px' }}>
-                {courses.map((course) => (
-                  <div key={course._id}>
+              courses.map((course) => (
+                <div key={course._id} style={{ marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      background:
+                        editingId === course._id
+                          ? theme.mode === 'dark'
+                            ? 'rgba(34, 197, 94, 0.12)'
+                            : '#f0fdf4'
+                          : theme.card,
+                      border: `1px solid ${
+                        editingId === course._id ? theme.success : theme.border
+                      }`,
+                      borderRadius: '18px',
+                      padding: '20px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '16px',
+                      flexWrap: 'wrap',
+                      boxShadow: theme.shadow,
+                      backdropFilter: theme.glass,
+                      WebkitBackdropFilter: theme.glass,
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ color: theme.text, marginBottom: '4px', marginTop: 0 }}>
+                        {course.title}
+                      </h4>
+                      <p style={{ color: theme.muted, fontSize: '13px', margin: 0, fontWeight: 800 }}>
+                        {course.isFree ? '🆓 Free' : `💰 ₹${course.price}`} &nbsp;|&nbsp;
+                        📹 {course.videos?.length || 0} videos &nbsp;|&nbsp;
+                        📄 {course.pdfs?.length || 0} PDFs
+                      </p>
+                    </div>
+
                     <div
                       style={{
-                        ...smallCardStyle,
-                        borderRadius: expandedCourse === course._id ? '18px 18px 0 0' : '18px',
+                        display: 'flex',
+                        gap: '8px',
+                        flexWrap: 'wrap',
+                        justifyContent: 'flex-end',
                       }}
                     >
-                      <div
+                      <button
+                        onClick={() => fetchEnrolledUsers(course._id)}
+                        style={adminStyles.blueBtn(theme)}
+                      >
+                        👥 {expandedCourse === course._id ? 'Hide' : 'Students'}
+                      </button>
+
+                      <button
+                        onClick={() => openStudyToolGeneratorModal(course, 'important_questions')}
                         style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          gap: '14px',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
+                          padding: '9px 14px',
+                          background: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '900',
+                          boxShadow: theme.shadow,
                         }}
                       >
-                        <div style={{ flex: 1, minWidth: '250px' }}>
-                          <h3 style={{ color: theme.text, margin: '0 0 6px', fontWeight: 950 }}>
-                            {course.title}
-                          </h3>
+                        ✨ AI Questions
+                      </button>
 
-                          <p style={{ color: theme.muted, fontSize: '13px', margin: '0 0 8px', lineHeight: 1.5 }}>
-                            {course.description}
-                          </p>
+                      <button
+                        onClick={() => openStudyToolGeneratorModal(course, 'quiz')}
+                        style={{
+                          padding: '9px 14px',
+                          background: 'linear-gradient(135deg, #06b6d4, #2563eb)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '900',
+                          boxShadow: theme.shadow,
+                        }}
+                      >
+                        🧠 AI Quiz
+                      </button>
 
-                          <p style={{ color: theme.muted, fontSize: '13px', margin: 0, fontWeight: 800 }}>
-                            {course.isFree ? '🆓 Free' : `💰 ₹${course.price}`} &nbsp;|&nbsp;
-                            📹 {course.videos?.length || 0} videos &nbsp;|&nbsp;
-                            📄 {course.pdfs?.length || 0} PDFs
-                          </p>
-                        </div>
+                      <button
+                        onClick={() => openStudyToolsReviewModal(course)}
+                        style={{
+                          padding: '9px 14px',
+                          background: 'linear-gradient(135deg, #22c55e, #15803d)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '900',
+                          boxShadow: theme.shadow,
+                        }}
+                      >
+                        🧾 Review AI
+                      </button>
 
+                      <button
+                        onClick={() => startEdit(course)}
+                        style={adminStyles.warningBtn(theme)}
+                      >
+                        ✏️ Edit
+                      </button>
+
+                      <button
+                        onClick={() => deleteCourse(course._id)}
+                        style={adminStyles.dangerBtn(theme)}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {expandedCourse === course._id && (
+                    <div
+                      style={{
+                        background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '0 0 16px 16px',
+                        padding: '16px',
+                        marginTop: '-4px',
+                      }}
+                    >
+                      <p
+                        style={{
+                          color: theme.text,
+                          fontWeight: '900',
+                          marginBottom: '12px',
+                          fontSize: '14px',
+                        }}
+                      >
+                        👥 Enrolled Students ({enrolledUsers[course._id]?.length || 0})
+                      </p>
+
+                      {enrolledUsers[course._id]?.length === 0 ? (
+                        <p style={{ color: theme.muted, fontSize: '13px' }}>
+                          Abhi koi student enroll nahi!
+                        </p>
+                      ) : (
+                        enrolledUsers[course._id]?.map((u, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              padding: '8px 12px',
+                              background: theme.card,
+                              borderRadius: '12px',
+                              marginBottom: '6px',
+                              border: `1px solid ${theme.border}`,
+                              gap: '12px',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span style={{ color: theme.text, fontSize: '13px', fontWeight: 800 }}>
+                              👤 {u.name}
+                            </span>
+                            <span style={{ color: theme.muted, fontSize: '13px' }}>
+                              {u.email}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div>
+            <h3 style={{ color: theme.text, marginBottom: '20px' }}>
+              👥 Registered Users ({users.length})
+            </h3>
+
+            {users.length === 0 ? (
+              <p style={{ color: theme.muted }}>Abhi koi user nahi!</p>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                  gap: '16px',
+                }}
+              >
+                {users.map((u, i) => (
+                  <div
+                    key={u._id}
+                    style={{
+                      background: theme.card,
+                      border: `1px solid ${u.role === 'admin' ? theme.primary : theme.border}`,
+                      borderRadius: theme.radius,
+                      padding: '20px',
+                      position: 'relative',
+                      boxShadow: theme.shadow,
+                      backdropFilter: theme.glass,
+                      WebkitBackdropFilter: theme.glass,
+                    }}
+                  >
+                    <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
+                      <span
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '11px',
+                          fontWeight: '900',
+                          background:
+                            u.role === 'admin'
+                              ? theme.mode === 'dark'
+                                ? 'rgba(245, 158, 11, 0.18)'
+                                : '#fef3c7'
+                              : theme.mode === 'dark'
+                              ? 'rgba(34, 197, 94, 0.18)'
+                              : '#d1fae5',
+                          color:
+                            u.role === 'admin'
+                              ? theme.mode === 'dark'
+                                ? '#fcd34d'
+                                : '#92400e'
+                              : theme.mode === 'dark'
+                              ? '#86efac'
+                              : '#065f46',
+                        }}
+                      >
+                        {u.role === 'admin' ? '👑 Admin' : '🎓 Student'}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: '14px',
+                        paddingRight: '85px',
+                      }}
+                    >
+                      {u.photo ? (
+                        <img
+                          src={u.photo}
+                          alt={u.name}
+                          style={{
+                            width: '58px',
+                            height: '58px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: `2px solid ${theme.primary}`,
+                          }}
+                        />
+                      ) : (
                         <div
                           style={{
+                            width: '58px',
+                            height: '58px',
+                            borderRadius: '50%',
+                            background: theme.primary,
                             display: 'flex',
-                            gap: '8px',
-                            flexWrap: 'wrap',
-                            justifyContent: 'flex-end',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: theme.buttonText,
+                            fontWeight: '900',
+                            fontSize: '22px',
+                            flexShrink: 0,
                           }}
                         >
-                          <button
-                            onClick={() => fetchEnrolledUsers(course._id)}
-                            style={adminStyles.blueBtn(theme)}
-                          >
-                            👥 {expandedCourse === course._id ? 'Hide' : 'Students'}
-                          </button>
-
-                          <button
-                            onClick={() => openStudyToolGeneratorModal(course, 'important_questions')}
-                            style={{
-                              padding: '9px 14px',
-                              background: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '900',
-                              boxShadow: theme.shadow,
-                            }}
-                          >
-                            ✨ AI Questions
-                          </button>
-
-                          <button
-                            onClick={() => openStudyToolGeneratorModal(course, 'quiz')}
-                            style={{
-                              padding: '9px 14px',
-                              background: 'linear-gradient(135deg, #06b6d4, #2563eb)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '900',
-                              boxShadow: theme.shadow,
-                            }}
-                          >
-                            🧠 AI Quiz
-                          </button>
-
-                          <button
-                            onClick={() => openStudyToolGeneratorModal(course, 'summary')}
-                            style={{
-                              padding: '9px 14px',
-                              background: 'linear-gradient(135deg, #22c55e, #0ea5e9)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '900',
-                              boxShadow: theme.shadow,
-                            }}
-                          >
-                            📝 AI Summary
-                          </button>
-
-                          <button
-                            onClick={() => openStudyToolGeneratorModal(course, 'flashcards')}
-                            style={{
-                              padding: '9px 14px',
-                              background: 'linear-gradient(135deg, #f97316, #ec4899)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '900',
-                              boxShadow: theme.shadow,
-                            }}
-                          >
-                            🃏 Flashcards
-                          </button>
-
-                          <button
-                            onClick={() => openStudyToolsReviewModal(course)}
-                            style={{
-                              padding: '9px 14px',
-                              background: 'linear-gradient(135deg, #22c55e, #15803d)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '900',
-                              boxShadow: theme.shadow,
-                            }}
-                          >
-                            🧾 Review AI
-                          </button>
-
-                          <button
-                            onClick={() => startEdit(course)}
-                            style={adminStyles.warningBtn(theme)}
-                          >
-                            ✏️ Edit
-                          </button>
-
-                          <button
-                            onClick={() => deleteCourse(course._id)}
-                            style={adminStyles.dangerBtn(theme)}
-                          >
-                            🗑️ Delete
-                          </button>
+                          {u.name?.charAt(0).toUpperCase()}
                         </div>
+                      )}
+
+                      <div>
+                        <h4
+                          style={{
+                            color: theme.text,
+                            margin: 0,
+                            fontSize: '16px',
+                            fontWeight: '900',
+                          }}
+                        >
+                          {u.name}
+                        </h4>
+                        <p style={{ color: theme.muted, margin: 0, fontSize: '12px' }}>
+                          #{i + 1}
+                        </p>
                       </div>
                     </div>
 
-                    {expandedCourse === course._id && (
-                      <div
-                        style={{
-                          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: '0 0 16px 16px',
-                          padding: '16px',
-                          marginTop: '-4px',
-                        }}
-                      >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
+                        📧 {u.email}
+                      </p>
+
+                      {u.bio && (
+                        <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
+                          📝 {u.bio}
+                        </p>
+                      )}
+
+                      <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
+                        🗓️ Joined:{' '}
+                        {u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString('en-IN')
+                          : 'Not available'}
+                      </p>
+
+                      <div>
                         <p
                           style={{
                             color: theme.text,
+                            fontSize: '13px',
                             fontWeight: '900',
-                            marginBottom: '12px',
-                            fontSize: '14px',
+                            margin: '8px 0 8px 0',
                           }}
                         >
-                          👥 Enrolled Students ({enrolledUsers[course._id]?.length || 0})
+                          📚 Enrolled:
                         </p>
 
-                        {enrolledUsers[course._id]?.length === 0 ? (
-                          <p style={{ color: theme.muted, margin: 0 }}>
-                            Abhi koi student enrolled nahi hai.
-                          </p>
-                        ) : (
-                          <div style={{ display: 'grid', gap: '8px' }}>
-                            {enrolledUsers[course._id]?.map((student) => (
-                              <div
-                                key={student._id}
+                        {u.enrolledCourses?.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {u.enrolledCourses.map((c, idx) => (
+                              <span
+                                key={idx}
                                 style={{
-                                  padding: '10px 12px',
-                                  borderRadius: '12px',
-                                  border: `1px solid ${theme.border}`,
-                                  color: theme.text,
-                                  background: theme.isDark ? 'rgba(15,23,42,0.52)' : '#fff',
-                                  fontWeight: 800,
+                                  padding: '5px 10px',
+                                  background:
+                                    theme.mode === 'dark'
+                                      ? `${theme.primary}33`
+                                      : `${theme.primary}1A`,
+                                  color: theme.primary,
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: '800',
                                 }}
                               >
-                                👤 {student.name} — {student.email}
-                              </div>
+                                {c.title || c}
+                              </span>
                             ))}
                           </div>
+                        ) : (
+                          <p style={{ color: theme.muted, fontSize: '12px', margin: 0 }}>
+                            No course enrolled
+                          </p>
                         )}
                       </div>
+                    </div>
+
+                    {u.role !== 'admin' && (
+                      <button
+                        onClick={() => deleteUser(u._id, u.name)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          background: theme.danger,
+                          color: theme.buttonText,
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '900',
+                          marginTop: '16px',
+                        }}
+                      >
+                        🗑️ Delete User
+                      </button>
                     )}
                   </div>
                 ))}
@@ -3227,93 +3244,213 @@ function AdminPanel() {
 
         {activeTab === 'payments' && (
           <div>
-            <h3 style={{ color: theme.text, marginBottom: '16px' }}>
-              💳 Payment Requests ({payments.length})
+            <h3 style={{ color: theme.text, marginBottom: '20px' }}>
+              💸 Payment Requests ({payments.length})
             </h3>
 
             {payments.length === 0 ? (
-              <div style={{ ...smallCardStyle, color: theme.muted, fontWeight: 900 }}>
-                Abhi koi payment request nahi hai.
-              </div>
+              <p style={{ color: theme.muted }}>Abhi koi payment request nahi aayi!</p>
             ) : (
               <div style={{ display: 'grid', gap: '16px' }}>
                 {payments.map((payment) => {
-                  const screenshot = getPaymentScreenshot(payment);
+                  const screenshotUrl = getPaymentScreenshot(payment);
 
                   return (
                     <div key={payment._id} style={smallCardStyle}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          gap: '16px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: '250px' }}>
-                          <h4 style={{ color: theme.text, margin: '0 0 8px' }}>
-                            {payment.course?.title || 'Unknown Course'}
-                          </h4>
+                      <h4 style={{ color: theme.text, marginTop: 0 }}>
+                        {payment.course?.title || 'Course deleted'}
+                      </h4>
 
-                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
-                            👤 {payment.user?.name || 'Unknown User'} — {payment.user?.email || 'No Email'}
+                      <p style={{ color: theme.muted }}>
+                        <strong style={{ color: theme.text }}>User:</strong>{' '}
+                        {payment.user?.name || 'Unknown'}
+                      </p>
+
+                      <p style={{ color: theme.muted }}>
+                        <strong style={{ color: theme.text }}>Email:</strong>{' '}
+                        {payment.user?.email || 'No email'}
+                      </p>
+
+                      <p style={{ color: theme.muted }}>
+                        <strong style={{ color: theme.text }}>Status:</strong>{' '}
+                        <span
+                          style={{
+                            color:
+                              payment.status === 'approved'
+                                ? theme.success
+                                : payment.status === 'rejected'
+                                ? theme.danger
+                                : theme.warning,
+                            fontWeight: '900',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {payment.status}
+                        </span>
+                      </p>
+
+                      {(payment.couponCode ||
+                        payment.discountAmount > 0 ||
+                        payment.finalPrice ||
+                        payment.originalPrice) && (
+                        <div
+                          style={{
+                            marginTop: '12px',
+                            padding: '12px',
+                            background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: '14px',
+                          }}
+                        >
+                          <p
+                            style={{
+                              color: theme.text,
+                              fontWeight: '900',
+                              margin: '0 0 8px',
+                            }}
+                          >
+                            🎟️ Coupon / Amount Details
                           </p>
 
                           <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
-                            Amount: <strong style={{ color: theme.text }}>₹{payment.amount || payment.finalPrice || 0}</strong>
-                          </p>
-
-                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
-                            Status:{' '}
-                            <strong
-                              style={{
-                                color:
-                                  payment.status === 'approved'
-                                    ? theme.success
-                                    : payment.status === 'rejected'
-                                    ? theme.danger
-                                    : theme.warning,
-                              }}
-                            >
-                              {payment.status}
+                            Code:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {payment.couponCode || 'No coupon'}
                             </strong>
                           </p>
 
-                          {payment.couponCode && (
-                            <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
-                              Coupon: <strong style={{ color: theme.text }}>{payment.couponCode}</strong>
-                            </p>
-                          )}
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Original Price:{' '}
+                            <strong style={{ color: theme.text }}>
+                              ₹{payment.originalPrice || payment.course?.price || payment.amount}
+                            </strong>
+                          </p>
 
-                          {screenshot && (
-                            <a
-                              href={screenshot}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: theme.primary, fontWeight: 900, fontSize: '13px' }}
-                            >
-                              🧾 View Payment Screenshot
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Discount:{' '}
+                            <strong style={{ color: theme.success }}>
+                              ₹{payment.discountAmount || 0}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Final Paid:{' '}
+                            <strong style={{ color: theme.text }}>
+                              ₹{payment.finalPrice || payment.amount}
+                            </strong>
+                          </p>
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          marginTop: '16px',
+                          padding: '14px',
+                          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: '16px',
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: theme.text,
+                            fontWeight: '900',
+                            marginTop: 0,
+                            marginBottom: '10px',
+                          }}
+                        >
+                          🧾 Payment Screenshot
+                        </p>
+
+                        {screenshotUrl ? (
+                          <div>
+                            <a href={screenshotUrl} target="_blank" rel="noreferrer">
+                              <img
+                                src={screenshotUrl}
+                                alt="Payment Screenshot"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const next = e.currentTarget.nextSibling;
+                                  if (next) next.style.display = 'block';
+                                }}
+                                style={{
+                                  width: '260px',
+                                  maxWidth: '100%',
+                                  maxHeight: '360px',
+                                  objectFit: 'cover',
+                                  borderRadius: '14px',
+                                  border: `1px solid ${theme.primary}`,
+                                  boxShadow: theme.shadow,
+                                  cursor: 'pointer',
+                                  display: 'block',
+                                }}
+                              />
+
+                              <p
+                                style={{
+                                  display: 'none',
+                                  color: theme.danger,
+                                  fontSize: '13px',
+                                  fontWeight: '800',
+                                  marginTop: '8px',
+                                }}
+                              >
+                                ❌ Image load nahi hui. Backend static uploads ya URL issue hai.
+                              </p>
                             </a>
-                          )}
-                        </div>
 
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                          <button
-                            onClick={() => approvePayment(payment._id)}
-                            disabled={payment.status === 'approved'}
-                            style={adminStyles.successBtn(theme)}
-                          >
-                            ✅ Approve
-                          </button>
+                            <button
+                              onClick={() => window.open(screenshotUrl, '_blank')}
+                              style={{
+                                marginTop: '12px',
+                                padding: '9px 14px',
+                                background: theme.primary,
+                                color: theme.buttonText,
+                                border: 'none',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '900',
+                              }}
+                            >
+                              🔍 Open Screenshot
+                            </button>
 
-                          <button
-                            onClick={() => rejectPayment(payment._id)}
-                            disabled={payment.status === 'rejected'}
-                            style={adminStyles.dangerBtn(theme)}
-                          >
-                            ❌ Reject
-                          </button>
-                        </div>
+                            <p
+                              style={{
+                                color: theme.muted,
+                                fontSize: '12px',
+                                marginTop: '8px',
+                                wordBreak: 'break-all',
+                              }}
+                            >
+                              {screenshotUrl}
+                            </p>
+                          </div>
+                        ) : (
+                          <p style={{ color: theme.danger, fontWeight: '800' }}>
+                            ❌ No screenshot/proof URL found in this payment record.
+                          </p>
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: '14px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {payment.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => approvePayment(payment._id)}
+                              style={adminStyles.successBtn(theme)}
+                            >
+                              ✅ Approve
+                            </button>
+
+                            <button
+                              onClick={() => rejectPayment(payment._id)}
+                              style={adminStyles.dangerBtn(theme)}
+                            >
+                              ❌ Reject
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -3322,208 +3459,6 @@ function AdminPanel() {
             )}
           </div>
         )}
-
-        {activeTab === 'users' && (
-  <div>
-    <h3 style={{ color: theme.text, marginBottom: '20px' }}>
-      👥 Registered Users ({users.length})
-    </h3>
-
-    {users.length === 0 ? (
-      <p style={{ color: theme.muted }}>Abhi koi user nahi!</p>
-    ) : (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: '16px',
-        }}
-      >
-        {users.map((u, i) => (
-          <div
-            key={u._id}
-            style={{
-              background: theme.card,
-              border: `1px solid ${u.role === 'admin' ? theme.primary : theme.border}`,
-              borderRadius: theme.radius,
-              padding: '20px',
-              position: 'relative',
-              boxShadow: theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
-            }}
-          >
-            <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
-              <span
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  fontSize: '11px',
-                  fontWeight: '900',
-                  background:
-                    u.role === 'admin'
-                      ? theme.mode === 'dark'
-                        ? 'rgba(245, 158, 11, 0.18)'
-                        : '#fef3c7'
-                      : theme.mode === 'dark'
-                      ? 'rgba(34, 197, 94, 0.18)'
-                      : '#d1fae5',
-                  color:
-                    u.role === 'admin'
-                      ? theme.mode === 'dark'
-                        ? '#fcd34d'
-                        : '#92400e'
-                      : theme.mode === 'dark'
-                      ? '#86efac'
-                      : '#065f46',
-                }}
-              >
-                {u.role === 'admin' ? '👑 Admin' : '🎓 Student'}
-              </span>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '14px',
-                paddingRight: '85px',
-              }}
-            >
-              {u.photo ? (
-                <img
-                  src={u.photo}
-                  alt={u.name}
-                  style={{
-                    width: '58px',
-                    height: '58px',
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: `2px solid ${theme.primary}`,
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: '58px',
-                    height: '58px',
-                    borderRadius: '50%',
-                    background: theme.primary,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: theme.buttonText,
-                    fontWeight: '900',
-                    fontSize: '22px',
-                    flexShrink: 0,
-                  }}
-                >
-                  {u.name?.charAt(0).toUpperCase()}
-                </div>
-              )}
-
-              <div>
-                <h4
-                  style={{
-                    color: theme.text,
-                    margin: 0,
-                    fontSize: '16px',
-                    fontWeight: '900',
-                  }}
-                >
-                  {u.name}
-                </h4>
-                <p style={{ color: theme.muted, margin: 0, fontSize: '12px' }}>
-                  #{i + 1}
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
-                📧 {u.email}
-              </p>
-
-              {u.bio && (
-                <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
-                  📝 {u.bio}
-                </p>
-              )}
-
-              <p style={{ color: theme.muted, fontSize: '13px', margin: 0 }}>
-                🗓️ Joined:{' '}
-                {u.createdAt
-                  ? new Date(u.createdAt).toLocaleDateString('en-IN')
-                  : 'Not available'}
-              </p>
-
-              <div>
-                <p
-                  style={{
-                    color: theme.text,
-                    fontSize: '13px',
-                    fontWeight: '900',
-                    margin: '8px 0 8px 0',
-                  }}
-                >
-                  📚 Enrolled:
-                </p>
-
-                {u.enrolledCourses?.length > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {u.enrolledCourses.map((c, idx) => (
-                      <span
-                        key={idx}
-                        style={{
-                          padding: '5px 10px',
-                          background:
-                            theme.mode === 'dark'
-                              ? `${theme.primary}33`
-                              : `${theme.primary}1A`,
-                          color: theme.primary,
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          fontWeight: '800',
-                        }}
-                      >
-                        {c.title || c}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: theme.muted, fontSize: '12px', margin: 0 }}>
-                    No course enrolled
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {u.role !== 'admin' && (
-              <button
-                onClick={() => deleteUser(u._id, u.name)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  background: theme.danger,
-                  color: theme.buttonText,
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '900',
-                  marginTop: '16px',
-                }}
-              >
-                🗑️ Delete User
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
 
         {activeTab === 'coupons' && renderCouponSection()}
 
@@ -3535,7 +3470,7 @@ function AdminPanel() {
               </h3>
 
               <p style={{ color: theme.muted, marginTop: 0, marginBottom: '22px' }}>
-                Course select karo, live link aur schedule add karo.
+                Course select karo aur live class ka link schedule karo.
               </p>
 
               <select
@@ -3546,7 +3481,7 @@ function AdminPanel() {
                   fetchLiveClasses(e.target.value);
                 }}
               >
-                <option value="">Select Course</option>
+                <option value="">Select Course *</option>
                 {courses.map((course) => (
                   <option key={course._id} value={course._id}>
                     {course.title}
@@ -3556,21 +3491,21 @@ function AdminPanel() {
 
               <input
                 style={inputStyle}
-                placeholder="Live Class Title"
+                placeholder="Live Class Title *"
                 value={liveForm.title}
                 onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })}
               />
 
               <textarea
-                style={{ ...inputStyle, minHeight: '85px', resize: 'vertical' }}
-                placeholder="Description"
+                style={{ ...inputStyle, height: '82px', resize: 'vertical' }}
+                placeholder="Description (optional)"
                 value={liveForm.description}
                 onChange={(e) => setLiveForm({ ...liveForm, description: e.target.value })}
               />
 
               <input
                 style={inputStyle}
-                placeholder="Live URL - YouTube/Meet/Zoom"
+                placeholder="Live URL *  YouTube / Meet / Zoom"
                 value={liveForm.liveUrl}
                 onChange={(e) => setLiveForm({ ...liveForm, liveUrl: e.target.value })}
               />
@@ -3592,7 +3527,7 @@ function AdminPanel() {
                 <input
                   style={inputStyle}
                   type="number"
-                  placeholder="Duration Minutes"
+                  placeholder="Duration in minutes"
                   value={liveForm.durationMinutes}
                   onChange={(e) => setLiveForm({ ...liveForm, durationMinutes: e.target.value })}
                 />
@@ -3601,96 +3536,127 @@ function AdminPanel() {
               <button
                 onClick={createLiveClass}
                 style={{
-                  padding: '13px 18px',
-                  background: 'linear-gradient(135deg, #ef4444, #991b1b)',
+                  width: '100%',
+                  padding: '14px',
+                  background: 'linear-gradient(135deg, #ef4444, #7f1d1d)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '14px',
+                  fontSize: '16px',
                   cursor: 'pointer',
-                  fontWeight: 950,
+                  fontWeight: '900',
                   boxShadow: theme.shadow,
                 }}
               >
-                🔴 Create Live Class
+                🔴 Schedule Live Class
               </button>
             </div>
 
             <h3 style={{ color: theme.text, marginBottom: '16px' }}>
-              📡 Live Classes ({liveClasses.length})
+              📺 Live Classes {liveForm.course ? `(${liveClasses.length})` : ''}
             </h3>
 
-            {liveClasses.length === 0 ? (
-              <div style={{ ...smallCardStyle, color: theme.muted, fontWeight: 900 }}>
-                Course select karo ya live class create karo.
-              </div>
+            {!liveForm.course ? (
+              <p style={{ color: theme.muted, fontWeight: 800 }}>
+                Pehle course select karo.
+              </p>
+            ) : liveClasses.length === 0 ? (
+              <p style={{ color: theme.muted, fontWeight: 800 }}>
+                Is course mein abhi koi live class nahi.
+              </p>
             ) : (
               <div style={{ display: 'grid', gap: '14px' }}>
-                {liveClasses.map((live) => (
-                  <div key={live._id} style={smallCardStyle}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: '14px',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <div>
-                        <h4 style={{ color: theme.text, margin: '0 0 8px' }}>
-                          🔴 {live.title}
-                        </h4>
+                {liveClasses.map((cls) => {
+                  const status = getLiveStatus(cls.scheduledAt, cls.durationMinutes);
 
-                        <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
-                          Status:{' '}
-                          <strong style={{ color: theme.primary }}>
-                            {getLiveStatus(live.scheduledAt, live.durationMinutes)}
-                          </strong>
-                        </p>
-
-                        <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
-                          Schedule:{' '}
-                          <strong style={{ color: theme.text }}>
-                            {new Date(live.scheduledAt).toLocaleString('en-IN')}
-                          </strong>
-                        </p>
-
-                        <a
-                          href={live.liveUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: theme.primary, fontWeight: 900, fontSize: '13px' }}
-                        >
-                          Open Live Link
-                        </a>
-                      </div>
-
-                      <button
-                        onClick={() => deleteLiveClass(live._id)}
-                        style={adminStyles.dangerBtn(theme)}
+                  return (
+                    <div key={cls._id} style={smallCardStyle}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          flexWrap: 'wrap',
+                        }}
                       >
-                        Delete
-                      </button>
+                        <div style={{ flex: 1, minWidth: '260px' }}>
+                          <h4 style={{ color: theme.text, margin: '0 0 8px' }}>
+                            🔴 {cls.title}
+                          </h4>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Course:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {cls.course?.title || 'Selected Course'}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Time:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {new Date(cls.scheduledAt).toLocaleString('en-IN')}
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Duration:{' '}
+                            <strong style={{ color: theme.text }}>
+                              {cls.durationMinutes || 60} min
+                            </strong>
+                          </p>
+
+                          <p style={{ color: theme.muted, margin: '4px 0', fontSize: '13px' }}>
+                            Status:{' '}
+                            <strong
+                              style={{
+                                color:
+                                  status === 'Live Now'
+                                    ? theme.success
+                                    : status === 'Upcoming'
+                                    ? theme.warning
+                                    : theme.muted,
+                              }}
+                            >
+                              {status}
+                            </strong>
+                          </p>
+
+                          {cls.description && (
+                            <p style={{ color: theme.muted, margin: '8px 0 0', fontSize: '13px' }}>
+                              {cls.description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                          <button
+                            onClick={() => window.open(cls.liveUrl, '_blank')}
+                            style={adminStyles.blueBtn(theme)}
+                          >
+                            Open Link
+                          </button>
+
+                          <button
+                            onClick={() => deleteLiveClass(cls._id)}
+                            style={adminStyles.dangerBtn(theme)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'notifications' && (
-          <div style={panelStyle}>
-            <AdminNotificationSender />
-          </div>
-        )}
+        {activeTab === 'notifications' && <AdminNotificationSender theme={theme} />}
+
+        {activeTab === 'activity' && <SecurityLogsPanel />}
 
         {activeTab === 'assistant' && renderAssistantLogsSection()}
-
-        {(activeTab === 'security' || activeTab === 'activity') && (
-          <div style={panelStyle}>
-          <SecurityLogsPanel />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -3701,77 +3667,68 @@ const adminStyles = {
     position: 'fixed',
     inset: 0,
     backgroundImage:
-      'linear-gradient(rgba(148,163,184,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.055) 1px, transparent 1px)',
-    backgroundSize: '42px 42px',
+      'linear-gradient(rgba(139,92,246,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,0.08) 1px, transparent 1px)',
+    backgroundSize: '48px 48px',
     pointerEvents: 'none',
+    opacity: 0.45,
   },
-
   glowOne: {
     position: 'fixed',
-    width: '360px',
-    height: '360px',
+    width: '420px',
+    height: '420px',
     borderRadius: '999px',
-    background: 'rgba(139,92,246,0.20)',
-    filter: 'blur(90px)',
-    top: '-80px',
-    right: '-100px',
+    background: 'rgba(124,58,237,0.20)',
+    filter: 'blur(80px)',
+    top: '-150px',
+    right: '-140px',
     pointerEvents: 'none',
   },
-
   glowTwo: {
     position: 'fixed',
-    width: '360px',
-    height: '360px',
+    width: '380px',
+    height: '380px',
     borderRadius: '999px',
     background: 'rgba(14,165,233,0.16)',
     filter: 'blur(90px)',
-    bottom: '-100px',
-    left: '-120px',
+    bottom: '-150px',
+    left: '-140px',
     pointerEvents: 'none',
   },
-
   blueBtn: (theme) => ({
     padding: '9px 14px',
-    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-    color: '#fff',
+    background: theme.primary,
+    color: theme.buttonText,
     border: 'none',
     borderRadius: '12px',
     cursor: 'pointer',
     fontWeight: '900',
-    boxShadow: theme.shadow,
   }),
-
-  successBtn: (theme) => ({
-    padding: '9px 14px',
-    background: 'linear-gradient(135deg, #22c55e, #15803d)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    fontWeight: '900',
-    boxShadow: theme.shadow,
-  }),
-
   warningBtn: (theme) => ({
     padding: '9px 14px',
-    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    color: '#fff',
+    background: theme.warning,
+    color: theme.buttonText,
     border: 'none',
     borderRadius: '12px',
     cursor: 'pointer',
     fontWeight: '900',
-    boxShadow: theme.shadow,
   }),
-
   dangerBtn: (theme) => ({
     padding: '9px 14px',
-    background: 'linear-gradient(135deg, #ef4444, #991b1b)',
-    color: '#fff',
+    background: theme.danger,
+    color: theme.buttonText,
     border: 'none',
     borderRadius: '12px',
     cursor: 'pointer',
     fontWeight: '900',
-    boxShadow: theme.shadow,
+  }),
+  successBtn: (theme) => ({
+    padding: '9px 14px',
+    background: theme.success,
+    color: theme.buttonText,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontWeight: '900',
   }),
 };
 
