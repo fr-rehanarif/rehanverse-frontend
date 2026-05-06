@@ -2761,7 +2761,7 @@ function AdminPanel() {
             🤖 Assistant Logs
           </button>
 
-          <button style={tabStyle('security')} onClick={() => setActiveTab('security')}>
+          <button onClick={() => setActiveTab('security')} style={tabStyle('security')}>
             🛡️ Security
           </button>
         </div>
@@ -3688,7 +3688,7 @@ function AdminPanel() {
 
         {(activeTab === 'security' || activeTab === 'activity') && (
           <div style={panelStyle}>
-          <SecurityLogsPanel />
+            <SecurityLogsPanel />
           </div>
         )}
       </div>
