@@ -398,15 +398,15 @@ function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
           </h3>
           <p style={{ margin: 0, color: theme.muted, lineHeight: 1.65, fontWeight: 750 }}>
             Enrolled students ko notes/PDFs ke basis par AI-generated short questions,
-            long questions, MCQs aur most expected questions milte hain — exam prep ke liye direct shortcut.
+            long questions, MCQs, AI summary aur flashcards milte hain — exam prep ke liye direct shortcut.
           </p>
         </div>
 
         <div style={styles.aiLockedPreviewGrid(isMobile)}>
           <span>🔒 Unit-wise Important Questions</span>
           <span>🔒 MCQ Practice Sets</span>
-          <span>🔒 Most Expected Questions</span>
-          <span>🔒 Smart Revision Support</span>
+          <span>🔒 AI Summary</span>
+          <span>🔒 Flashcards Revision</span>
         </div>
       </div>
 
@@ -528,31 +528,31 @@ function StudyToolsBox({
 }) {
   const [selectedTool, setSelectedTool] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState({});
+  const [flippedCards, setFlippedCards] = useState({});
+  const [activeFlashcardIndex, setActiveFlashcardIndex] = useState(0);
 
   const closeToolModal = () => {
     setSelectedTool(null);
     setQuizAnswers({});
+    setFlippedCards({});
+    setActiveFlashcardIndex(0);
   };
 
   const allTools = Array.isArray(tools) ? tools : [];
-  const importantTools = allTools.filter((tool) => tool?.type !== 'quiz');
+
+  const importantTools = allTools.filter((tool) => tool?.type === 'important_questions');
   const quizTools = allTools.filter((tool) => tool?.type === 'quiz');
-  const visibleTools = toolType === 'quiz' ? quizTools : importantTools;
+  const summaryTools = allTools.filter((tool) => tool?.type === 'summary');
+  const flashcardTools = allTools.filter((tool) => tool?.type === 'flashcards');
 
-  const getTotalQuestions = (tool) => {
-    const content = tool?.content || {};
-
-    if (tool?.type === 'quiz') {
-      return content.quizQuestions?.length || content.questions?.length || content.mcqs?.length || 0;
-    }
-
-    return (
-      (content.shortQuestions?.length || 0) +
-      (content.longQuestions?.length || 0) +
-      (content.mcqs?.length || 0) +
-      (content.mostExpectedQuestions?.length || 0)
-    );
-  };
+  const visibleTools =
+    toolType === 'quiz'
+      ? quizTools
+      : toolType === 'summary'
+      ? summaryTools
+      : toolType === 'flashcards'
+      ? flashcardTools
+      : importantTools;
 
   const getToolTitle = (tool) => {
     const title = tool?.title || '';
@@ -561,6 +561,8 @@ function StudyToolsBox({
       title
         .replace(/^Important Questions\s*-\s*/i, '')
         .replace(/^Quiz Practice\s*-\s*/i, '')
+        .replace(/^AI Summary\s*-\s*/i, '')
+        .replace(/^Flashcards\s*-\s*/i, '')
         .trim() || 'Study Tool'
     );
   };
@@ -574,6 +576,96 @@ function StudyToolsBox({
       : Array.isArray(content.mcqs)
       ? content.mcqs
       : [];
+  };
+
+  const getFlashcards = (tool) => {
+    const content = tool?.content || {};
+    return Array.isArray(content.flashcards)
+      ? content.flashcards
+      : Array.isArray(content.cards)
+      ? content.cards
+      : [];
+  };
+
+  const getTotalItems = (tool) => {
+    const content = tool?.content || {};
+
+    if (tool?.type === 'quiz') {
+      return getQuizQuestions(tool).length;
+    }
+
+    if (tool?.type === 'summary') {
+      return (
+        (content.definitions?.length || 0) +
+        (content.keyPoints?.length || 0) +
+        (content.examAnswer?.length || 0) +
+        (content.quickRevision?.length || 0) +
+        (content.importantTerms?.length || 0)
+      );
+    }
+
+    if (tool?.type === 'flashcards') {
+      return getFlashcards(tool).length;
+    }
+
+    return (
+      (content.shortQuestions?.length || 0) +
+      (content.longQuestions?.length || 0) +
+      (content.mcqs?.length || 0) +
+      (content.mostExpectedQuestions?.length || 0)
+    );
+  };
+
+  const getToolMeta = (type) => {
+    if (type === 'quiz') {
+      return {
+        label: 'Quiz Practice',
+        icon: '🧠',
+        badge: '🧠 INTERACTIVE QUIZ • BONUS',
+        heading: '🧠 Quiz Practice',
+        desc: 'Practice interactive AI-generated quiz sets from uploaded course PDFs.',
+        empty: 'Admin ne abhi quiz practice publish nahi kiya.',
+        gradient: 'linear-gradient(135deg, #06b6d4, #2563eb)',
+        shadow: '0 12px 28px rgba(6,182,212,0.25)',
+      };
+    }
+
+    if (type === 'summary') {
+      return {
+        label: 'AI Summary',
+        icon: '📝',
+        badge: '📝 AI SUMMARY • BONUS',
+        heading: '📝 AI Summary',
+        desc: 'Read clean exam-focused summary, definitions, key points and last-minute revision from uploaded PDFs.',
+        empty: 'Admin ne abhi AI summary publish nahi kiya.',
+        gradient: 'linear-gradient(135deg, #22c55e, #0ea5e9)',
+        shadow: '0 12px 28px rgba(34,197,94,0.22)',
+      };
+    }
+
+    if (type === 'flashcards') {
+      return {
+        label: 'Flashcards',
+        icon: '🃏',
+        badge: '🃏 FLASHCARDS • BONUS',
+        heading: '🃏 Flashcards',
+        desc: 'Revise fast using flip-style AI flashcards generated from uploaded course PDFs.',
+        empty: 'Admin ne abhi flashcards publish nahi kiye.',
+        gradient: 'linear-gradient(135deg, #f97316, #ec4899)',
+        shadow: '0 12px 28px rgba(249,115,22,0.25)',
+      };
+    }
+
+    return {
+      label: 'Important Questions',
+      icon: '✨',
+      badge: '✨ IMPORTANT QUESTIONS • BONUS',
+      heading: '✨ Important Questions',
+      desc: 'Revise using AI-generated important questions from uploaded course PDFs.',
+      empty: 'Admin ne abhi important questions publish nahi kiye.',
+      gradient: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+      shadow: '0 12px 28px rgba(139,92,246,0.28)',
+    };
   };
 
   const getCorrectAnswerText = (item) => {
@@ -667,6 +759,46 @@ function StudyToolsBox({
                   🎯 Reason: {item.reason}
                 </p>
               )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBulletSection = (title, items, icon) => {
+    const safeItems = Array.isArray(items) ? items : [];
+    if (safeItems.length === 0) return null;
+
+    return (
+      <div
+        style={{
+          background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.76)',
+          border: `1px solid ${theme.border}`,
+          borderRadius: '16px',
+          padding: '14px',
+          marginTop: '12px',
+        }}
+      >
+        <h4 style={{ color: theme.text, margin: '0 0 12px', fontWeight: 950 }}>
+          {icon} {title} ({safeItems.length})
+        </h4>
+
+        <div style={{ display: 'grid', gap: '9px' }}>
+          {safeItems.map((text, index) => (
+            <div
+              key={index}
+              style={{
+                border: `1px solid ${theme.border}`,
+                borderRadius: '13px',
+                padding: '11px 12px',
+                background: theme.isDark ? 'rgba(15,23,42,0.52)' : '#ffffff',
+                color: theme.text,
+                fontWeight: 800,
+                lineHeight: 1.6,
+              }}
+            >
+              <span style={{ color: theme.primary, fontWeight: 950 }}>{index + 1}.</span> {text}
             </div>
           ))}
         </div>
@@ -861,11 +993,296 @@ function StudyToolsBox({
     );
   };
 
+  const renderSummaryContent = (tool) => {
+    const content = tool?.content || {};
+
+    return (
+      <div style={{ marginTop: '14px' }}>
+        {content.summary && (
+          <div
+            style={{
+              padding: '16px',
+              borderRadius: '18px',
+              border: `1px solid ${theme.border}`,
+              background: theme.isDark
+                ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(14,165,233,0.08))'
+                : 'linear-gradient(135deg, #dcfce7, #e0f2fe)',
+              color: theme.text,
+              fontWeight: 850,
+              lineHeight: 1.75,
+              marginBottom: '12px',
+            }}
+          >
+            <h4 style={{ margin: '0 0 8px', color: theme.text, fontWeight: 950 }}>
+              📝 Quick Summary
+            </h4>
+            <p style={{ margin: 0, color: theme.textSecondary || theme.muted }}>
+              {content.summary}
+            </p>
+          </div>
+        )}
+
+        {renderBulletSection('Definitions', content.definitions, '📌')}
+        {renderBulletSection('Key Points', content.keyPoints, '⚡')}
+        {renderBulletSection('Exam Answer Points', content.examAnswer, '📚')}
+        {renderBulletSection('Quick Revision', content.quickRevision, '🚀')}
+        {renderBulletSection('Important Terms', content.importantTerms, '🏷️')}
+      </div>
+    );
+  };
+
+  const renderFlashcardsContent = (tool) => {
+    const cards = getFlashcards(tool);
+    const currentCard = cards[activeFlashcardIndex] || null;
+    const isFlipped = flippedCards[activeFlashcardIndex];
+
+    if (cards.length === 0) {
+      return (
+        <div
+          style={{
+            marginTop: '14px',
+            padding: '18px',
+            borderRadius: '16px',
+            border: `1px solid ${theme.border}`,
+            background: theme.isDark ? 'rgba(251,191,36,0.10)' : '#fef3c7',
+            color: theme.muted,
+            fontWeight: 850,
+            lineHeight: 1.6,
+          }}
+        >
+          ⚠️ Is flashcards draft mein cards nahi mile. AdminPanel se flashcards dobara generate karo.
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ marginTop: '14px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            padding: '12px 14px',
+            borderRadius: '16px',
+            border: `1px solid ${theme.border}`,
+            background: theme.isDark ? 'rgba(249,115,22,0.10)' : '#ffedd5',
+            marginBottom: '14px',
+          }}
+        >
+          <div>
+            <h4 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
+              🃏 Flashcard {activeFlashcardIndex + 1}/{cards.length}
+            </h4>
+            <p style={{ color: theme.muted, margin: '6px 0 0', fontWeight: 800, fontSize: '13px' }}>
+              Click card to flip • Fast revision mode
+            </p>
+          </div>
+
+          <button
+            onClick={() => setFlippedCards({})}
+            style={{
+              padding: '10px 13px',
+              borderRadius: '12px',
+              border: `1px solid ${theme.border}`,
+              background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
+              color: theme.text,
+              cursor: 'pointer',
+              fontWeight: 950,
+            }}
+          >
+            Reset Flip
+          </button>
+        </div>
+
+        <motion.div
+          key={activeFlashcardIndex + '-' + Boolean(isFlipped)}
+          initial={{ opacity: 0, rotateY: -10, y: 8 }}
+          animate={{ opacity: 1, rotateY: 0, y: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          onClick={() => {
+            setFlippedCards((prev) => ({
+              ...prev,
+              [activeFlashcardIndex]: !prev[activeFlashcardIndex],
+            }));
+          }}
+          style={{
+            minHeight: isMobile ? '260px' : '320px',
+            borderRadius: '24px',
+            border: `1px solid ${theme.border}`,
+            background: isFlipped
+              ? theme.isDark
+                ? 'linear-gradient(135deg, rgba(236,72,153,0.16), rgba(249,115,22,0.12))'
+                : 'linear-gradient(135deg, #fce7f3, #ffedd5)'
+              : theme.isDark
+              ? 'linear-gradient(135deg, rgba(139,92,246,0.16), rgba(59,130,246,0.12))'
+              : 'linear-gradient(135deg, #f5f3ff, #dbeafe)',
+            boxShadow: theme.shadow,
+            padding: isMobile ? '20px' : '30px',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            textAlign: 'center',
+            userSelect: 'none',
+          }}
+        >
+          <p
+            style={{
+              margin: '0 0 12px',
+              color: isFlipped ? '#ec4899' : theme.primary,
+              fontWeight: 950,
+              fontSize: '12px',
+              letterSpacing: '0.6px',
+            }}
+          >
+            {isFlipped ? 'ANSWER / BACK SIDE' : 'QUESTION / FRONT SIDE'}
+          </p>
+
+          <h2
+            style={{
+              margin: 0,
+              color: theme.text,
+              fontWeight: 950,
+              lineHeight: 1.35,
+              fontSize: isMobile ? '22px' : '32px',
+            }}
+          >
+            {isFlipped
+              ? currentCard?.back || currentCard?.answer || 'Answer missing'
+              : currentCard?.front || currentCard?.question || 'Question missing'}
+          </h2>
+
+          {isFlipped && currentCard?.hint && (
+            <p
+              style={{
+                margin: '18px 0 0',
+                color: theme.muted,
+                fontWeight: 800,
+                lineHeight: 1.6,
+              }}
+            >
+              💡 Hint: {currentCard.hint}
+            </p>
+          )}
+
+          {currentCard?.tag && (
+            <span
+              style={{
+                display: 'inline-flex',
+                margin: '18px auto 0',
+                padding: '8px 12px',
+                borderRadius: '999px',
+                background: theme.isDark ? 'rgba(255,255,255,0.06)' : '#fff',
+                color: theme.muted,
+                border: `1px solid ${theme.border}`,
+                fontSize: '12px',
+                fontWeight: 950,
+              }}
+            >
+              🏷️ {currentCard.tag}
+            </span>
+          )}
+        </motion.div>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '10px',
+            flexWrap: 'wrap',
+            marginTop: '14px',
+          }}
+        >
+          <button
+            onClick={() => {
+              setActiveFlashcardIndex((prev) => Math.max(0, prev - 1));
+            }}
+            disabled={activeFlashcardIndex === 0}
+            style={{
+              flex: 1,
+              minWidth: '130px',
+              padding: '12px 15px',
+              borderRadius: '14px',
+              border: `1px solid ${theme.border}`,
+              background: activeFlashcardIndex === 0
+                ? 'rgba(148,163,184,0.16)'
+                : theme.isDark
+                ? 'rgba(255,255,255,0.06)'
+                : '#fff',
+              color: theme.text,
+              cursor: activeFlashcardIndex === 0 ? 'not-allowed' : 'pointer',
+              fontWeight: 950,
+            }}
+          >
+            ← Previous
+          </button>
+
+          <button
+            onClick={() => {
+              setFlippedCards((prev) => ({
+                ...prev,
+                [activeFlashcardIndex]: !prev[activeFlashcardIndex],
+              }));
+            }}
+            style={{
+              flex: 1,
+              minWidth: '130px',
+              padding: '12px 15px',
+              borderRadius: '14px',
+              border: 'none',
+              background: 'linear-gradient(135deg, #f97316, #ec4899)',
+              color: '#fff',
+              cursor: 'pointer',
+              fontWeight: 950,
+              boxShadow: '0 12px 28px rgba(249,115,22,0.24)',
+            }}
+          >
+            Flip Card
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveFlashcardIndex((prev) => Math.min(cards.length - 1, prev + 1));
+            }}
+            disabled={activeFlashcardIndex === cards.length - 1}
+            style={{
+              flex: 1,
+              minWidth: '130px',
+              padding: '12px 15px',
+              borderRadius: '14px',
+              border: `1px solid ${theme.border}`,
+              background: activeFlashcardIndex === cards.length - 1
+                ? 'rgba(148,163,184,0.16)'
+                : theme.isDark
+                ? 'rgba(255,255,255,0.06)'
+                : '#fff',
+              color: theme.text,
+              cursor: activeFlashcardIndex === cards.length - 1 ? 'not-allowed' : 'pointer',
+              fontWeight: 950,
+            }}
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderToolContent = (tool) => {
     const content = tool?.content || {};
 
     if (tool?.type === 'quiz') {
       return renderQuizContent(tool);
+    }
+
+    if (tool?.type === 'summary') {
+      return renderSummaryContent(tool);
+    }
+
+    if (tool?.type === 'flashcards') {
+      return renderFlashcardsContent(tool);
     }
 
     return (
@@ -897,15 +1314,15 @@ function StudyToolsBox({
         </h2>
 
         <p style={{ color: theme.muted, lineHeight: 1.75, fontWeight: 750, margin: '0 0 16px' }}>
-          This course includes AI-generated important questions and quiz practice based on actual uploaded notes.
+          This course includes AI-generated important questions, quiz practice, AI summary and flashcards based on uploaded notes.
           Enroll to unlock smarter revision.
         </p>
 
         <div style={styles.aiFeatureGrid(isMobile)}>
           <span>🔒 Important Questions</span>
           <span>🔒 Quiz Practice</span>
-          <span>🔒 Unit-wise MCQs</span>
-          <span>🔒 Most Expected Questions</span>
+          <span>🔒 AI Summary</span>
+          <span>🔒 Flashcards</span>
         </div>
 
         <motion.button
@@ -921,13 +1338,7 @@ function StudyToolsBox({
     );
   }
 
-  const heading =
-    toolType === 'quiz' ? '🧠 Quiz Practice' : '✨ Important Questions';
-
-  const emptyText =
-    toolType === 'quiz'
-      ? 'Admin ne abhi quiz practice publish nahi kiya.'
-      : 'Admin ne abhi important questions publish nahi kiye.';
+  const meta = getToolMeta(toolType);
 
   const modalOverlay =
     selectedTool &&
@@ -983,9 +1394,7 @@ function StudyToolsBox({
           >
             <div style={{ minWidth: 0 }}>
               <p style={{ margin: '0 0 7px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
-                {selectedTool?.type === 'quiz'
-                  ? '🧠 INTERACTIVE QUIZ • BONUS'
-                  : '✨ IMPORTANT QUESTIONS • BONUS'}
+                {getToolMeta(selectedTool?.type).badge}
               </p>
 
               <h2 style={{ margin: 0, color: theme.text, fontWeight: 950, lineHeight: 1.25 }}>
@@ -993,7 +1402,7 @@ function StudyToolsBox({
               </h2>
 
               <p style={{ margin: '8px 0 0', color: theme.muted, fontWeight: 750, fontSize: '13px' }}>
-                {getTotalQuestions(selectedTool)} questions • Source: {selectedTool.sourcePdf?.title || 'Course PDFs'}
+                {getTotalItems(selectedTool)} items • Source: {selectedTool.sourcePdf?.title || 'Course PDFs'}
               </p>
             </div>
 
@@ -1049,13 +1458,11 @@ function StudyToolsBox({
           </p>
 
           <h2 style={{ color: theme.text, margin: 0, fontWeight: 950 }}>
-            {heading}
+            {meta.heading}
           </h2>
 
           <p style={{ color: theme.muted, margin: '8px 0 0', lineHeight: 1.65, fontWeight: 750 }}>
-            {toolType === 'quiz'
-              ? 'Practice interactive AI-generated quiz sets from uploaded course PDFs.'
-              : 'Revise using AI-generated important questions from uploaded course PDFs.'}
+            {meta.desc}
           </p>
 
           <span
@@ -1092,61 +1499,63 @@ function StudyToolsBox({
               lineHeight: 1.6,
             }}
           >
-            ⚠️ {emptyText} Publish hote hi yahan dikhega.
+            ⚠️ {meta.empty} Publish hote hi yahan dikhega.
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '12px', marginTop: '18px' }}>
-            {visibleTools.map((tool) => (
-              <motion.div
-                key={tool._id}
-                whileHover={{ y: -2 }}
-                transition={{ duration: 0.16, ease: 'easeOut' }}
-                style={{
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: '18px',
-                  padding: '14px',
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <h3 style={{ color: theme.text, margin: '0 0 6px', fontWeight: 950 }}>
-                    {tool?.type === 'quiz' ? '🧠 Quiz Practice' : '✨ Important Questions'} - {getToolTitle(tool)}
-                  </h3>
+            {visibleTools.map((tool) => {
+              const cardMeta = getToolMeta(tool?.type);
 
-                  <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
-                    {getTotalQuestions(tool)} questions • Source: {tool.sourcePdf?.title || 'Course PDFs'}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setQuizAnswers({});
-                    setSelectedTool(tool);
-                  }}
+              return (
+                <motion.div
+                  key={tool._id}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
                   style={{
-                    padding: '12px 18px',
-                    borderRadius: '15px',
-                    border: 'none',
-                    background: tool?.type === 'quiz'
-                      ? 'linear-gradient(135deg, #06b6d4, #2563eb)'
-                      : 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    fontWeight: 950,
-                    boxShadow: tool?.type === 'quiz'
-                      ? '0 12px 28px rgba(6,182,212,0.25)'
-                      : '0 12px 28px rgba(139,92,246,0.28)',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '18px',
+                    padding: '14px',
+                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
                   }}
                 >
-                  Open
-                </button>
-              </motion.div>
-            ))}
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ color: theme.text, margin: '0 0 6px', fontWeight: 950 }}>
+                      {cardMeta.icon} {cardMeta.label} - {getToolTitle(tool)}
+                    </h3>
+
+                    <p style={{ color: theme.muted, margin: 0, fontSize: '13px', fontWeight: 750 }}>
+                      {getTotalItems(tool)} items • Source: {tool.sourcePdf?.title || 'Course PDFs'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setQuizAnswers({});
+                      setFlippedCards({});
+                      setActiveFlashcardIndex(0);
+                      setSelectedTool(tool);
+                    }}
+                    style={{
+                      padding: '12px 18px',
+                      borderRadius: '15px',
+                      border: 'none',
+                      background: cardMeta.gradient,
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontWeight: 950,
+                      boxShadow: cardMeta.shadow,
+                    }}
+                  >
+                    Open
+                  </button>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1709,94 +2118,83 @@ function CourseDetail() {
       />
     )}
 
-    {/* ✅ Study AI right sidebar mein sirf topics rahenge. Files/list left main area mein dikhegi. */}
     {activeTab === 'study-ai' && (
   <div style={{ display: 'grid', gap: '10px' }}>
-    <button
-      onClick={() => {
-        setActiveStudyToolType('important_questions');
-        setActiveTab('study-ai');
-      }}
-      style={{
-        width: '100%',
-        padding: '13px 14px',
-        borderRadius: '16px',
-        border: `1px solid ${
-          activeStudyToolType === 'important_questions'
-            ? 'rgba(139,92,246,0.65)'
-            : theme.border
-        }`,
-        background:
-          activeStudyToolType === 'important_questions'
-            ? 'linear-gradient(135deg, #8b5cf6, #4f46e5)'
-            : theme.isDark
-            ? 'rgba(255,255,255,0.035)'
-            : 'rgba(255,255,255,0.72)',
-        color: activeStudyToolType === 'important_questions' ? '#fff' : theme.text,
-        cursor: 'pointer',
-        fontWeight: 950,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '10px',
-      }}
-    >
-      <span>✨ Important Questions</span>
-      <span
-        style={{
-          padding: '4px 9px',
-          borderRadius: '999px',
-          background: 'rgba(255,255,255,0.18)',
-          fontSize: '12px',
-          fontWeight: 950,
-        }}
-      >
-        {studyTools.filter((tool) => tool?.type !== 'quiz').length}
-      </span>
-    </button>
+    {[
+      {
+        key: 'important_questions',
+        label: '✨ Important Questions',
+        count: studyTools.filter((tool) => tool?.type === 'important_questions').length,
+        activeBorder: 'rgba(139,92,246,0.65)',
+        gradient: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+      },
+      {
+        key: 'quiz',
+        label: '🧠 Quiz Practice',
+        count: studyTools.filter((tool) => tool?.type === 'quiz').length,
+        activeBorder: 'rgba(6,182,212,0.65)',
+        gradient: 'linear-gradient(135deg, #06b6d4, #2563eb)',
+      },
+      {
+        key: 'summary',
+        label: '📝 AI Summary',
+        count: studyTools.filter((tool) => tool?.type === 'summary').length,
+        activeBorder: 'rgba(34,197,94,0.65)',
+        gradient: 'linear-gradient(135deg, #22c55e, #0ea5e9)',
+      },
+      {
+        key: 'flashcards',
+        label: '🃏 Flashcards',
+        count: studyTools.filter((tool) => tool?.type === 'flashcards').length,
+        activeBorder: 'rgba(249,115,22,0.65)',
+        gradient: 'linear-gradient(135deg, #f97316, #ec4899)',
+      },
+    ].map((item) => {
+      const active = activeStudyToolType === item.key;
 
-    <button
-      onClick={() => {
-        setActiveStudyToolType('quiz');
-        setActiveTab('study-ai');
-      }}
-      style={{
-        width: '100%',
-        padding: '13px 14px',
-        borderRadius: '16px',
-        border: `1px solid ${
-          activeStudyToolType === 'quiz'
-            ? 'rgba(6,182,212,0.65)'
-            : theme.border
-        }`,
-        background:
-          activeStudyToolType === 'quiz'
-            ? 'linear-gradient(135deg, #06b6d4, #2563eb)'
-            : theme.isDark
-            ? 'rgba(255,255,255,0.035)'
-            : 'rgba(255,255,255,0.72)',
-        color: activeStudyToolType === 'quiz' ? '#fff' : theme.text,
-        cursor: 'pointer',
-        fontWeight: 950,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '10px',
-      }}
-    >
-      <span>🧠 Quiz Practice</span>
-      <span
-        style={{
-          padding: '4px 9px',
-          borderRadius: '999px',
-          background: 'rgba(255,255,255,0.18)',
-          fontSize: '12px',
-          fontWeight: 950,
-        }}
-      >
-        {studyTools.filter((tool) => tool?.type === 'quiz').length}
-      </span>
-    </button>
+      return (
+        <button
+          key={item.key}
+          onClick={() => {
+            setActiveStudyToolType(item.key);
+            setActiveTab('study-ai');
+          }}
+          style={{
+            width: '100%',
+            padding: '13px 14px',
+            borderRadius: '16px',
+            border: `1px solid ${active ? item.activeBorder : theme.border}`,
+            background: active
+              ? item.gradient
+              : theme.isDark
+              ? 'rgba(255,255,255,0.035)'
+              : 'rgba(255,255,255,0.72)',
+            color: active ? '#fff' : theme.text,
+            cursor: 'pointer',
+            fontWeight: 950,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '10px',
+          }}
+        >
+          <span>{item.label}</span>
+
+          <span
+            style={{
+              padding: '4px 9px',
+              borderRadius: '999px',
+              background: active ? 'rgba(255,255,255,0.18)' : 'rgba(148,163,184,0.14)',
+              color: active ? '#fff' : theme.muted,
+              fontSize: '12px',
+              fontWeight: 950,
+            }}
+          >
+            {item.count}
+          </span>
+        </button>
+      );
+    })}
   </div>
 )}
 
