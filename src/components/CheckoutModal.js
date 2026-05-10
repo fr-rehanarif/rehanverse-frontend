@@ -419,7 +419,7 @@ function CheckoutModal({ course, onClose, onSuccess }) {
             <div style={styles.bottomWarning}>
               <span>⚠️</span>
               <span>
-                Payment screenshot clear hona chahiye. Wrong/fake proof reject ho sakta hai.
+                Please upload a clear payment screenshot. Incorrect/fake proofs may be rejected.
               </span>
             </div>
           </div>

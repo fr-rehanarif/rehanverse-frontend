@@ -500,7 +500,7 @@ function Courses() {
                   🎛️ Find your course
                 </h3>
                 <p style={{ margin: '5px 0 0', color: theme.muted, fontSize: '13px', lineHeight: 1.5 }}>
-                  Search aur price filter se quickly course find karo.
+                  Search and filter courses to quickly find the perfect match for your learning goals.
                 </p>
               </div>
 
@@ -697,16 +697,16 @@ function Courses() {
           <>
             <CourseSection
               title="🛒 Not Owned"
-              subtitle="Ye courses abhi tumhare account me enrolled nahi hain."
+              subtitle="These courses are not yet owned by you."
               data={notOwnedCourses}
-              emptyText="Is filter/search me koi not-owned course nahi mila."
+              emptyText="No courses found matching your criteria."
             />
 
             <CourseSection
               title="✅ Already Enrolled"
-              subtitle="Ye courses tumhare account me already owned/enrolled hain."
+              subtitle="These courses are already owned/enrolled by you."
               data={enrolledCourses}
-              emptyText="Is filter/search me koi enrolled course nahi mila."
+              emptyText="."
             />
           </>
         )}

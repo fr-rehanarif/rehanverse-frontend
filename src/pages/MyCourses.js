@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
@@ -15,7 +15,214 @@ function MyCourses() {
 
   const theme = useTheme();
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
+  const redirectingRef = useRef(false);
+
+  const getToken = () => localStorage.getItem('token');
+
+  const isUnauthorizedError = (err) => {
+    return err?.response?.status === 401 || err?.response?.status === 403;
+  };
+
+  const handleUnauthorized = useCallback(() => {
+    if (redirectingRef.current) return;
+
+    redirectingRef.current = true;
+
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+
+    setCourseRows([]);
+    setLiveCounts({});
+    setLoading(false);
+
+    const path = window.location.pathname;
+
+    if (path !== '/login' && path !== '/signup') {
+      window.dispatchEvent(
+        new CustomEvent('rehanverse-session-expired', {
+          detail: {
+            message: 'Session expired. Please login again.',
+          },
+        })
+      );
+
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+
+  const getAuthHeaders = useCallback(() => {
+    const freshToken = getToken();
+
+    if (!freshToken) return null;
+
+    return {
+      Authorization: `Bearer ${freshToken}`,
+    };
+  }, []);
+
+  const getWithTimeout = (url, config = {}, timeoutMs = 8000) => {
+    return Promise.race([
+      axios.get(url, config),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+      ),
+    ]);
+  };
+
+  const fetchLiveCounts = useCallback(
+    async (courseList) => {
+      const headers = getAuthHeaders();
+
+      if (!headers) return;
+
+      try {
+        const counts = {};
+
+        await Promise.all(
+          courseList.map(async (course) => {
+            try {
+              const freshHeaders = getAuthHeaders();
+
+              if (!freshHeaders) {
+                counts[course._id] = 0;
+                return;
+              }
+
+              const res = await getWithTimeout(
+                `${API}/api/live-classes/course/${course._id}`,
+                {
+                  headers: freshHeaders,
+                },
+                5000
+              );
+
+              counts[course._id] = Array.isArray(res.data) ? res.data.length : 0;
+            } catch (err) {
+              if (isUnauthorizedError(err)) {
+                handleUnauthorized();
+                return;
+              }
+
+              console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err.message || err);
+              counts[course._id] = 0;
+            }
+          })
+        );
+
+        setLiveCounts(counts);
+      } catch (err) {
+        if (isUnauthorizedError(err)) {
+          handleUnauthorized();
+          return;
+        }
+
+        console.log('LIVE COUNTS ERROR:', err);
+      }
+    },
+    [getAuthHeaders, handleUnauthorized]
+  );
+
+  const fetchMyCoursesWithProgress = useCallback(async () => {
+    const headers = getAuthHeaders();
+
+    if (!headers) {
+      handleUnauthorized();
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      let rows = [];
+
+      try {
+        const res = await getWithTimeout(
+          `${API}/api/progress/my-courses`,
+          {
+            headers,
+          },
+          8000
+        );
+
+        rows = Array.isArray(res.data) ? res.data : [];
+      } catch (progressErr) {
+        if (isUnauthorizedError(progressErr)) {
+          handleUnauthorized();
+          return;
+        }
+
+        console.log('PROGRESS API FAILED, USING FALLBACK:', progressErr.message);
+
+        try {
+          const fallbackHeaders = getAuthHeaders();
+
+          if (!fallbackHeaders) {
+            handleUnauthorized();
+            return;
+          }
+
+          const fallbackRes = await getWithTimeout(
+            `${API}/api/enroll/my/courses`,
+            {
+              headers: fallbackHeaders,
+            },
+            8000
+          );
+
+          const oldCourses = Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
+
+          rows = oldCourses.map((course) => ({
+            course,
+            progress: {
+              progressPercent: 0,
+
+              openedItems: 0,
+              completedItems: 0,
+              totalItems: (course.videos?.length || 0) + (course.pdfs?.length || 0),
+
+              openedVideosCount: 0,
+              openedPdfsCount: 0,
+
+              completedVideosCount: 0,
+              completedPdfsCount: 0,
+
+              streakCount: 0,
+              lastStudyDate: '',
+              lastOpenedAt: null,
+              lastOpenedType: '',
+              lastOpenedTitle: '',
+            },
+          }));
+        } catch (fallbackErr) {
+          if (isUnauthorizedError(fallbackErr)) {
+            handleUnauthorized();
+            return;
+          }
+
+          throw fallbackErr;
+        }
+      }
+
+      setCourseRows(rows);
+
+      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
+
+      // ✅ Live count background mein chalega, page loading stuck nahi karega
+      fetchLiveCounts(onlyCourses);
+    } catch (err) {
+      console.log('MY COURSES FINAL ERROR:', err);
+
+      if (isUnauthorizedError(err)) {
+        handleUnauthorized();
+        return;
+      }
+
+      setCourseRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchLiveCounts, getAuthHeaders, handleUnauthorized]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -29,124 +236,22 @@ function MyCourses() {
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      navigate('/login');
+    const freshToken = getToken();
+
+    if (!freshToken) {
+      handleUnauthorized();
       return;
     }
 
     fetchMyCoursesWithProgress();
-    // eslint-disable-next-line
-  }, [token, navigate]);
-
-  const getWithTimeout = (url, config = {}, timeoutMs = 8000) => {
-    return Promise.race([
-      axios.get(url, config),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-      ),
-    ]);
-  };
-
-  const fetchMyCoursesWithProgress = async () => {
-    try {
-      setLoading(true);
-
-      let rows = [];
-
-      try {
-        const res = await getWithTimeout(
-          `${API}/api/progress/my-courses`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-          8000
-        );
-
-        rows = Array.isArray(res.data) ? res.data : [];
-      } catch (progressErr) {
-        console.log('PROGRESS API FAILED, USING FALLBACK:', progressErr.message);
-
-        const fallbackRes = await getWithTimeout(
-          `${API}/api/enroll/my/courses`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-          8000
-        );
-
-        const oldCourses = Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
-
-        rows = oldCourses.map((course) => ({
-          course,
-          progress: {
-            progressPercent: 0,
-
-            openedItems: 0,
-            completedItems: 0,
-            totalItems: (course.videos?.length || 0) + (course.pdfs?.length || 0),
-
-            openedVideosCount: 0,
-            openedPdfsCount: 0,
-
-            completedVideosCount: 0,
-            completedPdfsCount: 0,
-
-            streakCount: 0,
-            lastStudyDate: '',
-            lastOpenedAt: null,
-            lastOpenedType: '',
-            lastOpenedTitle: '',
-          },
-        }));
-      }
-
-      setCourseRows(rows);
-
-      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
-
-      // ✅ live count background mein chalega, page loading stuck nahi karega
-      fetchLiveCounts(onlyCourses);
-    } catch (err) {
-      console.log('MY COURSES FINAL ERROR:', err);
-      setCourseRows([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchLiveCounts = async (courseList) => {
-    try {
-      const counts = {};
-
-      await Promise.all(
-        courseList.map(async (course) => {
-          try {
-            const res = await getWithTimeout(
-              `${API}/api/live-classes/course/${course._id}`,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              },
-              5000
-            );
-
-            counts[course._id] = res.data?.length || 0;
-          } catch (err) {
-            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err.message || err);
-            counts[course._id] = 0;
-          }
-        })
-      );
-
-      setLiveCounts(counts);
-    } catch (err) {
-      console.log('LIVE COUNTS ERROR:', err);
-    }
-  };
+  }, [fetchMyCoursesWithProgress, handleUnauthorized]);
 
   const formatLastOpened = (dateValue) => {
     if (!dateValue) return 'Not started yet';
 
     const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) return 'Not started yet';
 
     return date.toLocaleString('en-IN', {
       dateStyle: 'medium',

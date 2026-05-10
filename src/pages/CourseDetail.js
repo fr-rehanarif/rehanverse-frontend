@@ -1868,7 +1868,7 @@ function CourseDetail() {
   };
 
   const showLockedMessage = (contentTitle = 'content') => {
-    setLockedMsg(`🔒 ${contentTitle} enrollment ke baad unlock hoga.`);
+    setLockedMsg(`🔒 ${contentTitle} Would be available after enrollment.`);
 
     logActivity(
       `Locked content clicked: ${contentTitle} | Course: ${
@@ -2028,7 +2028,7 @@ function CourseDetail() {
           color: theme.muted,
         }}
       >
-        🔒 Preview only. Unlock karne ke baad actual videos, PDFs, AI study tools aur live classes open honge.
+        🔒 Preview only. Would be available after enrollment.
       </div>
     )}
 
@@ -2209,7 +2209,7 @@ function CourseDetail() {
           background: 'linear-gradient(135deg, #22c55e, #3b82f6)',
         }}
       >
-        🚀 Unlock Course Now
+         Unlock Course Now
       </motion.button>
     )}
   </aside>
@@ -2392,7 +2392,7 @@ function CourseDetail() {
                   color: '#fff',
                 }}
               >
-                Unlock Course 🚀
+                Unlock Course 
               </button>
             )}
           </div>
@@ -2609,7 +2609,7 @@ function CourseDetail() {
                   onClick={() => openCheckout('bottom unlock card')}
                   style={styles.unlockBtn(isMobile)}
                 >
-                  🚀 Unlock Full Course Now
+                   Unlock Full Course Now
                 </motion.button>
               </div>
             )}

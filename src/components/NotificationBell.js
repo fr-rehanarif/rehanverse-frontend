@@ -16,8 +16,7 @@ function NotificationBell({ theme }) {
   const wrapperRef = useRef(null);
   const firstLoadDone = useRef(false);
   const previousIds = useRef(new Set());
-
-  const token = localStorage.getItem('token');
+  const sessionRedirecting = useRef(false);
 
   const safeText = theme?.text || '#ffffff';
   const safeCard = theme?.card || 'rgba(15, 23, 42, 0.92)';
@@ -33,31 +32,95 @@ function NotificationBell({ theme }) {
     return [];
   };
 
+  // ✅ One clean logout handler for expired/invalid token
+  const handleUnauthorized = useCallback(() => {
+    if (sessionRedirecting.current) return;
+
+    sessionRedirecting.current = true;
+
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+
+    setNotifications([]);
+    setOpen(false);
+    setToast(null);
+    setError('');
+
+    // ✅ Avoid redirect loop
+    const path = window.location.pathname;
+    if (path !== '/login' && path !== '/signup') {
+      window.dispatchEvent(
+        new CustomEvent('rehanverse-session-expired', {
+          detail: {
+            message: 'Session expired. Please login again.',
+          },
+        })
+      );
+
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 500);
+    }
+  }, [navigate]);
+
+  const parseResponseJson = async (res) => {
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+
+  const authFetch = useCallback(
+    async (url, options = {}) => {
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        setNotifications([]);
+        return null;
+      }
+
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        handleUnauthorized();
+        return null;
+      }
+
+      return res;
+    },
+    [handleUnauthorized]
+  );
+
   const fetchNotifications = useCallback(
     async (silent = false) => {
-      try {
-        if (!token) {
-          setNotifications([]);
-          return;
-        }
+      const token = localStorage.getItem('token');
 
+      if (!token) {
+        setNotifications([]);
+        setError('');
+        setToast(null);
+        return;
+      }
+
+      try {
         if (!silent) setLoading(true);
         setError('');
 
-        const res = await fetch(`${API}/api/notifications/my`, {
+        const res = await authFetch(`${API}/api/notifications/my`, {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         });
 
-        let data = null;
+        if (!res) return;
 
-        try {
-          data = await res.json();
-        } catch {
-          data = null;
-        }
+        const data = await parseResponseJson(res);
 
         if (!res.ok) {
           const msg = data?.message || 'Unable to load notifications';
@@ -95,26 +158,41 @@ function NotificationBell({ theme }) {
 
         setNotifications(sortedList);
       } catch (err) {
+        // ✅ Network issue only. 401/403 already handled above.
         setError('Network issue while loading notifications');
         console.log('Notification fetch failed:', err);
       } finally {
         if (!silent) setLoading(false);
       }
     },
-    [token]
+    [authFetch]
   );
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setNotifications([]);
+      setError('');
+      return undefined;
+    }
+
     fetchNotifications(true);
 
-    if (!token) return undefined;
-
     const interval = setInterval(() => {
+      const freshToken = localStorage.getItem('token');
+
+      if (!freshToken) {
+        clearInterval(interval);
+        setNotifications([]);
+        return;
+      }
+
       fetchNotifications(true);
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [fetchNotifications, token]);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -140,6 +218,15 @@ function NotificationBell({ theme }) {
   const readCount = notifications.filter((n) => n.isRead).length;
 
   const toggleOpen = () => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setOpen(false);
+      setNotifications([]);
+      navigate('/login', { replace: true });
+      return;
+    }
+
     setOpen((prev) => {
       const next = !prev;
       if (next) fetchNotifications();
@@ -149,14 +236,14 @@ function NotificationBell({ theme }) {
 
   const markAsRead = async (notificationId) => {
     try {
+      const token = localStorage.getItem('token');
       if (!token || !notificationId) return;
 
-      await fetch(`${API}/api/notifications/read/${notificationId}`, {
+      const res = await authFetch(`${API}/api/notifications/read/${notificationId}`, {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
+
+      if (!res) return;
 
       setNotifications((prev) =>
         prev.map((n) =>
@@ -196,16 +283,16 @@ function NotificationBell({ theme }) {
     e?.stopPropagation();
 
     try {
+      const token = localStorage.getItem('token');
       if (!token) return;
 
       setActionLoading(true);
 
-      await fetch(`${API}/api/notifications/read-all`, {
+      const res = await authFetch(`${API}/api/notifications/read-all`, {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
+
+      if (!res) return;
 
       setNotifications((prev) =>
         prev.map((n) => ({
@@ -224,16 +311,16 @@ function NotificationBell({ theme }) {
     e?.stopPropagation();
 
     try {
+      const token = localStorage.getItem('token');
       if (!token) return;
 
       setActionLoading(true);
 
-      await fetch(`${API}/api/notifications/clear-read`, {
+      const res = await authFetch(`${API}/api/notifications/clear-read`, {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
+
+      if (!res) return;
 
       setNotifications((prev) => prev.filter((n) => !n.isRead));
     } catch (err) {
