@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
+import { useEffect, useState } from "react";
+import SplashScreen from "./components/SplashScreen";
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -21,7 +23,6 @@ function GlobalSelectFix() {
   return (
     <style>
       {`
-        /* ✅ Select dropdown options readable in dark theme */
         select option {
           background-color: #111827 !important;
           color: #ffffff !important;
@@ -37,18 +38,15 @@ function GlobalSelectFix() {
           color: #ffffff !important;
         }
 
-        /* ✅ Makes browser native dropdown prefer dark UI */
         select {
           color-scheme: dark;
         }
 
-        /* ✅ Placeholder readable in dark theme */
         input::placeholder,
         textarea::placeholder {
           color: rgba(255, 255, 255, 0.55) !important;
         }
 
-        /* ✅ Autofill color fix for Chrome */
         input:-webkit-autofill,
         input:-webkit-autofill:hover,
         input:-webkit-autofill:focus,
@@ -63,7 +61,6 @@ function GlobalSelectFix() {
           transition: background-color 5000s ease-in-out 0s;
         }
 
-        /* ✅ Only safe global mobile rule */
         * {
           box-sizing: border-box;
         }
@@ -94,55 +91,67 @@ function GlobalSelectFix() {
 function App() {
   const theme = useTheme();
 
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 5300);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const toastTheme =
     theme?.isDark === false || theme?.mode === 'light' || theme?.theme === 'light'
       ? 'light'
       : 'dark';
 
   return (
-    <div
-      style={{
-        background: theme.bg,
-        color: theme.text,
-        minHeight: '100vh',
-        transition: 'all 0.3s ease',
-      }}
-    >
-      <GlobalSelectFix />
+    <>
+      {showSplash && <SplashScreen />}
 
-      <BrowserRouter>
-        <Navbar />
+      <div
+        style={{
+          background: theme.bg,
+          color: theme.text,
+          minHeight: '100vh',
+          transition: 'all 0.3s ease',
+        }}
+      >
+        <GlobalSelectFix />
 
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/courses" element={<Courses />} />
-          <Route path="/admin/activity" element={<ActivityDashboard />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/payment/:courseId" element={<Payment />} />
-          <Route path="/my-courses" element={<MyCourses />} />
-          <Route path="/course/:id" element={<CourseDetail />} />
-          <Route path="/courses/:id" element={<CourseDetail />} />
-        </Routes>
+        <BrowserRouter>
+          <Navbar />
 
-        {/* ✅ REHANVERSE Assistant Floating Chat */}
-        <AssistantChat />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/courses" element={<Courses />} />
+            <Route path="/admin/activity" element={<ActivityDashboard />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/payment/:courseId" element={<Payment />} />
+            <Route path="/my-courses" element={<MyCourses />} />
+            <Route path="/course/:id" element={<CourseDetail />} />
+            <Route path="/courses/:id" element={<CourseDetail />} />
+          </Routes>
 
-        {/* ✅ Top-right notifications support */}
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={true}
-          closeOnClick={true}
-          pauseOnHover
-          draggable
-          theme={toastTheme}
-        />
-      </BrowserRouter>
-    </div>
+          <AssistantChat />
+
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={true}
+            closeOnClick={true}
+            pauseOnHover
+            draggable
+            theme={toastTheme}
+          />
+        </BrowserRouter>
+      </div>
+    </>
   );
 }
 
