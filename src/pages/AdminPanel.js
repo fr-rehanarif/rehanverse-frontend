@@ -1343,6 +1343,298 @@ function AdminPanel() {
     );
   };
 
+
+  const renderGrowthSectionSafe = () => {
+    const totalCertificates = users.reduce(
+      (sum, u) => sum + (Array.isArray(u.certificates) ? u.certificates.length : 0),
+      0
+    );
+
+    const totalCompletedCourses = users.reduce(
+      (sum, u) => sum + (Array.isArray(u.completedCourses) ? u.completedCourses.length : 0),
+      0
+    );
+
+    const totalReferrals = users.reduce(
+      (sum, u) => sum + Number(u.referralCount || 0),
+      0
+    );
+
+    const totalRewards = users.reduce(
+      (sum, u) => sum + (Array.isArray(u.referralRewards) ? u.referralRewards.length : 0),
+      0
+    );
+
+    const topReferrers = [...users]
+      .filter((u) => Number(u.referralCount || 0) > 0)
+      .sort((a, b) => Number(b.referralCount || 0) - Number(a.referralCount || 0))
+      .slice(0, 8);
+
+    const certificateRows = users
+      .flatMap((u) =>
+        (u.certificates || []).map((cert) => ({
+          userName: u.name,
+          userEmail: u.email,
+          courseTitle: cert.courseTitle,
+          certificateId: cert.certificateId,
+          issuedAt: cert.issuedAt,
+        }))
+      )
+      .sort((a, b) => new Date(b.issuedAt || 0) - new Date(a.issuedAt || 0));
+
+    const growthCards = [
+      {
+        icon: 'STAT',
+        label: 'Total Certificates',
+        value: totalCertificates,
+        color: theme.primary,
+        bg: theme.isDark ? 'rgba(139,92,246,0.14)' : '#f5f3ff',
+      },
+      {
+        icon: 'STAT',
+        label: 'Completed Courses',
+        value: totalCompletedCourses,
+        color: theme.success,
+        bg: theme.isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7',
+      },
+      {
+        icon: 'STAT',
+        label: 'Total Referrals',
+        value: totalReferrals,
+        color: '#f97316',
+        bg: theme.isDark ? 'rgba(249,115,22,0.12)' : '#ffedd5',
+      },
+      {
+        icon: 'Rewards',
+        label: 'Referral Rewards',
+        value: totalRewards,
+        color: '#06b6d4',
+        bg: theme.isDark ? 'rgba(6,182,212,0.12)' : '#e0f2fe',
+      },
+    ];
+
+    return (
+      <div>
+        <div style={panelStyle}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '16px',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              marginBottom: '20px',
+            }}
+          >
+            <div>
+              <p style={{ color: theme.primary, margin: '0 0 8px', fontWeight: 950, fontSize: '13px' }}>
+                REHANVERSE GROWTH CENTER
+              </p>
+
+              <h3 style={{ color: theme.text, margin: 0, fontWeight: 950, fontSize: '26px' }}>
+                Referrals, Certificates & Completion Analytics
+              </h3>
+
+              <p style={{ color: theme.muted, margin: '8px 0 0', fontWeight: 750, lineHeight: 1.6 }}>
+                Yahan referrals, certificates aur course completion growth track hogi.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                fetchUsers();
+                toast.success('? Growth data refreshed!');
+              }}
+              style={{
+                padding: '11px 16px',
+                background: theme.primary,
+                color: theme.buttonText,
+                border: 'none',
+                borderRadius: '14px',
+                cursor: 'pointer',
+                fontWeight: 900,
+                boxShadow: theme.shadow,
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+              gap: '14px',
+            }}
+          >
+            {growthCards.map((item) => (
+              <motion.div
+                key={item.label}
+                whileHover={{ y: -3 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                style={{
+                  background: item.bg,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: '18px',
+                  padding: '18px',
+                  boxShadow: theme.shadow,
+                }}
+              >
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '16px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    background: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.75)',
+                    marginBottom: '12px',
+                    fontSize: '13px',
+                    fontWeight: 950,
+                    letterSpacing: '0.4px',
+                  }}
+                >
+                  {item.icon}
+                </div>
+
+                <p style={{ color: theme.muted, margin: '0 0 6px', fontWeight: 900, fontSize: '12px' }}>
+                  {item.label}
+                </p>
+
+                <h2 style={{ color: item.color, margin: 0, fontWeight: 950 }}>
+                  {item.value}
+                </h2>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '18px',
+            marginBottom: '28px',
+          }}
+        >
+          <div style={smallCardStyle}>
+            <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '14px' }}>
+              Top Referrers
+            </h3>
+
+            {topReferrers.length === 0 ? (
+              <p style={{ color: theme.muted, fontWeight: 800, margin: 0 }}>
+                Abhi kisi user ne referral nahi kiya.
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {topReferrers.map((u, index) => (
+                  <div
+                    key={u._id || u.email}
+                    style={{
+                      padding: '14px',
+                      borderRadius: '15px',
+                      border: `1px solid ${theme.border}`,
+                      background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ color: theme.text }}>
+                        #{index + 1} {u.name || 'User'}
+                      </strong>
+
+                      <p style={{ color: theme.muted, margin: '5px 0 0', fontSize: '12px', wordBreak: 'break-word' }}>
+                        {u.email}
+                      </p>
+
+                      <p style={{ color: theme.primary, margin: '5px 0 0', fontSize: '12px', fontWeight: 900 }}>
+                        Code: {u.referralCode || 'N/A'}
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '999px',
+                        background: theme.isDark ? 'rgba(249,115,22,0.14)' : '#ffedd5',
+                        color: '#f97316',
+                        fontWeight: 950,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {u.referralCount || 0} refs
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={smallCardStyle}>
+            <h3 style={{ color: theme.text, marginTop: 0, marginBottom: '14px' }}>
+              Latest Certificates
+            </h3>
+
+            {certificateRows.length === 0 ? (
+              <p style={{ color: theme.muted, fontWeight: 800, margin: 0 }}>
+                Abhi koi certificate generate nahi hua.
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {certificateRows.slice(0, 10).map((cert) => (
+                  <div
+                    key={cert.certificateId}
+                    style={{
+                      padding: '14px',
+                      borderRadius: '15px',
+                      border: `1px solid ${theme.border}`,
+                      background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)',
+                    }}
+                  >
+                    <strong style={{ color: theme.text }}>
+                      {cert.courseTitle || 'Course'}
+                    </strong>
+
+                    <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: '13px' }}>
+                      Student: <strong style={{ color: theme.text }}>{cert.userName}</strong>
+                    </p>
+
+                    <p style={{ color: theme.primary, margin: '8px 0 0', fontSize: '12px', fontWeight: 950, wordBreak: 'break-word' }}>
+                      ID: {cert.certificateId}
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                      <button
+                        onClick={() => window.open(`/certificate/${cert.certificateId}`, '_blank')}
+                        style={adminStyles.blueBtn(theme)}
+                      >
+                        Verify
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/certificate/${cert.certificateId}`);
+                          toast.success('? Certificate link copied!');
+                        }}
+                        style={adminStyles.successBtn(theme)}
+                      >
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderCouponSection = () => (
     <div>
       <div style={panelStyle}>
@@ -2733,6 +3025,10 @@ function AdminPanel() {
             📊 Dashboard
           </button>
 
+          <button style={tabStyle('growth')} onClick={() => setActiveTab('growth')}>
+             Growth
+          </button>
+
           <button style={tabStyle('courses')} onClick={() => setActiveTab('courses')}>
             📚 Courses
           </button>
@@ -2775,6 +3071,8 @@ function AdminPanel() {
             />
           </div>
         )}
+
+        {activeTab === 'growth' && renderGrowthSectionSafe()}
 
         {activeTab === 'courses' && (
           <div>
