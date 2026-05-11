@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { QRCodeCanvas } from 'qrcode.react';
 import API from '../api';
 
 const LOGO_URL = '/rehanverse-logo.png';
@@ -12,6 +13,8 @@ function CertificateView() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const verifyUrl = `${window.location.origin}/certificate/${certificateId}`;
 
   useEffect(() => {
     fetchCertificate();
@@ -96,6 +99,12 @@ function CertificateView() {
     <div style={styles.page}>
       <style>
         {`
+          @media (max-width: 720px) {
+            #certificate-print-area {
+              border-radius: 18px !important;
+            }
+          }
+
           @media print {
             body * {
               visibility: hidden;
@@ -195,6 +204,36 @@ function CertificateView() {
             <div style={styles.metaBox}>
               <span>Status</span>
               <strong style={{ color: '#16a34a' }}>Verified</strong>
+            </div>
+          </div>
+
+          <div style={styles.qrSection}>
+            <div style={styles.qrCard}>
+              <QRCodeCanvas
+                value={verifyUrl}
+                size={118}
+                level="H"
+                includeMargin={true}
+                bgColor="#ffffff"
+                fgColor="#111827"
+              />
+            </div>
+
+            <div style={styles.qrTextBox}>
+              <strong style={{ color: '#0f172a', fontWeight: 950 }}>
+                Scan to verify this certificate
+              </strong>
+              <span
+                style={{
+                  color: '#64748b',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  wordBreak: 'break-all',
+                  lineHeight: 1.5,
+                }}
+              >
+                {verifyUrl}
+              </span>
             </div>
           </div>
 
@@ -495,6 +534,44 @@ const styles = {
     background: 'rgba(255,255,255,0.84)',
     display: 'grid',
     gap: '6px',
+  },
+
+  qrSection: {
+    maxWidth: '620px',
+    margin: '8px auto 34px',
+    padding: '14px',
+    borderRadius: '18px',
+    border: '1px solid #e2e8f0',
+    background: 'rgba(255,255,255,0.78)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '16px',
+    flexWrap: 'wrap',
+  },
+
+  qrCard: {
+    width: '132px',
+    height: '132px',
+    borderRadius: '18px',
+    background: '#ffffff',
+    display: 'grid',
+    placeItems: 'center',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 12px 30px rgba(15,23,42,0.08)',
+    flex: '0 0 auto',
+  },
+
+  qrTextBox: {
+    display: 'grid',
+    gap: '6px',
+    textAlign: 'left',
+    minWidth: '220px',
+    maxWidth: '410px',
+  },
+
+  qrTextBoxStrong: {
+    color: '#0f172a',
   },
 
   footer: {
