@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import API from '../api';
 
+const LOGO_URL = '/rehanverse-logo.png';
+
 function CertificateView() {
   const { certificateId } = useParams();
   const navigate = useNavigate();
@@ -50,10 +52,28 @@ function CertificateView() {
     window.print();
   };
 
+  const LogoMark = ({ big = false }) => {
+    if (LOGO_URL) {
+      return (
+        <img
+          src={LOGO_URL}
+          alt="REHANVERSE Logo"
+          style={big ? styles.logoImageBig : styles.logoImage}
+        />
+      );
+    }
+
+    return (
+      <div style={big ? styles.logoFallbackBig : styles.logoFallback}>
+        RV
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div style={styles.page}>
-        <div style={styles.loadingBox}>? Loading certificate...</div>
+        <div style={styles.loadingBox}>Loading certificate...</div>
       </div>
     );
   }
@@ -62,7 +82,7 @@ function CertificateView() {
     return (
       <div style={styles.page}>
         <div style={styles.errorBox}>
-          <h2>? Certificate Not Found</h2>
+          <h2>Certificate Not Found</h2>
           <p>{err}</p>
           <button onClick={() => navigate('/profile')} style={styles.backBtn}>
             Go Back
@@ -107,11 +127,11 @@ function CertificateView() {
 
       <div className="no-print" style={styles.topBar}>
         <button onClick={() => navigate('/profile')} style={styles.topBtn}>
-          ? Back to Profile
+          Back to Profile
         </button>
 
         <button onClick={handlePrint} style={styles.printBtn}>
-          ??? Print / Save PDF
+          Print / Save PDF
         </button>
       </div>
 
@@ -122,12 +142,20 @@ function CertificateView() {
         transition={{ duration: 0.35, ease: 'easeOut' }}
         style={styles.certificate}
       >
+        {LOGO_URL && (
+          <img
+            src={LOGO_URL}
+            alt="REHANVERSE watermark"
+            style={styles.watermarkLogo}
+          />
+        )}
+
         <div style={styles.cornerTopLeft} />
         <div style={styles.cornerBottomRight} />
 
         <div style={styles.innerBorder}>
           <div style={styles.header}>
-            <div style={styles.logoCircle}>R</div>
+            <LogoMark />
 
             <div>
               <h1 style={styles.brand}>REHANVERSE</h1>
@@ -135,7 +163,7 @@ function CertificateView() {
             </div>
           </div>
 
-          <div style={styles.verifiedBadge}>? VERIFIED CERTIFICATE</div>
+          <div style={styles.verifiedBadge}>VERIFIED CERTIFICATE</div>
 
           <h2 style={styles.certTitle}>Certificate of Completion</h2>
 
@@ -172,17 +200,19 @@ function CertificateView() {
 
           <div style={styles.footer}>
             <div style={styles.signatureBox}>
+              <div style={styles.signatureText}>M. Rehan Arif</div>
               <div style={styles.signatureLine} />
               <strong>Mohammad Rehan Arif</strong>
               <span>Founder, REHANVERSE</span>
             </div>
 
             <div style={styles.seal}>
-              <span>??</span>
-              <strong>RV</strong>
+              <LogoMark big />
+              <strong>REHANVERSE</strong>
             </div>
 
             <div style={styles.signatureBox}>
+              <div style={styles.signatureText}>Verified</div>
               <div style={styles.signatureLine} />
               <strong>REHANVERSE</strong>
               <span>Official Verification</span>
@@ -190,7 +220,7 @@ function CertificateView() {
           </div>
 
           <p style={styles.note}>
-            This certificate can be verified using the Certificate ID through REHANVERSE verification system.
+            This certificate can be verified using the Certificate ID through the official REHANVERSE verification system.
           </p>
         </div>
       </motion.div>
@@ -275,6 +305,19 @@ const styles = {
     overflow: 'hidden',
   },
 
+  watermarkLogo: {
+    position: 'absolute',
+    left: '50%',
+    top: '52%',
+    transform: 'translate(-50%, -50%) rotate(-10deg)',
+    width: '430px',
+    maxWidth: '65%',
+    opacity: 0.075,
+    zIndex: 0,
+    pointerEvents: 'none',
+    filter: 'grayscale(10%)',
+  },
+
   innerBorder: {
     border: '3px double rgba(124,58,237,0.45)',
     borderRadius: '22px',
@@ -283,7 +326,8 @@ const styles = {
     position: 'relative',
     textAlign: 'center',
     background:
-      'linear-gradient(135deg, rgba(139,92,246,0.035), rgba(14,165,233,0.035))',
+      'linear-gradient(135deg, rgba(139,92,246,0.025), rgba(14,165,233,0.025))',
+    zIndex: 1,
   },
 
   cornerTopLeft: {
@@ -294,6 +338,7 @@ const styles = {
     height: '180px',
     borderRadius: '50%',
     background: 'rgba(139,92,246,0.16)',
+    zIndex: 0,
   },
 
   cornerBottomRight: {
@@ -304,6 +349,7 @@ const styles = {
     height: '220px',
     borderRadius: '50%',
     background: 'rgba(14,165,233,0.14)',
+    zIndex: 0,
   },
 
   header: {
@@ -315,17 +361,48 @@ const styles = {
     flexWrap: 'wrap',
   },
 
-  logoCircle: {
-    width: '68px',
-    height: '68px',
+  logoImage: {
+    width: '74px',
+    height: '74px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    background: '#ffffff',
+    border: '3px solid rgba(124,58,237,0.45)',
+    boxShadow: '0 14px 30px rgba(124,58,237,0.28)',
+  },
+
+  logoImageBig: {
+    width: '56px',
+    height: '56px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    background: '#ffffff',
+    border: '2px solid rgba(124,58,237,0.45)',
+  },
+
+  logoFallback: {
+    width: '74px',
+    height: '74px',
     borderRadius: '50%',
     display: 'grid',
     placeItems: 'center',
     background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
     color: '#fff',
     fontWeight: 950,
-    fontSize: '32px',
+    fontSize: '24px',
     boxShadow: '0 14px 30px rgba(124,58,237,0.28)',
+  },
+
+  logoFallbackBig: {
+    width: '56px',
+    height: '56px',
+    borderRadius: '50%',
+    display: 'grid',
+    placeItems: 'center',
+    background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
+    color: '#fff',
+    fontWeight: 950,
+    fontSize: '16px',
   },
 
   brand: {
@@ -415,7 +492,7 @@ const styles = {
     padding: '15px',
     borderRadius: '16px',
     border: '1px solid #e2e8f0',
-    background: 'rgba(255,255,255,0.78)',
+    background: 'rgba(255,255,255,0.84)',
     display: 'grid',
     gap: '6px',
   },
@@ -437,6 +514,15 @@ const styles = {
     color: '#0f172a',
   },
 
+  signatureText: {
+    fontFamily: 'Georgia, serif',
+    fontStyle: 'italic',
+    fontSize: '24px',
+    color: '#4c1d95',
+    fontWeight: 700,
+    marginBottom: '-4px',
+  },
+
   signatureLine: {
     width: '180px',
     height: '2px',
@@ -445,8 +531,8 @@ const styles = {
   },
 
   seal: {
-    width: '96px',
-    height: '96px',
+    width: '112px',
+    height: '112px',
     borderRadius: '50%',
     border: '3px solid #8b5cf6',
     display: 'grid',
@@ -454,6 +540,8 @@ const styles = {
     color: '#7c3aed',
     fontWeight: 950,
     background: '#f5f3ff',
+    padding: '10px',
+    gap: '2px',
   },
 
   note: {
