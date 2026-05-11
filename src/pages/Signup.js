@@ -6,7 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import API from '../api';
 
 function Signup() {
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    referralCode: '',
+  });
+
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [verifiedEmail, setVerifiedEmail] = useState('');
@@ -18,6 +24,24 @@ function Signup() {
 
   const navigate = useNavigate();
   const theme = useTheme();
+
+  const safeTheme = {
+    bg: theme?.bg || '#050816',
+    text: theme?.text || '#ffffff',
+    textSecondary: theme?.textSecondary || '#cbd5e1',
+    muted: theme?.muted || '#94a3b8',
+    card: theme?.card || 'rgba(15,23,42,0.82)',
+    border: theme?.border || 'rgba(148,163,184,0.22)',
+    shadow: theme?.shadow || '0 18px 50px rgba(0,0,0,0.35)',
+    shadowHover: theme?.shadowHover || '0 22px 70px rgba(0,0,0,0.45)',
+    glass: theme?.glass || 'blur(18px)',
+    radius: theme?.radius || '26px',
+    primary: theme?.primary || '#8b5cf6',
+    buttonText: theme?.buttonText || '#ffffff',
+    success: theme?.success || '#22c55e',
+    danger: theme?.danger || '#ef4444',
+    isDark: theme?.isDark !== false,
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -34,7 +58,7 @@ function Signup() {
     if (loading || verifyLoading) return;
 
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
-      setMsg('Please fill all fields.');
+      setMsg('Please fill all required fields.');
       return;
     }
 
@@ -51,6 +75,7 @@ function Signup() {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
+        referralCode: form.referralCode.trim().toUpperCase(),
       };
 
       const res = await axios.post(`${API}/api/auth/signup`, payload, {
@@ -60,7 +85,12 @@ function Signup() {
       setVerifiedEmail(payload.email);
       setOtpSent(true);
       setOtp('');
-      setMsg(res.data.message || 'OTP sent to your email ✅');
+
+      if (res.data?.referralApplied) {
+        setMsg('OTP sent ✅ Referral code applied successfully 🎁');
+      } else {
+        setMsg(res.data.message || 'OTP sent to your email ✅');
+      }
     } catch (err) {
       if (err.code === 'ECONNABORTED') {
         setMsg('Server response slow hai. Please try again.');
@@ -105,7 +135,11 @@ function Signup() {
         }
       );
 
-      setMsg(res.data.message || 'Account verified successfully ✅');
+      if (res.data?.referralRewardGiven) {
+        setMsg('Account created ✅ Referral reward unlocked for inviter 🎁');
+      } else {
+        setMsg(res.data.message || 'Account verified successfully ✅');
+      }
 
       setTimeout(() => navigate('/login'), 1400);
     } catch (err) {
@@ -147,14 +181,16 @@ function Signup() {
       msg.toLowerCase().includes('created') ||
       msg.toLowerCase().includes('sent') ||
       msg.toLowerCase().includes('verified') ||
+      msg.toLowerCase().includes('applied') ||
+      msg.toLowerCase().includes('unlocked') ||
       msg.includes('✅'));
 
   return (
     <div
       style={{
         ...styles.page(isMobile),
-        background: theme.bg,
-        color: theme.text,
+        background: safeTheme.bg,
+        color: safeTheme.text,
       }}
     >
       <div style={styles.bgGrid} />
@@ -175,38 +211,39 @@ function Signup() {
             transition={{ delay: 0.08, duration: 0.35 }}
             style={{
               ...styles.brandCard(isMobile),
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              boxShadow: theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
-              borderRadius: theme.radius,
+              background: safeTheme.card,
+              border: `1px solid ${safeTheme.border}`,
+              boxShadow: safeTheme.shadow,
+              backdropFilter: safeTheme.glass,
+              WebkitBackdropFilter: safeTheme.glass,
+              borderRadius: safeTheme.radius,
             }}
           >
             <div style={styles.brandBadge}>🚀 START LEARNING</div>
 
-            <h1 style={{ ...styles.heroTitle(isMobile), color: theme.primary }}>
+            <h1 style={{ ...styles.heroTitle(isMobile), color: safeTheme.primary }}>
               Join REHANVERSE and unlock your study space.
             </h1>
 
-            <p style={{ ...styles.heroText(isMobile), color: theme.textSecondary }}>
-              Create your account to access courses, notes, PDFs, videos, and a cleaner way to learn.
+            <p style={{ ...styles.heroText(isMobile), color: safeTheme.textSecondary }}>
+              Create your account to access courses, notes, PDFs, videos, certificates, and a cleaner way to learn.
             </p>
 
             <div style={styles.points}>
               {[
                 'One account for all courses',
                 'Access notes and PDFs easily',
-                'Built for focused students',
+                'Earn certificates after completion',
+                'Use referral code and help friends join',
                 'Email OTP verification for safer access',
               ].map((item) => (
                 <div
                   key={item}
                   style={{
                     ...styles.point,
-                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                    border: `1px solid ${theme.border}`,
-                    color: theme.textSecondary,
+                    background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                    border: `1px solid ${safeTheme.border}`,
+                    color: safeTheme.textSecondary,
                   }}
                 >
                   <span>✅</span>
@@ -224,15 +261,15 @@ function Signup() {
             transition={{ duration: 0.28, ease: 'easeOut' }}
             style={{
               ...styles.mobileBrand,
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              boxShadow: theme.shadow,
+              background: safeTheme.card,
+              border: `1px solid ${safeTheme.border}`,
+              boxShadow: safeTheme.shadow,
             }}
           >
-            <div style={{ color: theme.primary, fontWeight: 950, fontSize: '20px' }}>
+            <div style={{ color: safeTheme.primary, fontWeight: 950, fontSize: '20px' }}>
               🎓 REHANVERSE
             </div>
-            <div style={{ color: theme.muted, fontSize: '12.5px', fontWeight: 800, lineHeight: 1.5 }}>
+            <div style={{ color: safeTheme.muted, fontSize: '12.5px', fontWeight: 800, lineHeight: 1.5 }}>
               Create account with secure email OTP verification.
             </div>
           </motion.div>
@@ -244,12 +281,12 @@ function Signup() {
           transition={{ delay: 0.05, duration: 0.35, ease: 'easeOut' }}
           style={{
             ...styles.card(isMobile),
-            background: theme.card,
-            border: `1px solid ${theme.border}`,
-            boxShadow: theme.shadowHover,
-            backdropFilter: theme.glass,
-            WebkitBackdropFilter: theme.glass,
-            borderRadius: theme.radius,
+            background: safeTheme.card,
+            border: `1px solid ${safeTheme.border}`,
+            boxShadow: safeTheme.shadowHover,
+            backdropFilter: safeTheme.glass,
+            WebkitBackdropFilter: safeTheme.glass,
+            borderRadius: safeTheme.radius,
           }}
         >
           <AnimatePresence mode="wait">
@@ -264,18 +301,18 @@ function Signup() {
               <div
                 style={{
                   ...styles.iconBox(isMobile),
-                  background: theme.isDark ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.10)',
-                  border: `1px solid ${theme.border}`,
+                  background: safeTheme.isDark ? 'rgba(167,139,250,0.12)' : 'rgba(124,58,237,0.10)',
+                  border: `1px solid ${safeTheme.border}`,
                 }}
               >
                 {otpSent ? '🔐' : '✨'}
               </div>
 
-              <h2 style={{ ...styles.title(isMobile), color: theme.primary }}>
+              <h2 style={{ ...styles.title(isMobile), color: safeTheme.primary }}>
                 {otpSent ? 'Verify Email 🔐' : 'Create Account 🚀'}
               </h2>
 
-              <p style={{ ...styles.subtitle(isMobile), color: theme.muted }}>
+              <p style={{ ...styles.subtitle(isMobile), color: safeTheme.muted }}>
                 {otpSent ? 'Enter OTP sent to your email' : 'Become a part of REHANVERSE'}
               </p>
             </motion.div>
@@ -291,13 +328,13 @@ function Signup() {
                   exit={{ opacity: 0, y: -14, scale: 0.97, filter: 'blur(3px)' }}
                   transition={{ duration: 0.28, ease: 'easeOut' }}
                 >
-                  <label style={{ ...styles.label, color: theme.textSecondary }}>Full Name</label>
+                  <label style={{ ...styles.label, color: safeTheme.textSecondary }}>Full Name</label>
                   <input
                     style={{
                       ...styles.input(isMobile),
-                      background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                      color: theme.text,
-                      border: `1px solid ${theme.border}`,
+                      background: safeTheme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                      color: safeTheme.text,
+                      border: `1px solid ${safeTheme.border}`,
                     }}
                     placeholder="Enter your full name"
                     value={form.name}
@@ -305,13 +342,13 @@ function Signup() {
                     onKeyDown={handleKeyDown}
                   />
 
-                  <label style={{ ...styles.label, color: theme.textSecondary }}>Email Address</label>
+                  <label style={{ ...styles.label, color: safeTheme.textSecondary }}>Email Address</label>
                   <input
                     style={{
                       ...styles.input(isMobile),
-                      background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                      color: theme.text,
-                      border: `1px solid ${theme.border}`,
+                      background: safeTheme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                      color: safeTheme.text,
+                      border: `1px solid ${safeTheme.border}`,
                     }}
                     placeholder="Enter your email"
                     type="email"
@@ -320,15 +357,15 @@ function Signup() {
                     onKeyDown={handleKeyDown}
                   />
 
-                  <label style={{ ...styles.label, color: theme.textSecondary }}>Password</label>
+                  <label style={{ ...styles.label, color: safeTheme.textSecondary }}>Password</label>
                   <div style={styles.passwordWrap}>
                     <input
                       style={{
                         ...styles.input(isMobile),
                         ...styles.passwordInput,
-                        background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                        color: theme.text,
-                        border: `1px solid ${theme.border}`,
+                        background: safeTheme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                        color: safeTheme.text,
+                        border: `1px solid ${safeTheme.border}`,
                       }}
                       placeholder="Create a password"
                       type={showPassword ? 'text' : 'password'}
@@ -342,7 +379,7 @@ function Signup() {
                       onClick={() => setShowPassword((prev) => !prev)}
                       style={{
                         ...styles.eyeBtn,
-                        color: theme.primary,
+                        color: safeTheme.primary,
                       }}
                     >
                       {showPassword ? 'Hide' : 'Show'}
@@ -352,10 +389,49 @@ function Signup() {
                   <div
                     style={{
                       ...styles.passwordHint(isMobile),
-                      color: theme.muted,
+                      color: safeTheme.muted,
                     }}
                   >
                     Use at least 6 characters for better security.
+                  </div>
+
+                  <label style={{ ...styles.label, color: safeTheme.textSecondary }}>
+                    Referral Code <span style={{ color: safeTheme.muted, fontWeight: 800 }}>(Optional)</span>
+                  </label>
+
+                  <input
+                    style={{
+                      ...styles.input(isMobile),
+                      marginBottom: '8px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      background: safeTheme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                      color: safeTheme.text,
+                      border: `1px solid ${safeTheme.border}`,
+                    }}
+                    placeholder="Enter friend's referral code"
+                    value={form.referralCode}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        referralCode: e.target.value
+                          .replace(/\s/g, '')
+                          .toUpperCase()
+                          .slice(0, 20),
+                      })
+                    }
+                    onKeyDown={handleKeyDown}
+                  />
+
+                  <div
+                    style={{
+                      ...styles.referralHint(isMobile),
+                      color: safeTheme.muted,
+                      background: safeTheme.isDark ? 'rgba(139,92,246,0.08)' : '#f5f3ff',
+                      border: `1px solid ${safeTheme.border}`,
+                    }}
+                  >
+                    🎁 Have a friend’s code? Apply it here before OTP.
                   </div>
 
                   <motion.button
@@ -364,9 +440,9 @@ function Signup() {
                     transition={{ duration: 0.16, ease: 'easeOut' }}
                     style={{
                       ...styles.btn(isMobile),
-                      background: loading ? theme.muted : theme.primary,
-                      color: theme.buttonText,
-                      boxShadow: `0 0 20px ${theme.primary}45`,
+                      background: loading ? safeTheme.muted : safeTheme.primary,
+                      color: safeTheme.buttonText,
+                      boxShadow: `0 0 20px ${safeTheme.primary}45`,
                       cursor: loading ? 'not-allowed' : 'pointer',
                     }}
                     onClick={handleSubmit}
@@ -386,27 +462,40 @@ function Signup() {
                   <div
                     style={{
                       ...styles.otpInfoBox(isMobile),
-                      background: theme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
-                      border: `1px solid ${theme.border}`,
-                      color: theme.textSecondary,
+                      background: safeTheme.isDark ? 'rgba(124,58,237,0.10)' : '#f5f3ff',
+                      border: `1px solid ${safeTheme.border}`,
+                      color: safeTheme.textSecondary,
                     }}
                   >
-                    <div style={{ fontWeight: 950, color: theme.text, marginBottom: '5px' }}>
+                    <div style={{ fontWeight: 950, color: safeTheme.text, marginBottom: '5px' }}>
                       OTP sent to:
                     </div>
                     <div style={{ wordBreak: 'break-all', fontWeight: 850 }}>
                       {verifiedEmail}
                     </div>
+
+                    {form.referralCode.trim() && (
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          fontWeight: 850,
+                          color: safeTheme.primary,
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        🎁 Referral applied: {form.referralCode.trim().toUpperCase()}
+                      </div>
+                    )}
                   </div>
 
-                  <label style={{ ...styles.label, color: theme.textSecondary }}>Enter OTP</label>
+                  <label style={{ ...styles.label, color: safeTheme.textSecondary }}>Enter OTP</label>
                   <input
                     style={{
                       ...styles.input(isMobile),
                       ...styles.otpInput(isMobile),
-                      background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                      color: theme.text,
-                      border: `1px solid ${theme.border}`,
+                      background: safeTheme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                      color: safeTheme.text,
+                      border: `1px solid ${safeTheme.border}`,
                     }}
                     placeholder="6 digit OTP"
                     type="text"
@@ -423,9 +512,9 @@ function Signup() {
                     transition={{ duration: 0.16, ease: 'easeOut' }}
                     style={{
                       ...styles.btn(isMobile),
-                      background: verifyLoading ? theme.muted : theme.primary,
-                      color: theme.buttonText,
-                      boxShadow: `0 0 20px ${theme.primary}45`,
+                      background: verifyLoading ? safeTheme.muted : safeTheme.primary,
+                      color: safeTheme.buttonText,
+                      boxShadow: `0 0 20px ${safeTheme.primary}45`,
                       cursor: verifyLoading ? 'not-allowed' : 'pointer',
                     }}
                     onClick={handleVerifyOtp}
@@ -441,7 +530,7 @@ function Signup() {
                       disabled={loading || verifyLoading}
                       style={{
                         ...styles.linkBtn,
-                        color: theme.primary,
+                        color: safeTheme.primary,
                         opacity: loading || verifyLoading ? 0.6 : 1,
                         cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
                       }}
@@ -455,7 +544,7 @@ function Signup() {
                       disabled={loading || verifyLoading}
                       style={{
                         ...styles.linkBtn,
-                        color: theme.muted,
+                        color: safeTheme.muted,
                         opacity: loading || verifyLoading ? 0.6 : 1,
                         cursor: loading || verifyLoading ? 'not-allowed' : 'pointer',
                       }}
@@ -477,20 +566,20 @@ function Signup() {
                   transition={{ duration: 0.22, ease: 'easeOut' }}
                   style={{
                     ...styles.msg(isMobile),
-                    color: isSuccess ? theme.success : theme.danger,
+                    color: isSuccess ? safeTheme.success : safeTheme.danger,
                     background: isSuccess
-                      ? theme.isDark
+                      ? safeTheme.isDark
                         ? 'rgba(34, 197, 94, 0.12)'
                         : '#d1fae5'
-                      : theme.isDark
+                      : safeTheme.isDark
                       ? 'rgba(239, 68, 68, 0.12)'
                       : '#fee2e2',
                     border: `1px solid ${
                       isSuccess
-                        ? theme.isDark
+                        ? safeTheme.isDark
                           ? 'rgba(34, 197, 94, 0.24)'
                           : '#a7f3d0'
-                        : theme.isDark
+                        : safeTheme.isDark
                         ? 'rgba(239, 68, 68, 0.24)'
                         : '#fecaca'
                     }`,
@@ -504,9 +593,9 @@ function Signup() {
             <div
               style={{
                 ...styles.securityStrip(isMobile),
-                background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                border: `1px solid ${theme.border}`,
-                color: theme.muted,
+                background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                border: `1px solid ${safeTheme.border}`,
+                color: safeTheme.muted,
               }}
             >
               <span>🛡️</span>
@@ -517,12 +606,12 @@ function Signup() {
               </span>
             </div>
 
-            <p style={{ textAlign: 'center', marginTop: '18px', marginBottom: 0, color: theme.muted }}>
+            <p style={{ textAlign: 'center', marginTop: '18px', marginBottom: 0, color: safeTheme.muted }}>
               Already have an account?{' '}
               <Link
                 to="/login"
                 style={{
-                  color: theme.primary,
+                  color: safeTheme.primary,
                   fontWeight: '900',
                   textDecoration: 'none',
                 }}
@@ -754,6 +843,15 @@ const styles = {
     fontWeight: '700',
     marginBottom: '16px',
     lineHeight: 1.45,
+  }),
+
+  referralHint: (isMobile) => ({
+    fontSize: isMobile ? '11.5px' : '12px',
+    fontWeight: '800',
+    marginBottom: '16px',
+    lineHeight: 1.45,
+    padding: '10px 12px',
+    borderRadius: '12px',
   }),
 
   btn: (isMobile) => ({

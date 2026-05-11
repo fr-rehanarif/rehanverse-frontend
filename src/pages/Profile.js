@@ -12,23 +12,37 @@ function Profile() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
+  const safeTheme = {
+    bg: theme?.bg || '#050816',
+    text: theme?.text || '#ffffff',
+    textSecondary: theme?.textSecondary || '#cbd5e1',
+    muted: theme?.muted || '#94a3b8',
+    card: theme?.card || 'rgba(15,23,42,0.82)',
+    border: theme?.border || 'rgba(148,163,184,0.22)',
+    shadow: theme?.shadow || '0 18px 50px rgba(0,0,0,0.35)',
+    shadowHover: theme?.shadowHover || '0 22px 70px rgba(0,0,0,0.45)',
+    glass: theme?.glass || 'blur(18px)',
+    radius: theme?.radius || '26px',
+    primary: theme?.primary || '#8b5cf6',
+    accent: theme?.accent || '#3b82f6',
+    buttonText: theme?.buttonText || '#ffffff',
+    success: theme?.success || '#22c55e',
+    danger: theme?.danger || '#ef4444',
+    isDark: theme?.isDark !== false,
+  };
+
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [msg, setMsg] = useState('');
   const [uploading, setUploading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
     phone: '',
     bio: '',
     photo: '',
-  });
-
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
   });
 
   useEffect(() => {
@@ -59,6 +73,7 @@ function Profile() {
       });
 
       setProfile(res.data);
+
       setForm({
         name: res.data.name || '',
         phone: res.data.phone || '',
@@ -110,65 +125,97 @@ function Profile() {
 
       setMsg('✅ Profile updated!');
 
-      const currentUser = JSON.parse(localStorage.getItem('user'));
-      localStorage.setItem('user', JSON.stringify({ ...currentUser, ...res.data.user }));
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          ...currentUser,
+          ...(res.data.user || {}),
+          name: form.name,
+          photo: form.photo,
+        })
+      );
 
       fetchProfile();
       setTimeout(() => setMsg(''), 3000);
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.message || 'Error!'));
+      setMsg('❌ ' + (err.response?.data?.message || 'Profile update failed!'));
     }
   };
 
-  const handlePasswordChange = async () => {
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      setMsg('❌ Please fill all password fields.');
-      return;
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setMsg('❌ New passwords match nahi karte!');
-      return;
-    }
-
-    if (passwordForm.newPassword.length < 6) {
-      setMsg('❌ Password kam se kam 6 characters ka hona chahiye!');
-      return;
-    }
-
+  const copyReferralCode = async () => {
     try {
-      await axios.put(
-        `${API}/api/users/me`,
-        {
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      if (!profile?.referralCode) {
+        setMsg('❌ Referral code not found. Refresh profile once.');
+        return;
+      }
 
-      setMsg('✅ Password changed!');
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      setTimeout(() => setMsg(''), 3000);
+      setCopying(true);
+
+      await navigator.clipboard.writeText(profile.referralCode);
+
+      setMsg('✅ Referral code copied!');
+      setTimeout(() => setMsg(''), 2500);
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.message || 'Error!'));
+      setMsg('❌ Copy failed. Manually copy the code.');
+    } finally {
+      setCopying(false);
     }
+  };
+
+  const copyInviteMessage = async () => {
+    try {
+      const code = profile?.referralCode || '';
+      const message = `Join REHANVERSE and start learning with me 🚀\nUse my referral code: ${code}`;
+
+      await navigator.clipboard.writeText(message);
+
+      setMsg('✅ Invite message copied!');
+      setTimeout(() => setMsg(''), 2500);
+    } catch (err) {
+      setMsg('❌ Invite copy failed.');
+    }
+  };
+
+  const openCertificateVerify = (certificateId) => {
+    if (!certificateId) return;
+    window.open(`${API}/api/certificates/verify/${certificateId}`, '_blank');
   };
 
   const getJoinedDate = () => {
-    if (!profile?.createdAt) return 'New';
-    return new Date(profile.createdAt).toLocaleDateString('en-IN', {
+    if (!profile?.createdAt && !profile?.accountCreatedAt) return 'New';
+
+    return new Date(profile.createdAt || profile.accountCreatedAt).toLocaleDateString('en-IN', {
+      day: '2-digit',
       month: 'short',
       year: 'numeric',
     });
   };
 
-  const enrolledCount = profile?.enrolledCourses?.length || 0;
+  const formatDate = (date) => {
+    if (!date) return 'Not available';
+
+    return new Date(date).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const enrolledCount =
+    profile?.stats?.totalEnrolledCourses || profile?.enrolledCourses?.length || 0;
+
+  const completedCount =
+    profile?.stats?.totalCompletedCourses || profile?.completedCourses?.length || 0;
+
+  const certificateCount =
+    profile?.stats?.totalCertificates || profile?.certificates?.length || 0;
+
+  const referralCount =
+    profile?.stats?.totalReferrals || profile?.referralCount || 0;
+
+  const rewardCoupons = profile?.rewardCoupons || [];
+  const referralRewards = profile?.referralRewards || [];
 
   const inputStyle = {
     width: '100%',
@@ -177,15 +224,15 @@ function Profile() {
     borderRadius: '14px',
     fontSize: '16px',
     outline: 'none',
-    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-    color: theme.text,
-    border: `1px solid ${theme.border}`,
+    background: safeTheme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+    color: safeTheme.text,
+    border: `1px solid ${safeTheme.border}`,
     boxSizing: 'border-box',
     fontWeight: '700',
   };
 
   const labelStyle = {
-    color: theme.textSecondary,
+    color: safeTheme.textSecondary,
     fontSize: '13px',
     fontWeight: '900',
     display: 'block',
@@ -193,19 +240,19 @@ function Profile() {
   };
 
   const tabButton = (tabName) => ({
-    padding: isMobile ? '11px 12px' : '11px 18px',
+    padding: isMobile ? '11px 12px' : '11px 16px',
     borderRadius: '15px',
-    border: `1px solid ${activeTab === tabName ? theme.primary : theme.border}`,
+    border: `1px solid ${activeTab === tabName ? safeTheme.primary : safeTheme.border}`,
     cursor: 'pointer',
     fontWeight: '900',
     background:
       activeTab === tabName
-        ? theme.primary
-        : theme.isDark
+        ? safeTheme.primary
+        : safeTheme.isDark
         ? 'rgba(255,255,255,0.035)'
         : 'rgba(255,255,255,0.72)',
-    color: activeTab === tabName ? theme.buttonText : theme.text,
-    boxShadow: activeTab === tabName ? `0 0 18px ${theme.primary}35` : 'none',
+    color: activeTab === tabName ? safeTheme.buttonText : safeTheme.text,
+    boxShadow: activeTab === tabName ? `0 0 18px ${safeTheme.primary}35` : 'none',
     flex: isMobile ? '1 1 100%' : '0 0 auto',
     width: isMobile ? '100%' : 'auto',
   });
@@ -214,15 +261,15 @@ function Profile() {
     return (
       <div
         style={{
-          background: theme.bg,
+          background: safeTheme.bg,
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: theme.text,
+          color: safeTheme.text,
         }}
       >
-        <p style={{ color: theme.muted, fontWeight: 900 }}>⏳ Loading profile...</p>
+        <p style={{ color: safeTheme.muted, fontWeight: 900 }}>⏳ Loading profile...</p>
       </div>
     );
   }
@@ -230,9 +277,9 @@ function Profile() {
   return (
     <div
       style={{
-        background: theme.bg,
+        background: safeTheme.bg,
         minHeight: '100vh',
-        color: theme.text,
+        color: safeTheme.text,
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -248,12 +295,12 @@ function Profile() {
           transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{
             ...styles.heroCard(isMobile),
-            background: theme.card,
-            border: `1px solid ${theme.border}`,
-            boxShadow: theme.shadow,
-            backdropFilter: theme.glass,
-            WebkitBackdropFilter: theme.glass,
-            borderRadius: theme.radius,
+            background: safeTheme.card,
+            border: `1px solid ${safeTheme.border}`,
+            boxShadow: safeTheme.shadow,
+            backdropFilter: safeTheme.glass,
+            WebkitBackdropFilter: safeTheme.glass,
+            borderRadius: safeTheme.radius,
           }}
         >
           <div style={styles.profileTop(isMobile)}>
@@ -264,17 +311,17 @@ function Profile() {
                   alt="profile"
                   style={{
                     ...styles.avatar(isMobile),
-                    border: `3px solid ${theme.primary}`,
-                    boxShadow: `0 0 26px ${theme.primary}45`,
+                    border: `3px solid ${safeTheme.primary}`,
+                    boxShadow: `0 0 26px ${safeTheme.primary}45`,
                   }}
                 />
               ) : (
                 <div
                   style={{
                     ...styles.avatarFallback(isMobile),
-                    background: theme.primary,
-                    color: theme.buttonText,
-                    boxShadow: `0 0 26px ${theme.primary}45`,
+                    background: safeTheme.primary,
+                    color: safeTheme.buttonText,
+                    boxShadow: `0 0 26px ${safeTheme.primary}45`,
                   }}
                 >
                   {profile.name?.charAt(0).toUpperCase() || 'U'}
@@ -285,13 +332,13 @@ function Profile() {
             </div>
 
             <div style={styles.profileInfo(isMobile)}>
-              <p style={{ ...styles.kicker, color: theme.primary }}>👤 USER PROFILE</p>
+              <p style={{ ...styles.kicker, color: safeTheme.primary }}>👤 STUDENT PROFILE</p>
 
-              <h1 style={{ ...styles.name(isMobile), color: theme.text }}>
+              <h1 style={{ ...styles.name(isMobile), color: safeTheme.text }}>
                 {profile.name || 'User'}
               </h1>
 
-              <p style={{ ...styles.email(isMobile), color: theme.muted }}>
+              <p style={{ ...styles.email(isMobile), color: safeTheme.muted }}>
                 {profile.email}
               </p>
 
@@ -299,9 +346,9 @@ function Profile() {
                 <span
                   style={{
                     ...styles.smallBadge,
-                    background: theme.isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7',
-                    color: theme.isDark ? '#86efac' : '#166534',
-                    border: theme.isDark
+                    background: safeTheme.isDark ? 'rgba(34,197,94,0.12)' : '#dcfce7',
+                    color: safeTheme.isDark ? '#86efac' : '#166534',
+                    border: safeTheme.isDark
                       ? '1px solid rgba(34,197,94,0.25)'
                       : '1px solid #bbf7d0',
                   }}
@@ -313,14 +360,27 @@ function Profile() {
                   <span
                     style={{
                       ...styles.smallBadge,
-                      background: theme.isDark ? 'rgba(139,92,246,0.12)' : 'rgba(237,233,254,0.85)',
-                      color: theme.primary,
-                      border: `1px solid ${theme.border}`,
+                      background: safeTheme.isDark ? 'rgba(139,92,246,0.12)' : 'rgba(237,233,254,0.85)',
+                      color: safeTheme.primary,
+                      border: `1px solid ${safeTheme.border}`,
                     }}
                   >
                     {profile.role === 'admin' ? '⚙️ Admin' : '🎓 Student'}
                   </span>
                 )}
+
+                <span
+                  style={{
+                    ...styles.smallBadge,
+                    background: safeTheme.isDark ? 'rgba(59,130,246,0.12)' : '#dbeafe',
+                    color: safeTheme.isDark ? '#93c5fd' : '#1d4ed8',
+                    border: safeTheme.isDark
+                      ? '1px solid rgba(59,130,246,0.25)'
+                      : '1px solid #bfdbfe',
+                  }}
+                >
+                  📅 Joined {getJoinedDate()}
+                </span>
               </div>
             </div>
           </div>
@@ -329,9 +389,9 @@ function Profile() {
             <p
               style={{
                 ...styles.bioText(isMobile),
-                color: theme.textSecondary,
-                background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                border: `1px solid ${theme.border}`,
+                color: safeTheme.textSecondary,
+                background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                border: `1px solid ${safeTheme.border}`,
               }}
             >
               “{profile.bio}”
@@ -340,22 +400,24 @@ function Profile() {
 
           <div style={styles.statsGrid(isMobile)}>
             {[
-              { icon: '📚', label: 'Courses', value: enrolledCount },
-              { icon: '📅', label: 'Joined', value: getJoinedDate() },
+              { icon: '📚', label: 'Enrolled', value: enrolledCount },
+              { icon: '✅', label: 'Completed', value: completedCount },
+              { icon: '🎓', label: 'Certificates', value: certificateCount },
+              { icon: '🎁', label: 'Referrals', value: referralCount },
               { icon: '📱', label: 'Phone', value: profile.phone || 'Not added' },
             ].map((item) => (
               <div
                 key={item.label}
                 style={{
                   ...styles.statCard(isMobile),
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                  border: `1px solid ${theme.border}`,
+                  background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  border: `1px solid ${safeTheme.border}`,
                 }}
               >
                 <span style={styles.statIcon(isMobile)}>{item.icon}</span>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ ...styles.statLabel, color: theme.muted }}>{item.label}</p>
-                  <h3 style={{ ...styles.statValue(isMobile), color: theme.text }}>{item.value}</h3>
+                  <p style={{ ...styles.statLabel, color: safeTheme.muted }}>{item.label}</p>
+                  <h3 style={{ ...styles.statValue(isMobile), color: safeTheme.text }}>{item.value}</h3>
                 </div>
               </div>
             ))}
@@ -363,35 +425,23 @@ function Profile() {
         </motion.div>
 
         <div style={styles.tabs(isMobile)}>
-          <motion.button
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ duration: 0.16 }}
-            onClick={() => setActiveTab('profile')}
-            style={tabButton('profile')}
-          >
-            ✏️ Edit Profile
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ duration: 0.16 }}
-            onClick={() => setActiveTab('password')}
-            style={tabButton('password')}
-          >
-            🔐 Password
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ duration: 0.16 }}
-            onClick={() => setActiveTab('courses')}
-            style={tabButton('courses')}
-          >
-            📚 My Courses
-          </motion.button>
+          {[
+            ['profile', '✏️ Edit Profile'],
+            ['courses', '📚 My Courses'],
+            ['certificates', '🎓 Certificates'],
+            ['referrals', '🎁 Referrals'],
+          ].map(([key, label]) => (
+            <motion.button
+              key={key}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ duration: 0.16 }}
+              onClick={() => setActiveTab(key)}
+              style={tabButton(key)}
+            >
+              {label}
+            </motion.button>
+          ))}
         </div>
 
         {msg && (
@@ -401,37 +451,37 @@ function Profile() {
             style={{
               ...styles.msgBox(isMobile),
               background: msg.includes('✅')
-                ? theme.isDark
+                ? safeTheme.isDark
                   ? 'rgba(34, 197, 94, 0.15)'
                   : '#d1fae5'
                 : msg.includes('⏳')
-                ? theme.isDark
+                ? safeTheme.isDark
                   ? 'rgba(59, 130, 246, 0.15)'
                   : '#eff6ff'
-                : theme.isDark
+                : safeTheme.isDark
                 ? 'rgba(239, 68, 68, 0.15)'
                 : '#fee2e2',
               color: msg.includes('✅')
-                ? theme.isDark
+                ? safeTheme.isDark
                   ? '#86efac'
                   : '#065f46'
                 : msg.includes('⏳')
-                ? theme.isDark
+                ? safeTheme.isDark
                   ? '#93c5fd'
                   : '#1d4ed8'
-                : theme.isDark
+                : safeTheme.isDark
                 ? '#fca5a5'
                 : '#991b1b',
               border: `1px solid ${
                 msg.includes('✅')
-                  ? theme.isDark
+                  ? safeTheme.isDark
                     ? 'rgba(34, 197, 94, 0.25)'
                     : '#a7f3d0'
                   : msg.includes('⏳')
-                  ? theme.isDark
+                  ? safeTheme.isDark
                     ? 'rgba(59, 130, 246, 0.25)'
                     : '#bfdbfe'
-                  : theme.isDark
+                  : safeTheme.isDark
                   ? 'rgba(239, 68, 68, 0.25)'
                   : '#fecaca'
               }`,
@@ -448,17 +498,17 @@ function Profile() {
             transition={{ duration: 0.28, ease: 'easeOut' }}
             style={{
               ...styles.panel(isMobile),
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              boxShadow: theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
+              background: safeTheme.card,
+              border: `1px solid ${safeTheme.border}`,
+              boxShadow: safeTheme.shadow,
+              backdropFilter: safeTheme.glass,
+              WebkitBackdropFilter: safeTheme.glass,
             }}
           >
             <div style={styles.panelHead(isMobile)}>
               <div>
-                <h3 style={{ color: theme.text, margin: 0 }}>✏️ Edit Profile</h3>
-                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: isMobile ? '13px' : '14px' }}>
+                <h3 style={{ color: safeTheme.text, margin: 0 }}>✏️ Edit Profile</h3>
+                <p style={{ color: safeTheme.muted, margin: '6px 0 0', fontSize: isMobile ? '13px' : '14px' }}>
                   Apni profile details update karo.
                 </p>
               </div>
@@ -475,7 +525,7 @@ function Profile() {
             <label style={labelStyle}>Phone Number</label>
             <input
               style={inputStyle}
-              placeholder="Phone Number (e.g. +91 9876543210)"
+              placeholder="Phone Number"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
@@ -496,15 +546,15 @@ function Profile() {
                   alt="preview"
                   style={{
                     ...styles.previewAvatar(isMobile),
-                    border: `2px solid ${theme.primary}`,
+                    border: `2px solid ${safeTheme.primary}`,
                   }}
                 />
               ) : (
                 <div
                   style={{
                     ...styles.previewFallback(isMobile),
-                    background: theme.primary,
-                    color: theme.buttonText,
+                    background: safeTheme.primary,
+                    color: safeTheme.buttonText,
                   }}
                 >
                   {profile.name?.charAt(0).toUpperCase() || 'U'}
@@ -515,9 +565,9 @@ function Profile() {
                 <div
                   style={{
                     ...styles.uploadBox(isMobile),
-                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
-                    border: `2px dashed ${theme.border}`,
-                    color: theme.muted,
+                    background: safeTheme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                    border: `2px dashed ${safeTheme.border}`,
+                    color: safeTheme.muted,
                   }}
                 >
                   {uploading ? '⏳ Uploading...' : '📷 Device se photo choose karo'}
@@ -541,98 +591,14 @@ function Profile() {
               disabled={uploading}
               style={{
                 ...styles.primaryBtn(isMobile),
-                background: uploading ? theme.muted : theme.primary,
-                color: theme.buttonText,
-                boxShadow: `0 0 20px ${theme.primary}35`,
+                background: uploading ? safeTheme.muted : safeTheme.primary,
+                color: safeTheme.buttonText,
+                boxShadow: `0 0 20px ${safeTheme.primary}35`,
                 cursor: uploading ? 'not-allowed' : 'pointer',
                 opacity: uploading ? 0.75 : 1,
               }}
             >
               💾 Save Changes
-            </motion.button>
-          </motion.div>
-        )}
-
-        {activeTab === 'password' && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
-            style={{
-              ...styles.panel(isMobile),
-              background: theme.card,
-              border: `1px solid ${theme.border}`,
-              boxShadow: theme.shadow,
-              backdropFilter: theme.glass,
-              WebkitBackdropFilter: theme.glass,
-            }}
-          >
-            <div style={styles.panelHead(isMobile)}>
-              <div>
-                <h3 style={{ color: theme.text, margin: 0 }}>🔐 Change Password</h3>
-                <p style={{ color: theme.muted, margin: '6px 0 0', fontSize: isMobile ? '13px' : '14px' }}>
-                  Strong password rakho, account safe rahega.
-                </p>
-              </div>
-            </div>
-
-            <label style={labelStyle}>Current Password</label>
-            <input
-              style={inputStyle}
-              type="password"
-              placeholder="Current Password"
-              value={passwordForm.currentPassword}
-              onChange={(e) =>
-                setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-              }
-            />
-
-            <label style={labelStyle}>New Password</label>
-            <input
-              style={inputStyle}
-              type="password"
-              placeholder="New Password"
-              value={passwordForm.newPassword}
-              onChange={(e) =>
-                setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-              }
-            />
-
-            <label style={labelStyle}>Confirm New Password</label>
-            <input
-              style={inputStyle}
-              type="password"
-              placeholder="Confirm New Password"
-              value={passwordForm.confirmPassword}
-              onChange={(e) =>
-                setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-              }
-            />
-
-            <div
-              style={{
-                ...styles.securityNote(isMobile),
-                background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-                border: `1px solid ${theme.border}`,
-                color: theme.muted,
-              }}
-            >
-              🛡️ Password minimum 6 characters ka hona chahiye.
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.018, y: -1 }}
-              whileTap={{ scale: 0.985 }}
-              transition={{ duration: 0.16 }}
-              onClick={handlePasswordChange}
-              style={{
-                ...styles.primaryBtn(isMobile),
-                background: theme.success,
-                color: theme.buttonText,
-                boxShadow: '0 0 20px rgba(34,197,94,0.30)',
-              }}
-            >
-              🔐 Change Password
             </motion.button>
           </motion.div>
         )}
@@ -644,91 +610,192 @@ function Profile() {
             transition={{ duration: 0.28, ease: 'easeOut' }}
           >
             {profile.enrolledCourses?.length === 0 ? (
-              <div
-                style={{
-                  ...styles.emptyBox(isMobile),
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  boxShadow: theme.shadow,
-                  color: theme.muted,
-                }}
-              >
-                <p style={{ fontSize: isMobile ? '42px' : '54px', margin: '0 0 12px' }}>📭</p>
-                <h3 style={{ color: theme.text, margin: '0 0 8px', fontSize: isMobile ? '21px' : '24px' }}>
-                  Koi course enroll nahi!
-                </h3>
-                <p style={{ margin: '0 0 22px', lineHeight: 1.7, fontSize: isMobile ? '13px' : '14px' }}>
-                  Start with free courses or preview premium courses.
-                </p>
-
-                <motion.button
-                  whileHover={{ scale: 1.018, y: -1 }}
-                  whileTap={{ scale: 0.985 }}
-                  transition={{ duration: 0.16 }}
-                  onClick={() => navigate('/courses')}
-                  style={{
-                    ...styles.secondaryActionBtn(isMobile),
-                    background: theme.primary,
-                    color: theme.buttonText,
-                    border: 'none',
-                  }}
-                >
-                  Browse Courses 🚀
-                </motion.button>
-              </div>
+              <EmptyBox
+                isMobile={isMobile}
+                safeTheme={safeTheme}
+                icon="📭"
+                title="Koi course enroll nahi!"
+                text="Start with free courses or preview premium courses."
+                buttonText="Browse Courses 🚀"
+                onClick={() => navigate('/courses')}
+              />
             ) : (
               <div style={styles.courseGrid(isMobile)}>
-                {profile.enrolledCourses?.map((course) => (
+                {profile.enrolledCourses?.map((course) => {
+                  const isCompleted = profile.completedCourses?.some(
+                    (c) => String(c._id || c) === String(course._id)
+                  );
+
+                  return (
+                    <motion.div
+                      key={course._id}
+                      whileHover={{ y: -4 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      style={{
+                        ...styles.courseCard(isMobile),
+                        background: safeTheme.card,
+                        border: `1px solid ${safeTheme.border}`,
+                        boxShadow: safeTheme.shadow,
+                        backdropFilter: safeTheme.glass,
+                        WebkitBackdropFilter: safeTheme.glass,
+                      }}
+                    >
+                      {course.thumbnail ? (
+                        <img
+                          src={course.thumbnail}
+                          alt={course.title}
+                          style={styles.courseThumb(isMobile)}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            ...styles.emptyThumb(isMobile),
+                            background: `linear-gradient(135deg, ${safeTheme.primary}, ${safeTheme.accent})`,
+                          }}
+                        >
+                          🎓
+                        </div>
+                      )}
+
+                      <div style={styles.courseBody(isMobile)}>
+                        <div style={styles.badgeLine}>
+                          <div style={styles.enrolledBadge}>✅ Enrolled</div>
+                          {isCompleted && <div style={styles.completedBadge}>🎓 Completed</div>}
+                        </div>
+
+                        <h4 style={{ ...styles.courseTitleText(isMobile), color: safeTheme.text }}>
+                          {course.title}
+                        </h4>
+
+                        <p style={{ ...styles.courseMeta, color: safeTheme.muted }}>
+                          {course.category || 'General'} {course.level ? `• ${course.level}` : ''}
+                        </p>
+
+                        <motion.button
+                          whileHover={{ scale: 1.018, y: -1 }}
+                          whileTap={{ scale: 0.985 }}
+                          transition={{ duration: 0.16 }}
+                          onClick={() => navigate(`/course/${course._id}`)}
+                          style={{
+                            ...styles.continueBtn(isMobile),
+                            background: safeTheme.primary,
+                            color: safeTheme.buttonText,
+                            boxShadow: `0 0 18px ${safeTheme.primary}35`,
+                          }}
+                        >
+                          ▶️ Continue Learning
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {activeTab === 'certificates' && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+          >
+            {profile.certificates?.length === 0 ? (
+              <EmptyBox
+                isMobile={isMobile}
+                safeTheme={safeTheme}
+                icon="🎓"
+                title="Abhi koi certificate nahi"
+                text="Course complete karoge to certificate yahin show hoga."
+                buttonText="Go to My Courses 📚"
+                onClick={() => setActiveTab('courses')}
+              />
+            ) : (
+              <div style={styles.certificateGrid(isMobile)}>
+                {profile.certificates?.map((cert) => (
                   <motion.div
-                    key={course._id}
+                    key={cert.certificateId}
                     whileHover={{ y: -4 }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
                     style={{
-                      ...styles.courseCard(isMobile),
-                      background: theme.card,
-                      border: `1px solid ${theme.border}`,
-                      boxShadow: theme.shadow,
-                      backdropFilter: theme.glass,
-                      WebkitBackdropFilter: theme.glass,
+                      ...styles.certificateCard(isMobile),
+                      background: `linear-gradient(135deg, ${
+                        safeTheme.isDark ? 'rgba(15,23,42,0.94)' : 'rgba(255,255,255,0.96)'
+                      }, ${safeTheme.isDark ? 'rgba(88,28,135,0.38)' : 'rgba(245,243,255,0.95)'})`,
+                      border: `1px solid ${safeTheme.border}`,
+                      boxShadow: safeTheme.shadow,
                     }}
                   >
-                    {course.thumbnail ? (
-                      <img
-                        src={course.thumbnail}
-                        alt={course.title}
-                        style={styles.courseThumb(isMobile)}
-                      />
-                    ) : (
-                      <div
+                    <div style={styles.certificateTop}>
+                      <div>
+                        <p style={{ ...styles.kicker, color: safeTheme.primary }}>REHANVERSE CERTIFICATE</p>
+                        <h3 style={{ ...styles.certTitle(isMobile), color: safeTheme.text }}>
+                          {cert.courseTitle || cert.course?.title || 'Course Certificate'}
+                        </h3>
+                      </div>
+                      <div style={styles.certSeal}>🎓</div>
+                    </div>
+
+                    <div
+                      style={{
+                        ...styles.certInfoBox,
+                        background: safeTheme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.78)',
+                        border: `1px solid ${safeTheme.border}`,
+                      }}
+                    >
+                      <p style={{ color: safeTheme.muted, margin: '0 0 6px', fontWeight: 850 }}>
+                        Awarded to
+                      </p>
+                      <h4 style={{ color: safeTheme.text, margin: 0, fontSize: isMobile ? '19px' : '22px' }}>
+                        {profile.name}
+                      </h4>
+                    </div>
+
+                    <div style={styles.certDetails}>
+                      <div>
+                        <span style={{ color: safeTheme.muted }}>Certificate ID</span>
+                        <strong style={{ color: safeTheme.text }}>{cert.certificateId}</strong>
+                      </div>
+
+                      <div>
+                        <span style={{ color: safeTheme.muted }}>Issued On</span>
+                        <strong style={{ color: safeTheme.text }}>{formatDate(cert.issuedAt)}</strong>
+                      </div>
+                    </div>
+
+                    <div style={styles.certActions(isMobile)}>
+                      <motion.button
+                        whileHover={{ scale: 1.018, y: -1 }}
+                        whileTap={{ scale: 0.985 }}
+                        onClick={() => openCertificateVerify(cert.certificateId)}
                         style={{
-                          ...styles.emptyThumb(isMobile),
-                          background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
+                          ...styles.smallActionBtn(isMobile),
+                          background: safeTheme.primary,
+                          color: safeTheme.buttonText,
+                          border: 'none',
                         }}
                       >
-                        🎓
-                      </div>
-                    )}
-
-                    <div style={styles.courseBody(isMobile)}>
-                      <div style={styles.enrolledBadge}>✅ Enrolled</div>
-
-                      <h4 style={{ ...styles.courseTitleText(isMobile), color: theme.text }}>
-                        {course.title}
-                      </h4>
+                        Verify Certificate 🔍
+                      </motion.button>
 
                       <motion.button
                         whileHover={{ scale: 1.018, y: -1 }}
                         whileTap={{ scale: 0.985 }}
-                        transition={{ duration: 0.16 }}
-                        onClick={() => navigate(`/course/${course._id}`)}
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `${API}/api/certificates/verify/${cert.certificateId}`
+                          );
+                          setMsg('✅ Certificate verify link copied!');
+                          setTimeout(() => setMsg(''), 2500);
+                        }}
                         style={{
-                          ...styles.continueBtn(isMobile),
-                          background: theme.primary,
-                          color: theme.buttonText,
-                          boxShadow: `0 0 18px ${theme.primary}35`,
+                          ...styles.smallActionBtn(isMobile),
+                          background: 'transparent',
+                          color: safeTheme.primary,
+                          border: `1px solid ${safeTheme.border}`,
                         }}
                       >
-                        ▶️ Continue Learning
+                        Copy Link 🔗
                       </motion.button>
                     </div>
                   </motion.div>
@@ -737,7 +804,189 @@ function Profile() {
             )}
           </motion.div>
         )}
+
+        {activeTab === 'referrals' && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            style={{
+              ...styles.panel(isMobile),
+              background: safeTheme.card,
+              border: `1px solid ${safeTheme.border}`,
+              boxShadow: safeTheme.shadow,
+              backdropFilter: safeTheme.glass,
+              WebkitBackdropFilter: safeTheme.glass,
+            }}
+          >
+            <div style={styles.panelHead(isMobile)}>
+              <div>
+                <h3 style={{ color: safeTheme.text, margin: 0 }}>🎁 Referral & Invite</h3>
+                <p style={{ color: safeTheme.muted, margin: '6px 0 0', fontSize: isMobile ? '13px' : '14px' }}>
+                  Apna code share karo. Friend signup karega to referral reward milega.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                ...styles.referralBox(isMobile),
+                background: safeTheme.isDark ? 'rgba(139,92,246,0.10)' : '#f5f3ff',
+                border: `1px solid ${safeTheme.border}`,
+              }}
+            >
+              <p style={{ color: safeTheme.muted, margin: '0 0 8px', fontWeight: 900 }}>
+                Your Referral Code
+              </p>
+
+              <div style={styles.referralCodeRow(isMobile)}>
+                <h2 style={{ ...styles.referralCode(isMobile), color: safeTheme.primary }}>
+                  {profile.referralCode || 'Loading...'}
+                </h2>
+
+                <motion.button
+                  whileHover={{ scale: 1.018, y: -1 }}
+                  whileTap={{ scale: 0.985 }}
+                  onClick={copyReferralCode}
+                  disabled={copying}
+                  style={{
+                    ...styles.copyBtn(isMobile),
+                    background: safeTheme.primary,
+                    color: safeTheme.buttonText,
+                    opacity: copying ? 0.7 : 1,
+                  }}
+                >
+                  {copying ? 'Copying...' : 'Copy Code'}
+                </motion.button>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.018, y: -1 }}
+                whileTap={{ scale: 0.985 }}
+                onClick={copyInviteMessage}
+                style={{
+                  ...styles.primaryBtn(isMobile),
+                  marginTop: '14px',
+                  background: safeTheme.success,
+                  color: safeTheme.buttonText,
+                  boxShadow: '0 0 20px rgba(34,197,94,0.30)',
+                }}
+              >
+                Copy Invite Message 🚀
+              </motion.button>
+            </div>
+
+            <div style={styles.referralStatsGrid(isMobile)}>
+              {[
+                { icon: '👥', label: 'Successful Referrals', value: referralCount },
+                { icon: '🎟️', label: 'Reward Coupons', value: rewardCoupons.length },
+                { icon: '🏆', label: 'Reward Entries', value: referralRewards.length },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    ...styles.statCard(isMobile),
+                    background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                    border: `1px solid ${safeTheme.border}`,
+                  }}
+                >
+                  <span style={styles.statIcon(isMobile)}>{item.icon}</span>
+                  <div>
+                    <p style={{ ...styles.statLabel, color: safeTheme.muted }}>{item.label}</p>
+                    <h3 style={{ ...styles.statValue(isMobile), color: safeTheme.text }}>{item.value}</h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h4 style={{ color: safeTheme.text, margin: '22px 0 12px' }}>🎟️ Reward Coupons</h4>
+
+            {rewardCoupons.length === 0 ? (
+              <div
+                style={{
+                  ...styles.miniEmpty,
+                  color: safeTheme.muted,
+                  background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  border: `1px solid ${safeTheme.border}`,
+                }}
+              >
+                No referral reward coupons yet.
+              </div>
+            ) : (
+              <div style={styles.rewardList}>
+                {rewardCoupons.map((coupon) => (
+                  <div
+                    key={coupon._id || coupon.code}
+                    style={{
+                      ...styles.rewardItem(isMobile),
+                      background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                      border: `1px solid ${safeTheme.border}`,
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ color: safeTheme.primary, margin: '0 0 6px' }}>
+                        {coupon.code}
+                      </h4>
+                      <p style={{ color: safeTheme.muted, margin: 0, fontSize: '13px', fontWeight: 800 }}>
+                        {coupon.discountValue}% off • Used {coupon.usedCount || 0}/{coupon.usageLimit || 1}
+                      </p>
+                    </div>
+
+                    <span
+                      style={{
+                        ...styles.statusPill,
+                        background: coupon.isActive
+                          ? 'rgba(34,197,94,0.14)'
+                          : 'rgba(239,68,68,0.14)',
+                        color: coupon.isActive ? '#86efac' : '#fca5a5',
+                      }}
+                    >
+                      {coupon.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
       </main>
+    </div>
+  );
+}
+
+function EmptyBox({ isMobile, safeTheme, icon, title, text, buttonText, onClick }) {
+  return (
+    <div
+      style={{
+        ...styles.emptyBox(isMobile),
+        background: safeTheme.card,
+        border: `1px solid ${safeTheme.border}`,
+        boxShadow: safeTheme.shadow,
+        color: safeTheme.muted,
+      }}
+    >
+      <p style={{ fontSize: isMobile ? '42px' : '54px', margin: '0 0 12px' }}>{icon}</p>
+      <h3 style={{ color: safeTheme.text, margin: '0 0 8px', fontSize: isMobile ? '21px' : '24px' }}>
+        {title}
+      </h3>
+      <p style={{ margin: '0 0 22px', lineHeight: 1.7, fontSize: isMobile ? '13px' : '14px' }}>
+        {text}
+      </p>
+
+      <motion.button
+        whileHover={{ scale: 1.018, y: -1 }}
+        whileTap={{ scale: 0.985 }}
+        transition={{ duration: 0.16 }}
+        onClick={onClick}
+        style={{
+          ...styles.secondaryActionBtn(isMobile),
+          background: safeTheme.primary,
+          color: safeTheme.buttonText,
+          border: 'none',
+        }}
+      >
+        {buttonText}
+      </motion.button>
     </div>
   );
 }
@@ -781,7 +1030,7 @@ const styles = {
   },
 
   page: (isMobile) => ({
-    maxWidth: '920px',
+    maxWidth: '980px',
     margin: '0 auto',
     padding: isMobile ? '24px 14px 36px' : '40px 20px',
     position: 'relative',
@@ -897,7 +1146,7 @@ const styles = {
 
   statsGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(190px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(165px, 1fr))',
     gap: '14px',
     marginTop: '22px',
     width: '100%',
@@ -1009,15 +1258,7 @@ const styles = {
     borderRadius: '15px',
     fontSize: isMobile ? '15px' : '16px',
     fontWeight: 950,
-  }),
-
-  securityNote: (isMobile) => ({
-    padding: '12px 14px',
-    borderRadius: '16px',
-    marginBottom: '18px',
-    fontSize: isMobile ? '12.5px' : '13px',
-    fontWeight: 800,
-    lineHeight: 1.5,
+    cursor: 'pointer',
   }),
 
   emptyBox: (isMobile) => ({
@@ -1068,6 +1309,13 @@ const styles = {
     padding: isMobile ? '16px' : '18px',
   }),
 
+  badgeLine: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap',
+    marginBottom: '12px',
+  },
+
   enrolledBadge: {
     width: 'fit-content',
     padding: '7px 10px',
@@ -1077,11 +1325,21 @@ const styles = {
     border: '1px solid rgba(34,197,94,0.25)',
     fontSize: '12px',
     fontWeight: 950,
-    marginBottom: '12px',
+  },
+
+  completedBadge: {
+    width: 'fit-content',
+    padding: '7px 10px',
+    borderRadius: '999px',
+    background: 'rgba(139,92,246,0.14)',
+    color: '#c4b5fd',
+    border: '1px solid rgba(139,92,246,0.25)',
+    fontSize: '12px',
+    fontWeight: 950,
   },
 
   courseTitleText: (isMobile) => ({
-    margin: '0 0 14px',
+    margin: '0 0 8px',
     fontSize: isMobile ? '15px' : '16px',
     lineHeight: 1.35,
     fontWeight: 950,
@@ -1089,6 +1347,12 @@ const styles = {
     wordBreak: 'normal',
     overflowWrap: 'break-word',
   }),
+
+  courseMeta: {
+    margin: '0 0 14px',
+    fontSize: '12.5px',
+    fontWeight: 800,
+  },
 
   continueBtn: (isMobile) => ({
     width: '100%',
@@ -1099,6 +1363,136 @@ const styles = {
     fontSize: isMobile ? '13.5px' : '14px',
     fontWeight: 950,
   }),
+
+  certificateGrid: (isMobile) => ({
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(310px, 1fr))',
+    gap: '18px',
+  }),
+
+  certificateCard: (isMobile) => ({
+    borderRadius: isMobile ? '22px' : '26px',
+    padding: isMobile ? '18px' : '22px',
+    overflow: 'hidden',
+    position: 'relative',
+  }),
+
+  certificateTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '14px',
+    marginBottom: '18px',
+  },
+
+  certSeal: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '50%',
+    display: 'grid',
+    placeItems: 'center',
+    background: 'rgba(139,92,246,0.16)',
+    fontSize: '24px',
+    flex: '0 0 auto',
+  },
+
+  certTitle: (isMobile) => ({
+    margin: 0,
+    fontSize: isMobile ? '19px' : '22px',
+    lineHeight: 1.25,
+    fontWeight: 950,
+  }),
+
+  certInfoBox: {
+    borderRadius: '18px',
+    padding: '16px',
+    marginBottom: '16px',
+  },
+
+  certDetails: {
+    display: 'grid',
+    gap: '12px',
+    marginBottom: '16px',
+  },
+
+  certActions: (isMobile) => ({
+    display: 'flex',
+    gap: '10px',
+    flexDirection: isMobile ? 'column' : 'row',
+  }),
+
+  smallActionBtn: (isMobile) => ({
+    flex: 1,
+    padding: isMobile ? '12px' : '11px 12px',
+    borderRadius: '14px',
+    fontWeight: 950,
+    cursor: 'pointer',
+  }),
+
+  referralBox: (isMobile) => ({
+    padding: isMobile ? '18px' : '22px',
+    borderRadius: '22px',
+    marginBottom: '18px',
+  }),
+
+  referralCodeRow: (isMobile) => ({
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center',
+    flexDirection: isMobile ? 'column' : 'row',
+  }),
+
+  referralCode: (isMobile) => ({
+    margin: 0,
+    fontSize: isMobile ? '28px' : '34px',
+    letterSpacing: '1px',
+    fontWeight: 950,
+    wordBreak: 'break-word',
+    flex: 1,
+  }),
+
+  copyBtn: (isMobile) => ({
+    border: 'none',
+    borderRadius: '14px',
+    padding: isMobile ? '12px 16px' : '12px 18px',
+    fontWeight: 950,
+    cursor: 'pointer',
+    width: isMobile ? '100%' : 'auto',
+  }),
+
+  referralStatsGrid: (isMobile) => ({
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+    gap: '14px',
+  }),
+
+  miniEmpty: {
+    padding: '16px',
+    borderRadius: '16px',
+    fontWeight: 850,
+  },
+
+  rewardList: {
+    display: 'grid',
+    gap: '12px',
+  },
+
+  rewardItem: (isMobile) => ({
+    padding: '14px',
+    borderRadius: '16px',
+    display: 'flex',
+    alignItems: isMobile ? 'flex-start' : 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    flexDirection: isMobile ? 'column' : 'row',
+  }),
+
+  statusPill: {
+    padding: '7px 10px',
+    borderRadius: '999px',
+    fontSize: '12px',
+    fontWeight: 950,
+  },
 };
 
 export default Profile;
