@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +9,8 @@ import API from '../api';
 
 function MyCourses() {
   const [courseRows, setCourseRows] = useState([]);
+  const [profileData, setProfileData] = useState(null);
+  const [certificates, setCertificates] = useState([]);
   const [liveCounts, setLiveCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -34,6 +36,8 @@ function MyCourses() {
 
     setCourseRows([]);
     setLiveCounts({});
+    setProfileData(null);
+    setCertificates([]);
     setLoading(false);
 
     const path = window.location.pathname;
@@ -123,6 +127,32 @@ function MyCourses() {
     [getAuthHeaders, handleUnauthorized]
   );
 
+  const fetchProfileAndCertificates = useCallback(async () => {
+    const headers = getAuthHeaders();
+
+    if (!headers) return;
+
+    try {
+      const res = await getWithTimeout(
+        `${API}/api/users/me`,
+        { headers },
+        8000
+      );
+
+      setProfileData(res.data || null);
+      setCertificates(Array.isArray(res.data?.certificates) ? res.data.certificates : []);
+    } catch (err) {
+      if (isUnauthorizedError(err)) {
+        handleUnauthorized();
+        return;
+      }
+
+      console.log('PROFILE/CERTIFICATE FETCH ERROR:', err.message || err);
+      setProfileData(null);
+      setCertificates([]);
+    }
+  }, [getAuthHeaders, handleUnauthorized]);
+
   const fetchMyCoursesWithProgress = useCallback(async () => {
     const headers = getAuthHeaders();
 
@@ -139,9 +169,7 @@ function MyCourses() {
       try {
         const res = await getWithTimeout(
           `${API}/api/progress/my-courses`,
-          {
-            headers,
-          },
+          { headers },
           8000
         );
 
@@ -164,9 +192,7 @@ function MyCourses() {
 
           const fallbackRes = await getWithTimeout(
             `${API}/api/enroll/my/courses`,
-            {
-              headers: fallbackHeaders,
-            },
+            { headers: fallbackHeaders },
             8000
           );
 
@@ -176,17 +202,13 @@ function MyCourses() {
             course,
             progress: {
               progressPercent: 0,
-
               openedItems: 0,
               completedItems: 0,
               totalItems: (course.videos?.length || 0) + (course.pdfs?.length || 0),
-
               openedVideosCount: 0,
               openedPdfsCount: 0,
-
               completedVideosCount: 0,
               completedPdfsCount: 0,
-
               streakCount: 0,
               lastStudyDate: '',
               lastOpenedAt: null,
@@ -206,9 +228,9 @@ function MyCourses() {
 
       setCourseRows(rows);
 
-      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
+      await fetchProfileAndCertificates();
 
-      // ✅ Live count background mein chalega, page loading stuck nahi karega
+      const onlyCourses = rows.map((item) => item.course).filter(Boolean);
       fetchLiveCounts(onlyCourses);
     } catch (err) {
       console.log('MY COURSES FINAL ERROR:', err);
@@ -222,7 +244,7 @@ function MyCourses() {
     } finally {
       setLoading(false);
     }
-  }, [fetchLiveCounts, getAuthHeaders, handleUnauthorized]);
+  }, [fetchLiveCounts, fetchProfileAndCertificates, getAuthHeaders, handleUnauthorized]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -259,7 +281,7 @@ function MyCourses() {
     });
   };
 
-  const getLastOpenedLabel = (progress) => {
+  const getLastOpenedLabel = (progress = {}) => {
     if (!progress?.lastOpenedAt) return 'Open a video or PDF to start tracking';
 
     const typeLabel =
@@ -273,6 +295,22 @@ function MyCourses() {
   };
 
   const courses = courseRows.map((item) => item.course).filter(Boolean);
+
+  const completedCourseIds = new Set(
+    (profileData?.completedCourses || []).map((course) =>
+      String(course?._id || course)
+    )
+  );
+
+  const certificateByCourseId = {};
+
+  certificates.forEach((cert) => {
+    const courseId = String(cert?.course?._id || cert?.course || '');
+
+    if (courseId) {
+      certificateByCourseId[courseId] = cert;
+    }
+  });
 
   const totalVideos = courses.reduce(
     (sum, course) => sum + (course.videos?.length || 0),
@@ -314,6 +352,9 @@ function MyCourses() {
     .filter((progress) => progress?.lastOpenedAt)
     .sort((a, b) => new Date(b.lastOpenedAt) - new Date(a.lastOpenedAt))[0];
 
+  const totalCertificates = certificates.length;
+  const totalCompletedCourses = completedCourseIds.size;
+
   const stats = [
     {
       icon: '📚',
@@ -334,6 +375,16 @@ function MyCourses() {
       icon: '👀',
       label: 'Opened Items',
       value: `${totalOpenedItems}/${totalTrackableItems}`,
+    },
+    {
+      icon: '🎓',
+      label: 'Certificates',
+      value: totalCertificates,
+    },
+    {
+      icon: '🏁',
+      label: 'Completed Courses',
+      value: totalCompletedCourses,
     },
   ];
 
@@ -468,7 +519,7 @@ function MyCourses() {
                 color: theme.muted,
               }}
             >
-              Loading your courses...
+              ⏳ Loading your courses...
             </div>
           </Reveal>
         ) : courses.length === 0 ? (
@@ -548,6 +599,12 @@ function MyCourses() {
                 const openedItems = Number(progress.openedItems || 0);
                 const totalItems = Number(progress.totalItems || 0);
 
+                const certificate = certificateByCourseId[String(course._id)];
+                const isCompletedCourse =
+                  completedCourseIds.has(String(course._id)) ||
+                  progressValue >= 100 ||
+                  Boolean(certificate?.certificateId);
+
                 return (
                   <Reveal key={course._id} delay={index * 0.04}>
                     <motion.div
@@ -581,6 +638,18 @@ function MyCourses() {
                         )}
 
                         <div style={styles.ownedBadge(isMobile)}>✅ Enrolled</div>
+
+                        {isCompletedCourse && (
+                          <div style={styles.completedBadge(isMobile)}>
+                            🏁 Completed
+                          </div>
+                        )}
+
+                        {certificate?.certificateId && (
+                          <div style={styles.certificateBadge(isMobile)}>
+                            🎓 Certificate
+                          </div>
+                        )}
                       </div>
 
                       <div style={styles.cardBody(isMobile)}>
@@ -636,6 +705,22 @@ function MyCourses() {
                           >
                             🔴 {liveCount} Live Classes
                           </div>
+
+                          {certificate?.certificateId && (
+                            <div
+                              style={{
+                                ...styles.metaPill(isMobile),
+                                background: theme.isDark
+                                  ? 'rgba(139,92,246,0.14)'
+                                  : 'rgba(237,233,254,0.92)',
+                                border: `1px solid ${theme.border}`,
+                                color: theme.primary,
+                                gridColumn: '1 / -1',
+                              }}
+                            >
+                              🎓 Certificate ID: {certificate.certificateId}
+                            </div>
+                          )}
                         </div>
 
                         <div
@@ -680,7 +765,7 @@ function MyCourses() {
                             <div
                               style={{
                                 ...styles.progressFill,
-                                width: `${progressValue}%`,
+                                width: `${Math.min(100, progressValue)}%`,
                                 background: `linear-gradient(135deg, ${theme.primary}, ${theme.accent})`,
                               }}
                             />
@@ -697,8 +782,10 @@ function MyCourses() {
                               Status
                             </p>
 
-                            <strong style={{ color: theme.success, fontSize: isMobile ? '14px' : '15px' }}>
-                              {progressValue >= 100
+                            <strong style={{ ...styles.statusText(isMobile), color: theme.success }}>
+                              {certificate?.certificateId
+                                ? 'Certificate Earned'
+                                : isCompletedCourse
                                 ? 'Completed'
                                 : progressValue > 0
                                 ? 'In Progress'
@@ -708,20 +795,41 @@ function MyCourses() {
                             </strong>
                           </div>
 
-                          <motion.button
-                            whileHover={{ scale: 1.018, y: -1 }}
-                            whileTap={{ scale: 0.985 }}
-                            transition={{ duration: 0.16, ease: 'easeOut' }}
-                            onClick={() => navigate(`/courses/${course._id}`)}
-                            style={{
-                              ...styles.continueBtn(isMobile),
-                              background: theme.primary,
-                              color: theme.buttonText,
-                              boxShadow: `0 0 18px ${theme.primary}35`,
-                            }}
-                          >
-                            ▶️ Continue
-                          </motion.button>
+                          <div style={styles.actionStack(isMobile)}>
+                            {certificate?.certificateId && (
+                              <motion.button
+                                whileHover={{ scale: 1.018, y: -1 }}
+                                whileTap={{ scale: 0.985 }}
+                                transition={{ duration: 0.16, ease: 'easeOut' }}
+                                onClick={() => navigate(`/certificate/${certificate.certificateId}`)}
+                                style={{
+                                  ...styles.certificateBtn(isMobile),
+                                  background: theme.isDark
+                                    ? 'rgba(139,92,246,0.16)'
+                                    : 'rgba(237,233,254,0.92)',
+                                  color: theme.primary,
+                                  border: `1px solid ${theme.border}`,
+                                }}
+                              >
+                                View Certificate
+                              </motion.button>
+                            )}
+
+                            <motion.button
+                              whileHover={{ scale: 1.018, y: -1 }}
+                              whileTap={{ scale: 0.985 }}
+                              transition={{ duration: 0.16, ease: 'easeOut' }}
+                              onClick={() => navigate(`/courses/${course._id}`)}
+                              style={{
+                                ...styles.continueBtn(isMobile),
+                                background: theme.primary,
+                                color: theme.buttonText,
+                                boxShadow: `0 0 18px ${theme.primary}35`,
+                              }}
+                            >
+                              Continue
+                            </motion.button>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -746,7 +854,7 @@ function MyCourses() {
                   </h3>
 
                   <p style={{ margin: 0, lineHeight: 1.7, fontSize: isMobile ? '13px' : '14px' }}>
-                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, {totalOpenedItems}/{totalTrackableItems} opened, and {totalCompletedItems}/{totalTrackableItems} manually completed.
+                    You have {courses.length} enrolled course{courses.length > 1 ? 's' : ''}, {totalVideos} videos, {totalPdfs} PDFs, {totalLiveClasses} live class{totalLiveClasses !== 1 ? 'es' : ''}, {totalOpenedItems}/{totalTrackableItems} opened, {totalCompletedItems}/{totalTrackableItems} manually completed, and {totalCertificates} certificate{totalCertificates !== 1 ? 's' : ''} earned.
                   </p>
                 </div>
 
@@ -989,7 +1097,7 @@ const styles = {
 
   courseGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(340px, 1fr))',
     gap: isMobile ? '18px' : '24px',
     marginBottom: '30px',
     width: '100%',
@@ -1037,6 +1145,34 @@ const styles = {
     fontSize: isMobile ? '11px' : '12px',
     fontWeight: 950,
     boxShadow: '0 8px 24px rgba(34,197,94,0.22)',
+  }),
+
+  completedBadge: (isMobile) => ({
+    position: 'absolute',
+    top: isMobile ? '48px' : '52px',
+    right: isMobile ? '12px' : '14px',
+    background: 'rgba(139,92,246,0.96)',
+    color: '#fff',
+    padding: isMobile ? '6px 10px' : '7px 11px',
+    borderRadius: '999px',
+    fontSize: isMobile ? '11px' : '12px',
+    fontWeight: 950,
+    boxShadow: '0 8px 24px rgba(139,92,246,0.24)',
+  }),
+
+  certificateBadge: (isMobile) => ({
+    position: 'absolute',
+    left: isMobile ? '12px' : '14px',
+    bottom: isMobile ? '12px' : '14px',
+    background: 'rgba(15,23,42,0.78)',
+    color: '#c4b5fd',
+    padding: isMobile ? '7px 10px' : '8px 12px',
+    borderRadius: '999px',
+    fontSize: isMobile ? '11px' : '12px',
+    fontWeight: 950,
+    border: '1px solid rgba(196,181,253,0.35)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
   }),
 
   cardBody: (isMobile) => ({
@@ -1143,11 +1279,11 @@ const styles = {
 
   bottomRow: (isMobile) => ({
     marginTop: 'auto',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: isMobile ? 'stretch' : 'center',
+    display: 'grid',
+    gridTemplateColumns: '1fr',
     gap: '12px',
-    flexWrap: isMobile ? 'wrap' : 'nowrap',
+    alignItems: 'stretch',
+    width: '100%',
   }),
 
   smallLabel: {
@@ -1156,14 +1292,45 @@ const styles = {
     fontWeight: 800,
   },
 
+  statusText: (isMobile) => ({
+    display: 'inline-flex',
+    padding: '7px 10px',
+    borderRadius: '999px',
+    background: 'rgba(34,197,94,0.12)',
+    fontSize: isMobile ? '13px' : '14px',
+    fontWeight: 950,
+    lineHeight: 1.35,
+  }),
+
+  actionStack: (isMobile) => ({
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+    gap: '10px',
+    width: '100%',
+    alignItems: 'stretch',
+  }),
+
+  certificateBtn: (isMobile) => ({
+    width: '100%',
+    padding: isMobile ? '12px 14px' : '12px 12px',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    fontSize: isMobile ? '13px' : '12.5px',
+    fontWeight: 950,
+    minWidth: 0,
+    whiteSpace: 'nowrap',
+  }),
+
   continueBtn: (isMobile) => ({
-    padding: isMobile ? '12px 14px' : '12px 16px',
+    width: '100%',
+    padding: isMobile ? '12px 14px' : '12px 12px',
     border: 'none',
     borderRadius: '14px',
     cursor: 'pointer',
-    fontSize: isMobile ? '13px' : '13px',
+    fontSize: isMobile ? '13px' : '12.5px',
     fontWeight: 950,
-    minWidth: isMobile ? '100%' : '130px',
+    minWidth: 0,
+    whiteSpace: 'nowrap',
   }),
 
   emptyBox: (isMobile) => ({
