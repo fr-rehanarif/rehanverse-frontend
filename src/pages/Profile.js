@@ -163,6 +163,46 @@ function Profile() {
     }
   };
 
+  const getReferralLink = () => {
+    const code = profile?.referralCode || '';
+    return `${window.location.origin}/signup?ref=${encodeURIComponent(code)}`;
+  };
+
+  const getInviteMessage = () => {
+    const code = profile?.referralCode || '';
+
+    return `Join REHANVERSE using my referral code and explore premium courses, notes, PDFs, progress tracking and certificates.
+
+Referral Code: ${code}
+Signup Link: ${getReferralLink()}`;
+  };
+
+  const copyReferralLink = async () => {
+    try {
+      if (!profile?.referralCode) {
+        setMsg('Referral code not found. Refresh profile once.');
+        return;
+      }
+
+      await navigator.clipboard.writeText(getReferralLink());
+
+      setMsg('Referral link copied!');
+      setTimeout(() => setMsg(''), 2500);
+    } catch (err) {
+      setMsg('Link copy failed. Try manually.');
+    }
+  };
+
+  const shareOnWhatsApp = () => {
+    if (!profile?.referralCode) {
+      setMsg('Referral code not found. Refresh profile once.');
+      return;
+    }
+
+    const text = encodeURIComponent(getInviteMessage());
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
   const copyInviteMessage = async () => {
     try {
       const code = profile?.referralCode || '';
@@ -860,20 +900,63 @@ function Profile() {
                 </motion.button>
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.018, y: -1 }}
-                whileTap={{ scale: 0.985 }}
-                onClick={copyInviteMessage}
+              <div style={styles.shareGrid(isMobile)}>
+                <motion.button
+                  whileHover={{ scale: 1.018, y: -1 }}
+                  whileTap={{ scale: 0.985 }}
+                  onClick={copyReferralLink}
+                  style={{
+                    ...styles.shareBtn(isMobile),
+                    background: safeTheme.isDark ? 'rgba(59,130,246,0.14)' : '#dbeafe',
+                    color: safeTheme.isDark ? '#93c5fd' : '#1d4ed8',
+                    border: `1px solid ${safeTheme.border}`,
+                  }}
+                >
+                  Copy Invite Link
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.018, y: -1 }}
+                  whileTap={{ scale: 0.985 }}
+                  onClick={copyInviteMessage}
+                  style={{
+                    ...styles.shareBtn(isMobile),
+                    background: safeTheme.success,
+                    color: safeTheme.buttonText,
+                    border: 'none',
+                    boxShadow: '0 0 20px rgba(34,197,94,0.30)',
+                  }}
+                >
+                  Copy Invite Message
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.018, y: -1 }}
+                  whileTap={{ scale: 0.985 }}
+                  onClick={shareOnWhatsApp}
+                  style={{
+                    ...styles.shareBtn(isMobile),
+                    background: '#25D366',
+                    color: '#ffffff',
+                    border: 'none',
+                    boxShadow: '0 0 20px rgba(37,211,102,0.25)',
+                  }}
+                >
+                  Share on WhatsApp
+                </motion.button>
+              </div>
+
+              <div
                 style={{
-                  ...styles.primaryBtn(isMobile),
-                  marginTop: '14px',
-                  background: safeTheme.success,
-                  color: safeTheme.buttonText,
-                  boxShadow: '0 0 20px rgba(34,197,94,0.30)',
+                  ...styles.referralLinkBox,
+                  background: safeTheme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.74)',
+                  border: `1px solid ${safeTheme.border}`,
+                  color: safeTheme.muted,
                 }}
               >
-                Copy Invite Message 🚀
-              </motion.button>
+                <strong style={{ color: safeTheme.text }}>Invite Link</strong>
+                <span>{getReferralLink()}</span>
+              </div>
             </div>
 
             <div style={styles.referralStatsGrid(isMobile)}>
@@ -1459,6 +1542,35 @@ const styles = {
     cursor: 'pointer',
     width: isMobile ? '100%' : 'auto',
   }),
+
+  shareGrid: (isMobile) => ({
+    display: 'grid',
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+    gap: '10px',
+    marginTop: '14px',
+  }),
+
+  shareBtn: (isMobile) => ({
+    width: '100%',
+    borderRadius: '14px',
+    padding: isMobile ? '12px 14px' : '12px 10px',
+    fontWeight: 950,
+    cursor: 'pointer',
+    fontSize: isMobile ? '13px' : '12.5px',
+    whiteSpace: 'nowrap',
+  }),
+
+  referralLinkBox: {
+    marginTop: '14px',
+    padding: '13px 14px',
+    borderRadius: '16px',
+    display: 'grid',
+    gap: '6px',
+    fontSize: '12px',
+    fontWeight: 800,
+    lineHeight: 1.5,
+    overflowWrap: 'anywhere',
+  },
 
   referralStatsGrid: (isMobile) => ({
     display: 'grid',

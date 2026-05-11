@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../api';
@@ -23,6 +23,7 @@ function Signup() {
   const [isMobile, setIsMobile] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
 
   const safeTheme = {
@@ -53,6 +54,27 @@ function Signup() {
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // ? AUTO-FILL REFERRAL FROM URL: /signup?ref=CODE
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const refCode = params.get('ref') || params.get('referral') || params.get('code');
+
+    if (refCode) {
+      const cleanCode = refCode
+        .replace(/\s/g, '')
+        .toUpperCase()
+        .slice(0, 20);
+
+      setForm((prev) => ({
+        ...prev,
+        referralCode: cleanCode,
+      }));
+
+      setMsg('Referral code auto-applied.');
+      setTimeout(() => setMsg(''), 2500);
+    }
+  }, [location.search]);
 
   const handleSubmit = async () => {
     if (loading || verifyLoading) return;
