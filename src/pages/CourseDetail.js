@@ -17,30 +17,28 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
 
-function SecurePDFViewer({ pdf, theme, courseTitle }) {
+function SecurePDFViewer({ pdf, theme, courseTitle, onClose }) {
   const [numPages, setNumPages] = useState(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [pdfError, setPdfError] = useState('');
   const [zoom, setZoom] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
-  const [viewerWidth, setViewerWidth] = useState(850);
+  const [viewerWidth, setViewerWidth] = useState(900);
 
   useEffect(() => {
     const updateSize = () => {
       const mobile = window.innerWidth <= 900;
       setIsMobile(mobile);
 
-      // ✅ Real available PDF width
       if (mobile) {
-        setViewerWidth(Math.max(260, window.innerWidth - 72));
+        setViewerWidth(Math.max(310, window.innerWidth - 42));
       } else {
-        setViewerWidth(Math.min(900, window.innerWidth - 160));
+        setViewerWidth(Math.min(1050, window.innerWidth - 170));
       }
     };
 
     updateSize();
     window.addEventListener('resize', updateSize);
-
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
@@ -48,14 +46,14 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
 
   const zoomIn = () => {
     setZoom((prev) => {
-      const next = Number((prev + 0.1).toFixed(1));
-      return Math.min(next, 2.5);
+      const next = Number((prev + 0.15).toFixed(2));
+      return Math.min(next, 3);
     });
   };
 
   const zoomOut = () => {
     setZoom((prev) => {
-      const next = Number((prev - 0.1).toFixed(1));
+      const next = Number((prev - 0.15).toFixed(2));
       return Math.max(next, 0.5);
     });
   };
@@ -65,13 +63,15 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
   };
 
   const fitWidth = () => {
+    const mobile = window.innerWidth <= 900;
+    setViewerWidth(mobile ? Math.max(310, window.innerWidth - 42) : Math.min(1050, window.innerWidth - 170));
     setZoom(1);
   };
 
   useEffect(() => {
     if (pdf?.title) {
       logActivity(
-        `Opened PDF: ${pdf.title} | Course: ${courseTitle || 'Unknown Course'}`,
+        `Opened PDF Popup: ${pdf.title} | Course: ${courseTitle || 'Unknown Course'}`,
         'CourseDetail'
       );
     }
@@ -126,7 +126,6 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
     const blockKeys = (e) => {
       const key = e.key.toLowerCase();
 
-      // ✅ Block save/print/source/copy + devtools
       if ((e.ctrlKey && ['s', 'p', 'u', 'c'].includes(key)) || key === 'f12') {
         e.preventDefault();
 
@@ -138,7 +137,6 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
         );
       }
 
-      // ✅ Keyboard zoom support
       if (e.ctrlKey && (key === '+' || key === '=')) {
         e.preventDefault();
         zoomIn();
@@ -153,12 +151,16 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
         e.preventDefault();
         resetZoom();
       }
+
+      if (key === 'escape') {
+        onClose?.();
+      }
     };
 
     window.addEventListener('keydown', blockKeys);
     return () => window.removeEventListener('keydown', blockKeys);
     // eslint-disable-next-line
-  }, [pdf?.title]);
+  }, [pdf?.title, onClose]);
 
   const block = (e) => {
     e.preventDefault();
@@ -169,176 +171,250 @@ function SecurePDFViewer({ pdf, theme, courseTitle }) {
     );
   };
 
-  return (
+  return createPortal(
     <div
-      onContextMenu={block}
-      onCopy={block}
-      onCut={block}
-      onDragStart={block}
+      onClick={onClose}
       style={{
-        position: 'relative',
-        height: isMobile ? '540px' : '690px',
-        overflowY: 'auto',
-        overflowX: 'auto',
-        borderRadius: isMobile ? '18px' : '22px',
-        border: `1px solid ${theme.border}`,
-        background: theme.isDark ? 'rgba(2,6,23,0.55)' : 'rgba(255,255,255,0.72)',
-        padding: isMobile ? '10px' : '16px',
-        userSelect: 'none',
-        boxShadow: theme.shadow,
-        width: '100%',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 999999,
+        background: 'rgba(2, 6, 23, 0.88)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: isMobile ? '8px' : '18px',
       }}
     >
-      {/* ✅ Top Controls */}
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        onClick={(e) => e.stopPropagation()}
+        onContextMenu={block}
+        onCopy={block}
+        onCut={block}
+        onDragStart={block}
         style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          background: theme.card,
-          color: theme.text,
-          padding: isMobile ? '10px' : '12px 14px',
-          borderRadius: '16px',
-          marginBottom: '14px',
+          width: isMobile ? '100vw' : 'min(96vw, 1500px)',
+          height: isMobile ? '96vh' : '94vh',
+          overflow: 'hidden',
+          borderRadius: isMobile ? '18px' : '28px',
           border: `1px solid ${theme.border}`,
+          background: theme.isDark
+            ? 'linear-gradient(145deg, #050816, #08111f)'
+            : 'linear-gradient(145deg, #f8fafc, #eef2ff)',
+          boxShadow: '0 30px 120px rgba(0,0,0,0.65)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: isMobile ? 'flex-start' : 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
-          backdropFilter: theme.glass,
-          WebkitBackdropFilter: theme.glass,
+          flexDirection: 'column',
+          userSelect: 'none',
         }}
       >
-        <strong
-          style={{
-            fontSize: isMobile ? '13px' : '16px',
-            lineHeight: 1.4,
-            maxWidth: isMobile ? '100%' : '48%',
-            overflowWrap: 'break-word',
-          }}
-        >
-          📄 {pdf?.title || 'PDF'}
-        </strong>
-
-        <div style={styles.pdfControls}>
-          <button
-            type="button"
-            onClick={zoomOut}
-            disabled={zoom <= 0.5}
-            style={{
-              ...styles.pdfBtn,
-              border: `1px solid ${theme.border}`,
-              background: zoom <= 0.5 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
-              color: theme.text,
-              cursor: zoom <= 0.5 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            −
-          </button>
-
-          <span style={{ ...styles.zoomText, color: theme.primary }}>
-            {Math.round(zoom * 100)}%
-          </span>
-
-          <button
-            type="button"
-            onClick={zoomIn}
-            disabled={zoom >= 2.5}
-            style={{
-              ...styles.pdfBtn,
-              border: `1px solid ${theme.border}`,
-              background: zoom >= 2.5 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
-              color: theme.text,
-              cursor: zoom >= 2.5 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            +
-          </button>
-
-          <button
-            type="button"
-            onClick={fitWidth}
-            style={{
-              ...styles.fitBtn,
-              background: theme.primary,
-              color: theme.buttonText,
-              cursor: 'pointer',
-            }}
-          >
-            Fit Width
-          </button>
-
-          <span style={{ color: theme.muted, fontSize: '12px', fontWeight: 800 }}>
-            View only • Protected
-          </span>
-        </div>
-      </div>
-
-      <div style={styles.pdfWatermark}>REHANVERSE • Protected Content</div>
-
-      {pdfError ? (
-        <p style={{ color: '#fca5a5', textAlign: 'center', fontWeight: 800 }}>
-          {pdfError}
-        </p>
-      ) : !pdfBlobUrl ? (
-        <p style={{ color: theme.muted, textAlign: 'center', fontWeight: 800 }}>
-          Loading PDF...
-        </p>
-      ) : (
+        {/* ✅ Popup Header */}
         <div
           style={{
-            minWidth: `${pageWidth + 20}px`,
+            minHeight: isMobile ? '112px' : '86px',
+            padding: isMobile ? '12px' : '16px 22px',
+            background: theme.card,
+            borderBottom: `1px solid ${theme.border}`,
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
           }}
         >
-          <Document
-            key={`${pdfBlobUrl}-${zoom}-${viewerWidth}`}
-            file={pdfBlobUrl}
-            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            loading={
-              <p style={{ color: theme.muted, textAlign: 'center', fontWeight: 800 }}>
-                Rendering PDF...
-              </p>
-            }
-            error={
-              <p style={{ color: '#fca5a5', textAlign: 'center', fontWeight: 800 }}>
-                PDF render failed.
-              </p>
-            }
+          <div style={{ minWidth: 0 }}>
+            <p
+              style={{
+                margin: '0 0 6px',
+                color: theme.primary,
+                fontWeight: 950,
+                fontSize: '12px',
+                letterSpacing: '0.5px',
+              }}
+            >
+              📄 REHANVERSE PDF • PROTECTED VIEW
+            </p>
+
+            <h2
+              style={{
+                margin: 0,
+                color: theme.text,
+                fontSize: isMobile ? '15px' : '21px',
+                fontWeight: 950,
+                lineHeight: 1.3,
+                overflowWrap: 'break-word',
+              }}
+            >
+              {pdf?.title || 'PDF'}
+            </h2>
+
+            <p
+              style={{
+                margin: '5px 0 0',
+                color: theme.muted,
+                fontSize: '12px',
+                fontWeight: 800,
+              }}
+            >
+              View only • Protected • Press ESC to close
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: isMobile ? '7px' : '10px',
+              flexWrap: 'wrap',
+            }}
           >
-            {Array.from(new Array(numPages || 0), (_, index) => (
-              <div
-                key={`${index}-${zoom}-${pageWidth}`}
-                style={{
-                  marginBottom: '18px',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  zIndex: 5,
-                }}
-              >
-                <Page
-                  pageNumber={index + 1}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  width={pageWidth}
-                  loading={
-                    <p style={{ color: theme.muted, fontWeight: 800 }}>
-                      Loading page {index + 1}...
-                    </p>
-                  }
-                />
-              </div>
-            ))}
-          </Document>
+            <button
+              type="button"
+              onClick={zoomOut}
+              disabled={zoom <= 0.5}
+              style={{
+                ...styles.pdfBtn,
+                border: `1px solid ${theme.border}`,
+                background: zoom <= 0.5 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
+                color: theme.text,
+                cursor: zoom <= 0.5 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              −
+            </button>
+
+            <span style={{ ...styles.zoomText, color: theme.primary }}>
+              {Math.round(zoom * 100)}%
+            </span>
+
+            <button
+              type="button"
+              onClick={zoomIn}
+              disabled={zoom >= 3}
+              style={{
+                ...styles.pdfBtn,
+                border: `1px solid ${theme.border}`,
+                background: zoom >= 3 ? 'rgba(148,163,184,0.18)' : theme.bgSecondary,
+                color: theme.text,
+                cursor: zoom >= 3 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              +
+            </button>
+
+            <button
+              type="button"
+              onClick={fitWidth}
+              style={{
+                ...styles.fitBtn,
+                background: theme.primary,
+                color: theme.buttonText,
+                cursor: 'pointer',
+              }}
+            >
+              Fit Width
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '14px',
+                border: '1px solid rgba(239,68,68,0.45)',
+                background: 'rgba(239,68,68,0.15)',
+                color: '#fecaca',
+                cursor: 'pointer',
+                fontSize: '22px',
+                fontWeight: 950,
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* ✅ PDF Body */}
+        <div
+          style={{
+            position: 'relative',
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'auto',
+            padding: isMobile ? '14px' : '26px',
+            background: theme.isDark
+              ? 'radial-gradient(circle at top left, rgba(124,58,237,0.16), transparent 34%), radial-gradient(circle at bottom right, rgba(14,165,233,0.12), transparent 36%), #020617'
+              : 'radial-gradient(circle at top left, rgba(124,58,237,0.12), transparent 34%), #f8fafc',
+          }}
+        >
+          <div style={styles.pdfWatermark}>REHANVERSE • Protected Content</div>
+
+          {pdfError ? (
+            <p style={{ color: '#fca5a5', textAlign: 'center', fontWeight: 900 }}>
+              {pdfError}
+            </p>
+          ) : !pdfBlobUrl ? (
+            <p style={{ color: theme.muted, textAlign: 'center', fontWeight: 900 }}>
+              Loading PDF...
+            </p>
+          ) : (
+            <div
+              style={{
+                minWidth: `${pageWidth + 24}px`,
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+              <Document
+                key={`${pdfBlobUrl}-${zoom}-${viewerWidth}`}
+                file={pdfBlobUrl}
+                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                loading={
+                  <p style={{ color: theme.muted, textAlign: 'center', fontWeight: 900 }}>
+                    Rendering PDF...
+                  </p>
+                }
+                error={
+                  <p style={{ color: '#fca5a5', textAlign: 'center', fontWeight: 900 }}>
+                    PDF render failed.
+                  </p>
+                }
+              >
+                {Array.from(new Array(numPages || 0), (_, index) => (
+                  <div
+                    key={`${index}-${zoom}-${pageWidth}`}
+                    style={{
+                      marginBottom: '22px',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      zIndex: 5,
+                    }}
+                  >
+                    <Page
+                      pageNumber={index + 1}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      width={pageWidth}
+                      loading={
+                        <p style={{ color: theme.muted, fontWeight: 900 }}>
+                          Loading page {index + 1}...
+                        </p>
+                      }
+                    />
+                  </div>
+                ))}
+              </Document>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>,
+    document.body
   );
 }
-
 function LockedCoursePreview({ course, theme, onUnlock, isMobile }) {
   const videosCount = course.videos?.length || 0;
   const pdfsCount = course.pdfs?.length || 0;
@@ -1625,6 +1701,7 @@ function CourseDetail() {
   const [activeStudyToolType, setActiveStudyToolType] = useState('important_questions');
   const [activeVideo, setActiveVideo] = useState(null);
   const [activePdf, setActivePdf] = useState(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [lockedMsg, setLockedMsg] = useState('');
@@ -1956,29 +2033,32 @@ function CourseDetail() {
       'CourseDetail'
     );
   };
-
+ 
   const handlePdfClick = async (pdf) => {
-    if (locked) {
-      showLockedMessage(pdf?.title || 'PDF');
-      return;
-    }
+  if (locked) {
+    showLockedMessage(pdf?.title || 'PDF');
+    return;
+  }
 
-    setActivePdf(pdf);
+  setActivePdf(pdf);
+  setActiveTab('pdfs');
+  setShowPdfViewer(true);
 
-    await trackProgress({
-      type: 'pdf',
-      title: pdf?.title || 'PDF',
-      url: pdf?.url || '',
-      action: 'open',
-    });
+  await trackProgress({
+    type: 'pdf',
+    title: pdf?.title || 'PDF',
+    url: pdf?.url || '',
+    action: 'open',
+  });
 
-    logActivity(
-      `Clicked PDF: ${pdf.title} | Course: ${
-        course?.title || 'Unknown Course'
-      }`,
-      'CourseDetail'
-    );
-  };
+  logActivity(
+    `Clicked PDF and opened popup: ${pdf?.title || 'PDF'} | Course: ${
+      course?.title || 'Unknown Course'
+    }`,
+    'CourseDetail'
+  );
+};
+  
 
   const handleTabChange = async (tab) => {
     setActiveTab(tab);
@@ -2811,11 +2891,73 @@ function CourseDetail() {
                     <div>
                       {activePdf ? (
                         <>
-                          <SecurePDFViewer
-                            pdf={activePdf}
-                            theme={theme}
-                            courseTitle={course.title}
-                          />
+                          <div
+                            style={{
+                              padding: isMobile ? '18px' : '26px',
+                              borderRadius: isMobile ? '18px' : '24px',
+                              border: `1px solid ${theme.border}`,
+                              background: theme.isDark
+                                ? 'linear-gradient(135deg, rgba(139,92,246,0.14), rgba(14,165,233,0.08))'
+                                : 'linear-gradient(135deg, rgba(245,243,255,0.95), rgba(224,242,254,0.85))',
+                              textAlign: 'center',
+                              boxShadow: theme.shadow,
+                            }}
+                          >
+                            <p
+                              style={{
+                                margin: '0 0 8px',
+                                color: theme.primary,
+                                fontWeight: 950,
+                                fontSize: '12px',
+                                letterSpacing: '0.4px',
+                              }}
+                            >
+                              📄 PROTECTED PDF VIEWER
+                            </p>
+
+                            <h2
+                              style={{
+                                margin: '0 0 10px',
+                                color: theme.text,
+                                fontWeight: 950,
+                                fontSize: isMobile ? '20px' : '28px',
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              {activePdf.title || 'Selected PDF'}
+                            </h2>
+
+                            <p
+                              style={{
+                                margin: '0 auto 18px',
+                                color: theme.muted,
+                                fontWeight: 750,
+                                lineHeight: 1.6,
+                                maxWidth: '680px',
+                              }}
+                            >
+                              PDF content is protected to prevent unauthorized downloads and sharing. Click the button below to open the PDF in a secure viewer.
+                            </p>
+
+                            <motion.button
+                              whileHover={{ scale: 1.018, y: -1 }}
+                              whileTap={{ scale: 0.985 }}
+                              transition={{ duration: 0.16, ease: 'easeOut' }}
+                              onClick={() => setShowPdfViewer(true)}
+                              style={{
+                                padding: isMobile ? '13px 18px' : '15px 24px',
+                                borderRadius: '16px',
+                                border: 'none',
+                                background: 'linear-gradient(135deg, #8b5cf6, #4f46e5)',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                fontWeight: 950,
+                                boxShadow: '0 14px 34px rgba(139,92,246,0.32)',
+                              }}
+                            >
+                              🚀 Open PDF in Full Window
+                            </motion.button>
+                          </div>
 
                           <button
                             onClick={markActivePdfDone}
@@ -2831,9 +2973,7 @@ function CourseDetail() {
                               cursor: isPdfDone(activePdf) ? 'not-allowed' : 'pointer',
                             }}
                           >
-                            {isPdfDone(activePdf)
-                              ? '✅ PDF Done'
-                              : '✅ Mark PDF as Done'}
+                            {isPdfDone(activePdf) ? '✅ PDF Done' : '✅ Mark PDF as Done'}
                           </button>
                         </>
                       ) : (
@@ -2907,6 +3047,15 @@ function CourseDetail() {
           {!isMobile && <CourseContentPanel />}
         </div>
       </main>
+
+      {showPdfViewer && activePdf && (
+        <SecurePDFViewer
+          pdf={activePdf}
+          theme={theme}
+          courseTitle={course.title}
+          onClose={() => setShowPdfViewer(false)}
+        />
+      )}
 
       {showCheckout && (
         <CheckoutModal
