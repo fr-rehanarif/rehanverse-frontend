@@ -26,6 +26,71 @@ function Courses() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
+  // ✅ SUPER SAFE ARRAY NORMALIZER
+  // Backend kabhi direct array bhejta hai:
+  // [...]
+  //
+  // Kabhi object:
+  // { courses: [...] }
+  // { data: [...] }
+  // { data: { courses: [...] } }
+  // { success: true, courses: [...] }
+  //
+  // Is function se app crash bhi nahi hoga aur nested data bhi pick ho jayega.
+  const normalizeArray = (value, possibleKeys = []) => {
+    if (Array.isArray(value)) return value;
+
+    if (!value || typeof value !== 'object') return [];
+
+    // ✅ Direct possible keys
+    for (const key of possibleKeys) {
+      if (Array.isArray(value?.[key])) return value[key];
+    }
+
+    // ✅ Common direct keys
+    if (Array.isArray(value?.data)) return value.data;
+    if (Array.isArray(value?.result)) return value.result;
+    if (Array.isArray(value?.items)) return value.items;
+    if (Array.isArray(value?.results)) return value.results;
+    if (Array.isArray(value?.docs)) return value.docs;
+    if (Array.isArray(value?.list)) return value.list;
+
+    // ✅ Nested: { data: { courses: [] } }
+    if (value?.data && typeof value.data === 'object') {
+      for (const key of possibleKeys) {
+        if (Array.isArray(value.data?.[key])) return value.data[key];
+      }
+
+      if (Array.isArray(value.data?.data)) return value.data.data;
+      if (Array.isArray(value.data?.result)) return value.data.result;
+      if (Array.isArray(value.data?.items)) return value.data.items;
+      if (Array.isArray(value.data?.results)) return value.data.results;
+      if (Array.isArray(value.data?.docs)) return value.data.docs;
+      if (Array.isArray(value.data?.list)) return value.data.list;
+    }
+
+    // ✅ Extra deep fallback: object ke andar pehla array mil jaye to use karlo
+    // Example: { success: true, payload: { courses: [...] } }
+    const values = Object.values(value);
+
+    for (const item of values) {
+      if (Array.isArray(item)) return item;
+
+      if (item && typeof item === 'object') {
+        for (const key of possibleKeys) {
+          if (Array.isArray(item?.[key])) return item[key];
+        }
+
+        if (Array.isArray(item?.data)) return item.data;
+        if (Array.isArray(item?.items)) return item.items;
+        if (Array.isArray(item?.results)) return item.results;
+        if (Array.isArray(item?.docs)) return item.docs;
+      }
+    }
+
+    return [];
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 900);
@@ -39,55 +104,109 @@ function Courses() {
 
   useEffect(() => {
     fetchCourses();
-    if (token) fetchEnrolled();
+
+    if (token) {
+      fetchEnrolled();
+    } else {
+      setEnrolledIds([]);
+    }
+
     // eslint-disable-next-line
   }, []);
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
+      setMsg('');
 
       const res = await axios.get(`${API}/api/courses`);
-      const courseData = Array.isArray(res.data) ? res.data : [];
+
+      console.log('✅ API BASE:', API);
+      console.log('✅ COURSES RAW RESPONSE:', res.data);
+      console.log('✅ COURSES RESPONSE TYPE:', typeof res.data);
+      console.log('✅ IS RESPONSE ARRAY:', Array.isArray(res.data));
+
+      const courseData = normalizeArray(res.data, [
+        'courses',
+        'allCourses',
+        'courseData',
+        'courseList',
+        'docs',
+        'items',
+        'results',
+      ]);
+
+      console.log('✅ NORMALIZED COURSES:', courseData);
+      console.log('✅ NORMALIZED COURSES LENGTH:', courseData.length);
 
       setCourses(courseData);
 
-      const maxCoursePrice = Math.max(
-        100,
-        ...courseData.map((c) => Number(c.price || 0))
-      );
+      const maxCoursePrice =
+        courseData.length > 0
+          ? Math.max(100, ...courseData.map((c) => Number(c?.price || 0)))
+          : 500;
 
       setSliderMax(maxCoursePrice);
-      fetchLiveCounts(courseData);
+
+      if (courseData.length > 0) {
+        fetchLiveCounts(courseData);
+      } else {
+        setLiveCounts({});
+        setMsg('⚠️ Courses API connected, but backend se courses array nahi aa raha.');
+        setTimeout(() => setMsg(''), 6000);
+      }
     } catch (err) {
-      console.log('COURSES FETCH ERROR:', err);
+      console.log('❌ COURSES FETCH ERROR:', err);
+      console.log('❌ COURSES ERROR RESPONSE:', err.response?.data);
+      console.log('❌ COURSES ERROR STATUS:', err.response?.status);
+
+      setCourses([]);
+      setLiveCounts({});
+
+      setMsg(
+        '⚠️ Courses load failed: ' +
+          (err.response?.data?.message || err.message || 'Unknown error')
+      );
+
+      setTimeout(() => setMsg(''), 7000);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchLiveCounts = async (courseList) => {
+  const fetchLiveCounts = async (courseList = []) => {
     try {
-      const token = localStorage.getItem('token');
+      const freshToken = localStorage.getItem('token');
       const counts = {};
+      const safeCourseList = Array.isArray(courseList) ? courseList : [];
 
       await Promise.all(
-        courseList.map(async (course) => {
+        safeCourseList.map(async (course) => {
+          if (!course?._id) return;
+
           try {
             const res = await axios.get(
               `${API}/api/live-classes/course/${course._id}`,
               {
-                headers: token
+                headers: freshToken
                   ? {
-                      Authorization: `Bearer ${token}`,
+                      Authorization: `Bearer ${freshToken}`,
                     }
                   : {},
               }
             );
 
-            counts[course._id] = res.data?.length || 0;
+            const liveData = normalizeArray(res.data, [
+              'liveClasses',
+              'classes',
+              'data',
+              'items',
+              'results',
+            ]);
+
+            counts[course._id] = liveData.length;
           } catch (err) {
-            console.log(`LIVE COUNT ERROR FOR ${course.title}:`, err);
+            console.log(`LIVE COUNT ERROR FOR ${course?.title || course?._id}:`, err);
             counts[course._id] = 0;
           }
         })
@@ -96,18 +215,42 @@ function Courses() {
       setLiveCounts(counts);
     } catch (err) {
       console.log('LIVE COUNTS ERROR:', err);
+      setLiveCounts({});
     }
   };
 
   const fetchEnrolled = async () => {
     try {
+      const freshToken = localStorage.getItem('token');
+
+      if (!freshToken) {
+        setEnrolledIds([]);
+        return;
+      }
+
       const res = await axios.get(`${API}/api/enroll/my/courses`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${freshToken}` },
       });
 
-      setEnrolledIds(res.data.map((c) => c._id));
+      console.log('✅ ENROLLED RAW RESPONSE:', res.data);
+
+      const enrolledData = normalizeArray(res.data, [
+        'courses',
+        'enrolledCourses',
+        'myCourses',
+        'ownedCourses',
+        'data',
+        'items',
+        'results',
+      ]);
+
+      console.log('✅ NORMALIZED ENROLLED:', enrolledData);
+
+      setEnrolledIds(enrolledData.map((c) => c?._id).filter(Boolean));
     } catch (err) {
-      console.log(err);
+      console.log('ENROLLED FETCH ERROR:', err);
+      console.log('ENROLLED ERROR RESPONSE:', err.response?.data);
+      setEnrolledIds([]);
     }
   };
 
@@ -133,7 +276,7 @@ function Courses() {
       return;
     }
 
-    if (!course.isFree) {
+    if (!course.isFree && Number(course.price || 0) > 0) {
       navigate(`/courses/${course._id}`);
       return;
     }
@@ -145,8 +288,12 @@ function Courses() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setMsg('✅ ' + res.data.message);
-      setEnrolledIds((prev) => [...prev, course._id]);
+      setMsg('✅ ' + (res.data?.message || 'Course enrolled successfully'));
+
+      setEnrolledIds((prev) =>
+        prev.includes(course._id) ? prev : [...prev, course._id]
+      );
+
       navigate('/my-courses');
     } catch (err) {
       setMsg('⚠️ ' + (err.response?.data?.message || 'Something went wrong'));
@@ -162,14 +309,14 @@ function Courses() {
   };
 
   const applyPriceFilter = (course) => {
-    const price = Number(course.price || 0);
+    const price = Number(course?.price || 0);
 
     if (priceFilter === 'free') {
-      return course.isFree || price === 0;
+      return course?.isFree || price === 0;
     }
 
     if (priceFilter === 'paid') {
-      return !course.isFree && price > 0;
+      return !course?.isFree && price > 0;
     }
 
     if (priceFilter === 'custom') {
@@ -182,16 +329,22 @@ function Courses() {
     return true;
   };
 
+  const safeCourses = Array.isArray(courses) ? courses : [];
+  const safeEnrolledIds = Array.isArray(enrolledIds) ? enrolledIds : [];
+
   const filteredCourses = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
 
-    return courses.filter((course) => {
+    return safeCourses.filter((course) => {
       const matchesPrice = applyPriceFilter(course);
+
+      const title = course?.title || '';
+      const description = course?.description || '';
 
       const matchesSearch =
         !searchValue ||
-        course.title?.toLowerCase().includes(searchValue) ||
-        course.description?.toLowerCase().includes(searchValue);
+        title.toLowerCase().includes(searchValue) ||
+        description.toLowerCase().includes(searchValue);
 
       return matchesPrice && matchesSearch;
     });
@@ -206,23 +359,30 @@ function Courses() {
     (course) => !isEnrolled(course._id)
   );
 
-  const totalVideos = courses.reduce((sum, c) => sum + (c.videos?.length || 0), 0);
-  const totalPdfs = courses.reduce((sum, c) => sum + (c.pdfs?.length || 0), 0);
+  const totalVideos = safeCourses.reduce(
+    (sum, c) => sum + (Array.isArray(c?.videos) ? c.videos.length : 0),
+    0
+  );
+
+  const totalPdfs = safeCourses.reduce(
+    (sum, c) => sum + (Array.isArray(c?.pdfs) ? c.pdfs.length : 0),
+    0
+  );
 
   const statCards = [
-    { icon: '📚', label: 'Courses', value: courses.length },
+    { icon: '📚', label: 'Courses', value: safeCourses.length },
     { icon: '🎥', label: 'Videos', value: totalVideos },
     { icon: '📄', label: 'PDFs', value: totalPdfs },
-    { icon: '✅', label: 'Owned', value: enrolledIds.length },
+    { icon: '✅', label: 'Owned', value: safeEnrolledIds.length },
   ];
 
   const CourseCard = ({ course, index }) => {
     const owned = isEnrolled(course._id);
-    const liveCount = liveCounts[course._id] || 0;
+    const liveCount = liveCounts?.[course._id] || 0;
     const isFreeCourse = course.isFree || Number(course.price || 0) === 0;
 
     return (
-      <Reveal key={course._id} delay={index * 0.04}>
+      <Reveal key={course._id || index} delay={index * 0.04}>
         <motion.div
           whileHover={{ y: -4 }}
           whileTap={{ scale: 0.995 }}
@@ -247,8 +407,11 @@ function Courses() {
             {course.thumbnail ? (
               <img
                 src={course.thumbnail}
-                alt={course.title}
+                alt={course.title || 'Course thumbnail'}
                 style={styles.thumbnail}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             ) : (
               <div
@@ -280,7 +443,7 @@ function Courses() {
           <div style={styles.cardBody(isMobile)}>
             <div style={styles.titleDescBlock(isMobile)}>
               <h3 style={{ ...styles.cardTitle(isMobile), color: theme.text }}>
-                {course.title}
+                {course.title || 'Untitled Course'}
               </h3>
 
               <p style={{ ...styles.cardDesc(isMobile), color: theme.muted }}>
@@ -293,34 +456,39 @@ function Courses() {
                 <div
                   style={{
                     ...styles.metaPill(isMobile),
-                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                    background: theme.isDark
+                      ? 'rgba(255,255,255,0.035)'
+                      : 'rgba(255,255,255,0.72)',
                     border: `1px solid ${theme.border}`,
                     color: theme.text,
                   }}
                 >
-                  🎥 {course.videos?.length || 0} Videos
+                  🎥 {Array.isArray(course.videos) ? course.videos.length : 0} Videos
                 </div>
 
                 <div
                   style={{
                     ...styles.metaPill(isMobile),
-                    background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                    background: theme.isDark
+                      ? 'rgba(255,255,255,0.035)'
+                      : 'rgba(255,255,255,0.72)',
                     border: `1px solid ${theme.border}`,
                     color: theme.text,
                   }}
                 >
-                  📄 {course.pdfs?.length || 0} PDFs
+                  📄 {Array.isArray(course.pdfs) ? course.pdfs.length : 0} PDFs
                 </div>
               </div>
 
               <div
                 style={{
                   ...styles.livePill(isMobile),
-                  background: liveCount > 0
-                    ? 'rgba(239, 68, 68, 0.12)'
-                    : theme.isDark
-                    ? 'rgba(255,255,255,0.035)'
-                    : 'rgba(255,255,255,0.72)',
+                  background:
+                    liveCount > 0
+                      ? 'rgba(239, 68, 68, 0.12)'
+                      : theme.isDark
+                      ? 'rgba(255,255,255,0.035)'
+                      : 'rgba(255,255,255,0.72)',
                   border: `1px solid ${
                     liveCount > 0 ? 'rgba(248,113,113,0.35)' : theme.border
                   }`,
@@ -373,53 +541,57 @@ function Courses() {
     );
   };
 
-  const CourseSection = ({ title, subtitle, data, emptyText }) => (
-    <section style={styles.courseSection(isMobile)}>
-      <div style={styles.sectionHeader(isMobile)}>
-        <div>
-          <h3 style={{ ...styles.sectionTitle(isMobile), color: theme.text }}>
-            {title}
-          </h3>
-          <p style={{ ...styles.sectionSubtitle(isMobile), color: theme.muted }}>
-            {subtitle}
-          </p>
+  const CourseSection = ({ title, subtitle, data, emptyText }) => {
+    const safeData = Array.isArray(data) ? data : [];
+
+    return (
+      <section style={styles.courseSection(isMobile)}>
+        <div style={styles.sectionHeader(isMobile)}>
+          <div>
+            <h3 style={{ ...styles.sectionTitle(isMobile), color: theme.text }}>
+              {title}
+            </h3>
+            <p style={{ ...styles.sectionSubtitle(isMobile), color: theme.muted }}>
+              {subtitle}
+            </p>
+          </div>
+
+          <span
+            style={{
+              ...styles.countBadge(isMobile),
+              color: theme.primary,
+              background: theme.isDark
+                ? 'rgba(139,92,246,0.12)'
+                : 'rgba(139,92,246,0.10)',
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            {safeData.length} courses
+          </span>
         </div>
 
-        <span
-          style={{
-            ...styles.countBadge(isMobile),
-            color: theme.primary,
-            background: theme.isDark
-              ? 'rgba(139,92,246,0.12)'
-              : 'rgba(139,92,246,0.10)',
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          {data.length} courses
-        </span>
-      </div>
-
-      {data.length === 0 ? (
-        <div
-          style={{
-            ...styles.emptyBox(isMobile),
-            background: theme.card,
-            border: `1px solid ${theme.border}`,
-            color: theme.muted,
-          }}
-        >
-          <div style={styles.emptyIcon}>🔎</div>
-          <p style={{ margin: 0 }}>{emptyText}</p>
-        </div>
-      ) : (
-        <div style={styles.courseGrid(isMobile)}>
-          {data.map((course, index) => (
-            <CourseCard key={course._id} course={course} index={index} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
+        {safeData.length === 0 ? (
+          <div
+            style={{
+              ...styles.emptyBox(isMobile),
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
+              color: theme.muted,
+            }}
+          >
+            <div style={styles.emptyIcon}>🔎</div>
+            <p style={{ margin: 0 }}>{emptyText}</p>
+          </div>
+        ) : (
+          <div style={styles.courseGrid(isMobile)}>
+            {safeData.map((course, index) => (
+              <CourseCard key={course._id || index} course={course} index={index} />
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  };
 
   return (
     <div
@@ -496,10 +668,23 @@ function Courses() {
           >
             <div style={styles.filterTop(isMobile)}>
               <div style={{ minWidth: 0 }}>
-                <h3 style={{ margin: 0, color: theme.text, fontSize: isMobile ? '16px' : '18px' }}>
+                <h3
+                  style={{
+                    margin: 0,
+                    color: theme.text,
+                    fontSize: isMobile ? '16px' : '18px',
+                  }}
+                >
                   🎛️ Find your course
                 </h3>
-                <p style={{ margin: '5px 0 0', color: theme.muted, fontSize: '13px', lineHeight: 1.5 }}>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: theme.muted,
+                    fontSize: '13px',
+                    lineHeight: 1.5,
+                  }}
+                >
                   Search and filter courses to quickly find the perfect match for your learning goals.
                 </p>
               </div>
@@ -509,7 +694,9 @@ function Courses() {
                 style={{
                   ...styles.resetBtn(isMobile),
                   border: `1px solid ${theme.border}`,
-                  background: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
+                  background: theme.isDark
+                    ? 'rgba(255,255,255,0.035)'
+                    : 'rgba(255,255,255,0.72)',
                   color: theme.text,
                 }}
               >
@@ -529,7 +716,9 @@ function Courses() {
                   placeholder="Search by title or description..."
                   style={{
                     ...styles.input(isMobile),
-                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                    background: theme.isDark
+                      ? 'rgba(15, 23, 42, 0.72)'
+                      : 'rgba(255,255,255,0.82)',
                     border: `1px solid ${theme.border}`,
                     color: theme.text,
                   }}
@@ -546,7 +735,9 @@ function Courses() {
                   onChange={(e) => setPriceFilter(e.target.value)}
                   style={{
                     ...styles.input(isMobile),
-                    background: theme.isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255,255,255,0.82)',
+                    background: theme.isDark
+                      ? 'rgba(15, 23, 42, 0.72)'
+                      : 'rgba(255,255,255,0.82)',
                     border: `1px solid ${theme.border}`,
                     color: theme.text,
                   }}
@@ -630,7 +821,13 @@ function Courses() {
                 }}
               />
 
-              <span style={{ color: theme.muted, fontSize: '12px', fontWeight: 800 }}>
+              <span
+                style={{
+                  color: theme.muted,
+                  fontSize: '12px',
+                  fontWeight: 800,
+                }}
+              >
                 ₹0 - ₹{maxPrice === '' ? sliderMax : maxPrice}
               </span>
             </div>
@@ -679,7 +876,7 @@ function Courses() {
           <div style={{ ...styles.emptyBox(isMobile), color: theme.muted }}>
             Loading courses...
           </div>
-        ) : courses.length === 0 ? (
+        ) : safeCourses.length === 0 ? (
           <Reveal>
             <div
               style={{
@@ -691,6 +888,16 @@ function Courses() {
             >
               <div style={styles.emptyIcon}>🚀</div>
               <p style={{ margin: 0 }}>No courses available for now.</p>
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  fontSize: isMobile ? '12px' : '13px',
+                  opacity: 0.8,
+                  lineHeight: 1.5,
+                }}
+              >
+                Console mein <b>✅ COURSES RAW RESPONSE</b> check kar. Agar response mein courses hain, frontend pick kar lega.
+              </p>
             </div>
           </Reveal>
         ) : (
@@ -706,7 +913,7 @@ function Courses() {
               title="✅ Already Enrolled"
               subtitle="These courses are already owned/enrolled by you."
               data={enrolledCourses}
-              emptyText="."
+              emptyText="No enrolled courses found."
             />
           </>
         )}
@@ -801,7 +1008,9 @@ const styles = {
 
   statGrid: (isMobile) => ({
     display: 'grid',
-    gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(2, minmax(120px, 1fr))',
+    gridTemplateColumns: isMobile
+      ? 'repeat(2, minmax(0, 1fr))'
+      : 'repeat(2, minmax(120px, 1fr))',
     gap: isMobile ? '10px' : '12px',
     width: '100%',
     minWidth: 0,
