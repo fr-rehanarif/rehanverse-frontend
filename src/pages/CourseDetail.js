@@ -1634,6 +1634,10 @@ function CourseDetail() {
   const [studyTools, setStudyTools] = useState([]);
   const [studyToolsLoading, setStudyToolsLoading] = useState(false);
 
+  const [certificateLoading, setCertificateLoading] = useState(false);
+  const [certificateMsg, setCertificateMsg] = useState('');
+  const [generatedCertificate, setGeneratedCertificate] = useState(null);
+
   const [courseProgress, setCourseProgress] = useState({
     progressPercent: 0,
     completedVideoUrls: [],
@@ -2005,6 +2009,66 @@ function CourseDetail() {
     );
   };
 
+  const handleGenerateCertificate = async () => {
+    if (!course?._id || certificateLoading) return;
+
+    if (!token) {
+      setCertificateMsg('?? Please login again.');
+      setTimeout(() => setCertificateMsg(''), 3000);
+      return;
+    }
+
+    if (!isEnrolled && !isFreeCourse) {
+      setCertificateMsg('?? Certificate ke liye pehle course enroll karo.');
+      setTimeout(() => setCertificateMsg(''), 3500);
+      return;
+    }
+
+    if ((courseProgress.progressPercent || 0) < 100) {
+      setCertificateMsg('?? Certificate unlock karne ke liye course 100% complete karo.');
+      setTimeout(() => setCertificateMsg(''), 4000);
+      return;
+    }
+
+    try {
+      setCertificateLoading(true);
+      setCertificateMsg('');
+
+      const res = await axios.post(
+        `${API}/api/courses/${course._id}/complete`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setGeneratedCertificate(res.data.certificate || null);
+
+      setCertificateMsg(
+        res.data?.alreadyCompleted
+          ? '?? Certificate already generated! Profile mein check karo.'
+          : '?? Course completed! Certificate generated successfully.'
+      );
+
+      logActivity(
+        `Certificate generated | Course: ${course?.title || 'Unknown Course'}`,
+        'CourseDetail'
+      );
+
+      setTimeout(() => setCertificateMsg(''), 5000);
+    } catch (err) {
+      console.log('CERTIFICATE GENERATE ERROR:', err.response?.data || err.message);
+
+      setCertificateMsg(
+        '?? ' + (err.response?.data?.message || 'Certificate generate nahi ho paya.')
+      );
+
+      setTimeout(() => setCertificateMsg(''), 4500);
+    } finally {
+      setCertificateLoading(false);
+    }
+  };
+
   const handleCheckoutSuccess = () => {
     logActivity(
       `Checkout success | Redirecting to My Courses | Course: ${
@@ -2038,6 +2102,174 @@ function CourseDetail() {
 
   const totalVideos = course.videos?.length || 0;
   const totalPdfs = course.pdfs?.length || 0;
+
+  const CertificateBox = () => {
+    const progress = courseProgress.progressPercent || 0;
+    const canGenerate = (isEnrolled || isFreeCourse) && progress >= 100;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        style={{
+          ...styles.certificateBox(isMobile),
+          background: theme.isDark
+            ? 'linear-gradient(135deg, rgba(139,92,246,0.16), rgba(14,165,233,0.10))'
+            : 'linear-gradient(135deg, rgba(245,243,255,0.96), rgba(224,242,254,0.88))',
+          border: `1px solid ${theme.border}`,
+          boxShadow: theme.shadow,
+        }}
+      >
+        <div style={styles.certificateBoxTop(isMobile)}>
+          <div>
+            <p style={{ margin: '0 0 7px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
+              ?? REHANVERSE CERTIFICATE
+            </p>
+
+            <h2 style={{ margin: 0, color: theme.text, fontWeight: 950, lineHeight: 1.25 }}>
+              Complete course and unlock your certificate
+            </h2>
+
+            <p style={{ margin: '9px 0 0', color: theme.muted, fontWeight: 750, lineHeight: 1.65 }}>
+              Course 100% complete hone ke baad certificate auto-generate hoga aur Profile page mein save ho jayega.
+            </p>
+          </div>
+
+          <div style={styles.certificateSeal}>??</div>
+        </div>
+
+        <div
+          style={{
+            ...styles.certificateProgressWrap,
+            background: theme.isDark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.78)',
+            border: `1px solid ${theme.border}`,
+          }}
+        >
+          <div style={styles.certificateProgressHead}>
+            <span style={{ color: theme.text, fontWeight: 950 }}>Progress</span>
+            <span style={{ color: theme.primary, fontWeight: 950 }}>{progress}%</span>
+          </div>
+
+          <div
+            style={{
+              ...styles.certificateProgressBar,
+              background: theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.10)',
+            }}
+          >
+            <div
+              style={{
+                width: `${Math.min(100, progress)}%`,
+                height: '100%',
+                borderRadius: '999px',
+                background:
+                  progress >= 100
+                    ? 'linear-gradient(90deg, #22c55e, #06b6d4)'
+                    : `linear-gradient(90deg, ${theme.primary}, ${theme.accent || '#06b6d4'})`,
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+        </div>
+
+        {certificateMsg && (
+          <div
+            style={{
+              ...styles.certificateMsg,
+              background:
+                certificateMsg.includes('??') || certificateMsg.includes('already')
+                  ? theme.isDark
+                    ? 'rgba(34,197,94,0.12)'
+                    : '#dcfce7'
+                  : theme.isDark
+                  ? 'rgba(251,191,36,0.12)'
+                  : '#fef3c7',
+              color:
+                certificateMsg.includes('??') || certificateMsg.includes('already')
+                  ? theme.success
+                  : '#f59e0b',
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            {certificateMsg}
+          </div>
+        )}
+
+        {generatedCertificate?.certificateId && (
+          <div
+            style={{
+              ...styles.generatedCertBox,
+              background: theme.isDark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.78)',
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <p style={{ margin: '0 0 6px', color: theme.muted, fontWeight: 850 }}>
+              Certificate ID
+            </p>
+
+            <strong style={{ color: theme.primary, wordBreak: 'break-word' }}>
+              {generatedCertificate.certificateId}
+            </strong>
+
+            <div style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => navigate('/profile')}
+                style={{
+                  ...styles.certificateSmallBtn,
+                  background: theme.primary,
+                  color: theme.buttonText,
+                  border: 'none',
+                }}
+              >
+                View in Profile
+              </button>
+
+              <button
+                onClick={() =>
+                  navigate(`/certificate/${generatedCertificate.certificateId}`)
+                }
+                style={{
+                  ...styles.certificateSmallBtn,
+                  background: 'transparent',
+                  color: theme.primary,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                Verify
+              </button>
+            </div>
+          </div>
+        )}
+
+        <motion.button
+          whileHover={{
+            scale: certificateLoading ? 1 : 1.018,
+            y: certificateLoading ? 0 : -1,
+          }}
+          whileTap={{ scale: certificateLoading ? 1 : 0.985 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+          onClick={handleGenerateCertificate}
+          disabled={certificateLoading || !canGenerate}
+          style={{
+            ...styles.generateCertificateBtn(isMobile),
+            background:
+              certificateLoading || !canGenerate
+                ? theme.muted
+                : 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+            color: '#fff',
+            cursor: certificateLoading || !canGenerate ? 'not-allowed' : 'pointer',
+            opacity: certificateLoading || !canGenerate ? 0.72 : 1,
+          }}
+        >
+          {certificateLoading
+            ? 'Generating Certificate...'
+            : progress >= 100
+            ? '?? Generate Certificate'
+            : '?? Complete 100% to Unlock Certificate'}
+        </motion.button>
+      </motion.div>
+    );
+  };
 
   const CourseContentPanel = () => (
   <aside
@@ -2627,6 +2859,8 @@ function CourseDetail() {
 
             {/* ✅ Mobile: Course Content comes immediately after viewer + Mark Done */}
             {isMobile && <CourseContentPanel />}
+            {!locked && (isEnrolled || isFreeCourse) && <CertificateBox />}
+
             <LiveClassesBox courseId={id} isEnrolled={isEnrolled} theme={theme} />
 
             {course.price > 0 && isEnrolled && (
@@ -3254,7 +3488,7 @@ const styles = {
     letterSpacing: '0.5px',
     marginBottom: '10px',
   },
-  
+
   certificateBox: (isMobile) => ({
     width: '100%',
     padding: isMobile ? '18px' : '24px',

@@ -11,6 +11,7 @@ import AssistantChat from './components/AssistantChat';
 import MyCourses from './pages/MyCourses';
 import Payment from './pages/Payment';
 import CourseDetail from './pages/CourseDetail';
+import CertificateView from './pages/CertificateView';
 import Navbar from './components/Navbar';
 import { useTheme } from './context/ThemeContext';
 import ActivityDashboard from './pages/ActivityDashboard';
@@ -224,6 +225,7 @@ function App() {
             <Route path="/my-courses" element={<MyCourses />} />
             <Route path="/course/:id" element={<CourseDetail />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
+            <Route path="/certificate/:certificateId" element={<CertificateView />} />
           </Routes>
 
           <AssistantChat />
