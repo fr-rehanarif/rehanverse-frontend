@@ -179,7 +179,7 @@ function Profile() {
 
   const openCertificateVerify = (certificateId) => {
     if (!certificateId) return;
-    window.open(`${API}/api/certificates/verify/${certificateId}`, '_blank');
+    navigate(`/certificate/${certificateId}`);
   };
 
   const getJoinedDate = () => {
@@ -783,7 +783,7 @@ function Profile() {
                         whileTap={{ scale: 0.985 }}
                         onClick={() => {
                           navigator.clipboard.writeText(
-                            `${API}/api/certificates/verify/${cert.certificateId}`
+                            `${window.location.origin}/certificate/${cert.certificateId}`
                           );
                           setMsg('✅ Certificate verify link copied!');
                           setTimeout(() => setMsg(''), 2500);

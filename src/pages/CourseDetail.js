@@ -2046,8 +2046,8 @@ function CourseDetail() {
 
       setCertificateMsg(
         res.data?.alreadyCompleted
-          ? '?? Certificate already generated! Profile mein check karo.'
-          : '?? Course completed! Certificate generated successfully.'
+          ? 'Certificate already generated! Profile mein check karo.'
+          : 'Course completed! Certificate generated successfully.'
       );
 
       logActivity(
@@ -2124,7 +2124,7 @@ function CourseDetail() {
         <div style={styles.certificateBoxTop(isMobile)}>
           <div>
             <p style={{ margin: '0 0 7px', color: theme.primary, fontWeight: 950, fontSize: '12px' }}>
-              ?? REHANVERSE CERTIFICATE
+              REHANVERSE CERTIFICATE
             </p>
 
             <h2 style={{ margin: 0, color: theme.text, fontWeight: 950, lineHeight: 1.25 }}>
@@ -2136,7 +2136,7 @@ function CourseDetail() {
             </p>
           </div>
 
-          <div style={styles.certificateSeal}>??</div>
+          <div style={styles.certificateSeal}>RV</div>
         </div>
 
         <div
@@ -2264,8 +2264,8 @@ function CourseDetail() {
           {certificateLoading
             ? 'Generating Certificate...'
             : progress >= 100
-            ? '?? Generate Certificate'
-            : '?? Complete 100% to Unlock Certificate'}
+            ? 'Generate Certificate'
+            : 'Complete 100% to Unlock Certificate'}
         </motion.button>
       </motion.div>
     );
