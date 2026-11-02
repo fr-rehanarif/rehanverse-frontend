@@ -11,6 +11,7 @@ function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [msg, setMsg] = useState('');
+  const [apiReady, setApiReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +19,22 @@ function Login() {
 
   const navigate = useNavigate();
   const theme = useTheme();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Wake the Render API while the user enters their login details.
+    axios
+      .get(`${API}/api/test`, { timeout: 90000 })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setApiReady(true);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -350,9 +367,9 @@ function Login() {
                       cursor: loading ? 'not-allowed' : 'pointer',
                     }}
                     onClick={handleSubmit}
-                    disabled={loading}
+                    disabled={loading || !apiReady}
                   >
-                    {loading ? 'Sending OTP...' : 'Send Login OTP ✉️'}
+                    {loading ? 'Sending OTP...' : !apiReady ? 'Connecting to server...' : 'Send Login OTP ✉️'}
                   </motion.button>
                 </motion.div>
               ) : (
