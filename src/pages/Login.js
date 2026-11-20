@@ -11,7 +11,6 @@ function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [msg, setMsg] = useState('');
-  const [apiReady, setApiReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -19,22 +18,6 @@ function Login() {
 
   const navigate = useNavigate();
   const theme = useTheme();
-
-  useEffect(() => {
-    let isMounted = true;
-
-    // Wake the Render API while the user enters their login details.
-    axios
-      .get(`${API}/api/test`, { timeout: 90000 })
-      .catch(() => {})
-      .finally(() => {
-        if (isMounted) setApiReady(true);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -64,8 +47,10 @@ function Login() {
         password: form.password,
       };
 
+      // The Render backend may need time to wake after being idle. Keep the
+      // request alive long enough for the service and its database to start.
       const res = await axios.post(`${API}/api/auth/login`, payload, {
-        timeout: 30000,
+        timeout: 90000,
       });
 
       setVerifiedEmail(payload.email);
@@ -112,7 +97,7 @@ function Login() {
           otp: otp.trim(),
         },
         {
-          timeout: 30000,
+          timeout: 90000,
         }
       );
 
@@ -367,9 +352,9 @@ function Login() {
                       cursor: loading ? 'not-allowed' : 'pointer',
                     }}
                     onClick={handleSubmit}
-                    disabled={loading || !apiReady}
+                    disabled={loading}
                   >
-                    {loading ? 'Sending OTP...' : !apiReady ? 'Connecting to server...' : 'Send Login OTP ✉️'}
+                    {loading ? 'Sending OTP...' : 'Send Login OTP ✉️'}
                   </motion.button>
                 </motion.div>
               ) : (

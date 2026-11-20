@@ -16,6 +16,7 @@ import Navbar from './components/Navbar';
 import { useTheme } from './context/ThemeContext';
 import ActivityDashboard from './pages/ActivityDashboard';
 import { setupAuthErrorHandler } from './utils/authErrorHandler';
+import LogicLab from './pages/LogicLab';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -226,6 +227,7 @@ function App() {
             <Route path="/course/:id" element={<CourseDetail />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/certificate/:certificateId" element={<CertificateView />} />
+            <Route path="/logic-lab" element={<LogicLab />} />
           </Routes>
 
           <AssistantChat />

@@ -89,6 +89,16 @@ function Navbar() {
         </Link>
       </NavMotion>
 
+      <NavMotion>
+  <Link
+    to="/logic-lab"
+    onClick={() => setMenuOpen(false)}
+    style={navLinkStyle('/logic-lab')}
+  >
+    ⚡ Logic Lab
+  </Link>
+</NavMotion>
+
       {user && user.role === 'admin' && (
         <NavMotion>
           <Link
